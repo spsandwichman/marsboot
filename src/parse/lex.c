@@ -3,7 +3,6 @@
 typedef struct Lexer {
     TokenBuf* tb;
     string text;
-    u16 file_index;
     u32 cursor;
     char current;
 } Lexer;
@@ -25,7 +24,7 @@ TokenBuf lex_string(string text, u16 file_index) {
     da_init(&tokenbuf, 128);
 
     Lexer l = {0};
-    l.file_index = file_index;
+    // l.file_index = file_index;
     l.tb = &tokenbuf;
     l.text = text;
     l.cursor = 0;
@@ -33,12 +32,16 @@ TokenBuf lex_string(string text, u16 file_index) {
 
     tokenize(&l);
 
+    for_range(i, 0, tokenbuf.len) {
+        tokenbuf.at[i].file_index = file_index;
+    }
+
     return tokenbuf;
 }
 
 static void add_token(Lexer* l, u8 kind) {
     Token t;
-    t.file_index = l->file_index;
+    // t.file_index = l->file_index;
     t.src_offset = l->cursor;
     t.kind = kind;
     da_append(l->tb, t);
@@ -107,7 +110,7 @@ static forceinline bool is_numeric_or_(char c) {
     return ('0' <= c && c <= '9') || c == '_';
 }
 
-#define n_compare(lit, kind) if (!strncmp(s, lit, sizeof(lit)-1)) return kind
+#define push_if_eq(lit, kind) if (!strncmp(s, lit, sizeof(lit)-1)) return kind
 
 static u8 identify_keyword(char* s, size_t len) {
     switch (len) {
@@ -115,66 +118,66 @@ static u8 identify_keyword(char* s, size_t len) {
         if (s[0] == '_') return TOK_IDENTIFIER_DISCARD;
         break;
     case 2:
-        n_compare("do", TOK_KEYWORD_DO);
-        n_compare("fn", TOK_KEYWORD_FN);
-        n_compare("if", TOK_KEYWORD_IF);
-        n_compare("in", TOK_KEYWORD_IN);
-        n_compare("i8", TOK_TYPE_KEYWORD_I8);
-        n_compare("u8", TOK_TYPE_KEYWORD_U8);
+        push_if_eq("do", TOK_KEYWORD_DO);
+        push_if_eq("fn", TOK_KEYWORD_FN);
+        push_if_eq("if", TOK_KEYWORD_IF);
+        push_if_eq("in", TOK_KEYWORD_IN);
+        push_if_eq("i8", TOK_TYPE_KEYWORD_I8);
+        push_if_eq("u8", TOK_TYPE_KEYWORD_U8);
         break;
     case 3:
-        n_compare("let", TOK_KEYWORD_LET);
-        n_compare("mut", TOK_KEYWORD_MUT);
-        n_compare("def", TOK_KEYWORD_DEF);
-        n_compare("asm", TOK_KEYWORD_ASM);
-        n_compare("for", TOK_KEYWORD_FOR);
-        n_compare("int", TOK_TYPE_KEYWORD_INT);
-        n_compare("i16", TOK_TYPE_KEYWORD_I16);
-        n_compare("i32", TOK_TYPE_KEYWORD_I32);
-        n_compare("i64", TOK_TYPE_KEYWORD_I64);
-        n_compare("u16", TOK_TYPE_KEYWORD_U16);
-        n_compare("u32", TOK_TYPE_KEYWORD_U32);
-        n_compare("u64", TOK_TYPE_KEYWORD_U64);
-        n_compare("f16", TOK_TYPE_KEYWORD_F16);
-        n_compare("f32", TOK_TYPE_KEYWORD_F32);
-        n_compare("f64", TOK_TYPE_KEYWORD_F64);
+        push_if_eq("let", TOK_KEYWORD_LET);
+        push_if_eq("mut", TOK_KEYWORD_MUT);
+        push_if_eq("def", TOK_KEYWORD_DEF);
+        push_if_eq("asm", TOK_KEYWORD_ASM);
+        push_if_eq("for", TOK_KEYWORD_FOR);
+        push_if_eq("int", TOK_TYPE_KEYWORD_INT);
+        push_if_eq("i16", TOK_TYPE_KEYWORD_I16);
+        push_if_eq("i32", TOK_TYPE_KEYWORD_I32);
+        push_if_eq("i64", TOK_TYPE_KEYWORD_I64);
+        push_if_eq("u16", TOK_TYPE_KEYWORD_U16);
+        push_if_eq("u32", TOK_TYPE_KEYWORD_U32);
+        push_if_eq("u64", TOK_TYPE_KEYWORD_U64);
+        push_if_eq("f16", TOK_TYPE_KEYWORD_F16);
+        push_if_eq("f32", TOK_TYPE_KEYWORD_F32);
+        push_if_eq("f64", TOK_TYPE_KEYWORD_F64);
         break;
     case 4:
-        n_compare("type", TOK_KEYWORD_TYPE);
-        n_compare("case", TOK_KEYWORD_CASE);
-        n_compare("cast", TOK_KEYWORD_CAST);
-        n_compare("enum", TOK_KEYWORD_ENUM);
-        n_compare("else", TOK_KEYWORD_ELSE);
-        n_compare("uint", TOK_TYPE_KEYWORD_UINT);
-        n_compare("bool", TOK_TYPE_KEYWORD_BOOL);
+        push_if_eq("type", TOK_KEYWORD_TYPE);
+        push_if_eq("case", TOK_KEYWORD_CASE);
+        push_if_eq("cast", TOK_KEYWORD_CAST);
+        push_if_eq("enum", TOK_KEYWORD_ENUM);
+        push_if_eq("else", TOK_KEYWORD_ELSE);
+        push_if_eq("uint", TOK_TYPE_KEYWORD_UINT);
+        push_if_eq("bool", TOK_TYPE_KEYWORD_BOOL);
         break;
     case 5:
-        n_compare("break", TOK_KEYWORD_BREAK);
-        n_compare("defer", TOK_KEYWORD_DEFER);
-        n_compare("union", TOK_KEYWORD_UNION);
-        n_compare("while", TOK_KEYWORD_WHILE);
-        n_compare("float", TOK_TYPE_KEYWORD_FLOAT);
+        push_if_eq("break", TOK_KEYWORD_BREAK);
+        push_if_eq("defer", TOK_KEYWORD_DEFER);
+        push_if_eq("union", TOK_KEYWORD_UNION);
+        push_if_eq("while", TOK_KEYWORD_WHILE);
+        push_if_eq("float", TOK_TYPE_KEYWORD_FLOAT);
         break;
     case 6:
-        n_compare("extern", TOK_KEYWORD_EXTERN);
-        n_compare("import", TOK_KEYWORD_IMPORT);
-        n_compare("return", TOK_KEYWORD_RETURN);
-        n_compare("struct", TOK_KEYWORD_STRUCT);
-        n_compare("switch", TOK_KEYWORD_SWITCH);
-        n_compare("sizeof", TOK_KEYWORD_SIZEOF);
-        n_compare("module", TOK_KEYWORD_MODULE);
+        push_if_eq("extern", TOK_KEYWORD_EXTERN);
+        push_if_eq("import", TOK_KEYWORD_IMPORT);
+        push_if_eq("return", TOK_KEYWORD_RETURN);
+        push_if_eq("struct", TOK_KEYWORD_STRUCT);
+        push_if_eq("switch", TOK_KEYWORD_SWITCH);
+        push_if_eq("sizeof", TOK_KEYWORD_SIZEOF);
+        push_if_eq("module", TOK_KEYWORD_MODULE);
         break;
     case 7:
-        n_compare("bitcast", TOK_KEYWORD_BITCAST);
-        n_compare("alignof", TOK_KEYWORD_ALIGNOF);
+        push_if_eq("bitcast", TOK_KEYWORD_BITCAST);
+        push_if_eq("alignof", TOK_KEYWORD_ALIGNOF);
         break;
     case 8:
-        n_compare("continue", TOK_KEYWORD_CONTINUE);
-        n_compare("distinct", TOK_KEYWORD_DISTINCT);
-        n_compare("offsetof", TOK_KEYWORD_OFFSETOF);
+        push_if_eq("continue", TOK_KEYWORD_CONTINUE);
+        push_if_eq("distinct", TOK_KEYWORD_DISTINCT);
+        push_if_eq("offsetof", TOK_KEYWORD_OFFSETOF);
         break;
     case 11:
-        n_compare("fallthrough", TOK_KEYWORD_FALLTHROUGH);
+        push_if_eq("fallthrough", TOK_KEYWORD_FALLTHROUGH);
         break;
     }
     return TOK_IDENTIFIER;
@@ -206,7 +209,6 @@ static void tokenize(Lexer* l) {
         case ';':  push_simple_token(TOK_SEMICOLON);
         case '#':  push_simple_token(TOK_HASH);
         case ',':  push_simple_token(TOK_COMMA);
-        case '!':  push_simple_token(TOK_EXCLAM);
         case '?':  push_simple_token(TOK_QUESTION);
         case '^':  push_simple_token(TOK_CARET);
         case '.':
@@ -234,6 +236,10 @@ static void tokenize(Lexer* l) {
             if (peek(l, 1) == ':') 
                 push_token(TOK_COLON_COLON, 2);
             push_simple_token(TOK_COLON);
+        case '!':
+            if (peek(l, 1) == '=')
+                push_token(TOK_NOT_EQUAL, 2);
+            push_simple_token(TOK_EXCLAM);
         case '+':
             if (peek(l, 1) == '=')
                 push_token(TOK_ADD_EQUAL, 2);
@@ -243,6 +249,10 @@ static void tokenize(Lexer* l) {
                 push_token(TOK_MUL_EQUAL, 2);
             push_simple_token(TOK_MUL);
         case '~':
+            if (peek(l, 1) == '|' && peek(l, 2) == '=')
+                push_token(TOK_NOR_EQUAL, 3);
+            if (peek(l, 1) == '|')
+                push_token(TOK_NOR, 2);
             if (peek(l, 1) == '=')
                 push_token(TOK_XOR_EQUAL, 2);
             push_simple_token(TOK_TILDE);
@@ -255,7 +265,21 @@ static void tokenize(Lexer* l) {
                 goto next_token;
             }
             if (peek(l, 1) == '*') {
-                TODO("block comments");
+                advance_n(l, 2);
+                int level = 1;
+                while (level != 0 && l->current != '\0') {
+                    if (l->current == '/' && peek(l, 1) == '*') {
+                        level += 1;
+                        advance_n(l, 2);
+                        continue;
+                    } else if (l->current == '*' && peek(l, 1) == '/') {
+                        level -= 1;
+                        advance_n(l, 2);
+                        continue;
+                    }
+                    advance(l);
+                }
+                goto next_token;
             }
             if (peek(l, 1) == '=')
                 push_token(TOK_DIV_EQUAL, 2);

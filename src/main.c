@@ -10,6 +10,7 @@ int main() {
     TokenBuf tb = lex_string(str(buf), 0);
 
     foreach(Token t, tb) {
+        // if (t.kind == TOK_NEWLINE) continue;
         printf("%s\n", token_kind_name[t.kind]);
     }
 }
