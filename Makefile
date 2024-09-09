@@ -1,5 +1,6 @@
 SRCPATHS = \
 	src/*.c \
+	src/parse/*.c \
 
 SRC = $(wildcard $(SRCPATHS))
 OBJECTS = $(SRC:src/%.c=build/%.o)
@@ -34,9 +35,8 @@ build/%.o: src/%.c
 	@$(CC) -c -o $@ $< $(INCLUDEPATHS) $(CFLAGS) $(OPT)
 
 build: $(OBJECTS)
-	@echo Linking with $(LD)...
+# @echo Linking with $(LD)...
 	@$(LD) $(OBJECTS) -o $(EXECUTABLE_NAME) $(CFLAGS) $(OPT)
-	@echo Successfully built: $(EXECUTABLE_NAME)
 
 debug: CFLAGS += $(DEBUGFLAGS)
 debug: OPT = -O0
