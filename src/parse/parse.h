@@ -2,12 +2,6 @@
 
 #include "mars.h"
 
-// typedef struct Token {
-//     u16 file_index;
-//     u16 len : 9;
-//     u16 kind : 7;
-//     u32 src_offset;
-// } Token;
 typedef struct Token {
     u16 file_index;
     u8  kind;
@@ -28,10 +22,8 @@ typedef da(Token) TokenBuf;
 \
     TOKEN(TOK_LITERAL_INT, "integer literal") \
     TOKEN(TOK_LITERAL_FLOAT, "float literal") \
-    TOKEN(TOK_LITERAL_BOOL, "bool literal") \
     TOKEN(TOK_LITERAL_STRING, "string literal") \
     TOKEN(TOK_LITERAL_CHAR, "char literal") \
-    TOKEN(TOK_LITERAL_NULL, "null") \
 \
     TOKEN(TOK_NEWLINE,      "\\n") \
 \
@@ -152,6 +144,10 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_TYPE_KEYWORD_F16,  "f16") \
     TOKEN(TOK_TYPE_KEYWORD_F32,  "f32") \
     TOKEN(TOK_TYPE_KEYWORD_F64,  "f64") \
+\
+    TOKEN(TOK_KEYWORD_NULL,  "null") \
+    TOKEN(TOK_KEYWORD_TRUE,  "true") \
+    TOKEN(TOK_KEYWORD_FALSE,  "false") \
 \
     TOKEN(_TOK_END_KEYWORDS, "")\
 \

@@ -143,6 +143,8 @@ static u8 identify_keyword(char* s, size_t len) {
         push_if_eq("f64", TOK_TYPE_KEYWORD_F64);
         break;
     case 4:
+        push_if_eq("true", TOK_KEYWORD_TRUE);
+        push_if_eq("null", TOK_KEYWORD_NULL);
         push_if_eq("type", TOK_KEYWORD_TYPE);
         push_if_eq("case", TOK_KEYWORD_CASE);
         push_if_eq("cast", TOK_KEYWORD_CAST);
@@ -152,6 +154,7 @@ static u8 identify_keyword(char* s, size_t len) {
         push_if_eq("bool", TOK_TYPE_KEYWORD_BOOL);
         break;
     case 5:
+        push_if_eq("false", TOK_KEYWORD_FALSE);
         push_if_eq("break", TOK_KEYWORD_BREAK);
         push_if_eq("defer", TOK_KEYWORD_DEFER);
         push_if_eq("union", TOK_KEYWORD_UNION);
