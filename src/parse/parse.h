@@ -25,7 +25,7 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_LITERAL_STRING, "string literal") \
     TOKEN(TOK_LITERAL_CHAR, "char literal") \
 \
-    TOKEN(TOK_NEWLINE,      "\\n") \
+    TOKEN(TOK_NEWLINE,      "newline") \
 \
     TOKEN(TOK_HASH,      "#") \
     TOKEN(TOK_UNINIT,    "---") \

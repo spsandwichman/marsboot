@@ -327,7 +327,30 @@ static void tokenize(Lexer* l) {
             if (peek(l, 1) == '=')
                 push_token(TOK_EQUAL_EQUAL, 2);
             push_simple_token(TOK_EQUAL);
-        default:
+        case '\'':
+            u64 len = 1;
+            while (!(peek(l, len) == '\'' && peek(l, len - 1) != '\\')) {
+                if (peek(l, len) == '\0') {
+                    TODO("unterminated char literal");
+                }
+                len++;
+            }
+            // validity will be checked at sema-time
+            add_token(l, TOK_LITERAL_CHAR);
+            advance_n(l, len + 1);
+            goto next_token;
+        case '\"':
+            len = 1;
+            while (!(peek(l, len) == '\"' && peek(l, len - 1) != '\\')) {
+                if (peek(l, len) == '\0') {
+                    TODO("unterminated string literal");
+                }
+                len++;
+            }
+            // validity will be checked at sema-time
+            add_token(l, TOK_LITERAL_STRING);
+            advance_n(l, len + 1);
+            goto next_token;
         }
 
         if (can_begin_ident(l->current)) {

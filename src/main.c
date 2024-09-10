@@ -18,9 +18,11 @@ int main() {
     TokenBuf tb = lex_string(str(buf), 0);
 
     foreach(Token t, tb) {
-        if (t.kind == TOK_NEWLINE) continue;
+        // if (t.kind == TOK_NEWLINE) continue;
         printf("%s\n", token_kind_name[t.kind]);
     }
 
-    printf("lex %d bytes", tb.len * sizeof(Token));
+    printf("lex %d bytes\n", tb.cap * sizeof(Token));
+    da_shrink(&tb);
+    printf("lex %d bytes\n", tb.cap * sizeof(Token));
 }
