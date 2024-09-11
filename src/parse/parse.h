@@ -20,8 +20,7 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_IDENTIFIER, "identifier") \
     TOKEN(TOK_IDENTIFIER_DISCARD, "_") \
 \
-    TOKEN(TOK_LITERAL_INT, "integer literal") \
-    TOKEN(TOK_LITERAL_FLOAT, "float literal") \
+    TOKEN(TOK_LITERAL_NUMERIC, "numeric literal") \
     TOKEN(TOK_LITERAL_STRING, "string literal") \
     TOKEN(TOK_LITERAL_CHAR, "char literal") \
 \
@@ -163,39 +162,137 @@ extern const char* token_kind_name[];
 
 TokenBuf lex_string(string text, u16 file_index);
 
-// #define NULL_PN (ParseNodeIndex)0
-// typedef u32 ParseNodeIndex;
-// typedef u32 TokenIndex;
+#define NULL_NODE 0
+typedef u32 ParseNodeIndex;
+typedef u32 TokenIndex;
 
-// typedef struct ParseNode {
-//     TokenIndex start_token;
+typedef struct ParseNode {
+    TokenIndex start_token;
 
-//     union {
-//         struct {
-//             ParseNodeIndex lhs;
-//             ParseNodeIndex rhs;
-//         };
+    union {
+        struct {
+            ParseNodeIndex lhs;
+            ParseNodeIndex rhs;
+        } bin;
 
-//         struct {
-//             ParseNodeIndex sub;
-//             ParseNodeIndex extra;
-//         };
-//     } data;
-// } ParseNode;
+        struct {
+            ParseNodeIndex sub;
+            ParseNodeIndex extra;
+        } un;
 
-// typedef struct ParseTree {
+        struct {
+            ParseNodeIndex extra;
+            u64 len; // optional, used for lists
+        } list;
+    } data;
+} ParseNode;
 
-//     TokenBuf tokens;
+typedef struct ParseTree {
 
-//     ParseNode* nodes;
-//     u8* node_types;
-//     size_t cap;
-//     size_t len;
+    TokenBuf tokens;
 
-//     struct {
-//         ParseNodeIndex* at;
-//         size_t len;
-//         size_t cap;
-//     } extra;
+    ParseNode* nodes;
+    u8* node_types;
+    size_t cap;
+    size_t len;
 
-// } ParseTree;
+    struct {
+        ParseNodeIndex* at;
+        size_t len;
+        size_t cap;
+    } extra;
+
+} ParseTree;
+
+enum {
+    PN_INVALID,
+    
+    PN_IDENTIFIER,
+
+    // un
+    PN_PAREN,
+
+    // bin
+    _PN_BINOP_BEGIN,
+        PN_BINOP_ADD,   // +
+        PN_BINOP_SUB,   // -
+        PN_BINOP_MUL,   // *
+        PN_BINOP_DIV,   // /
+        PN_BINOP_MOD,   // %
+        PN_BINOP_REM,   // %%
+
+        PN_BINOP_BIT_AND,       // &
+        PN_BINOP_BIT_OR,        // |
+        PN_BINOP_BIT_NOR,       // ~|
+        PN_BINOP_BIT_XOR,       // ~
+        PN_BINOP_BIT_LSHIFT,    // <<
+        PN_BINOP_BIT_RSHIFT,    // >>
+
+        PN_BINOP_EQ,            // ==
+        PN_BINOP_NEQ,           // !=
+        PN_BINOP_LESS,          // <
+        PN_BINOP_LESS_EQ,       // <=
+        PN_BINOP_GREATER,       // >
+        PN_BINOP_GREATER_EQ,    // >=
+
+        PN_BINOP_RANGE_LESS,    // ..<
+        PN_BINOP_RANGE_EQ,      // ..=
+    _PN_BINOP_END,
+
+    _PN_UNOP_BEGIN,
+        PN_UNOP_POS,        // + does nothing basically
+        PN_UNOP_NEG,        // -
+        PN_UNOP_BIT_NOT,    // ~
+        PN_UNOP_NOT,        // !
+    _PN_UNOP_END,
+
+    PN_TYPE_SIMPLE,
+
+    PN_NAMESPACE,       // ::
+    PN_SELECTOR,        // .
+    PN_RETURN_SELECTOR, // ->
+
+    // .bin = {.lhs = <expr>, .rhs = <value>}
+    PN_ASSIGN_EXPR,
+
+    // statements
+
+    // .un = {.sub = <ident>}
+    PN_MODULE_STMT,
+
+    // .bin = {.lhs = <ident>, .rhs = <path-string>}
+    PN_IMPORT_STMT,
+
+    // .list
+    PN_STMT_BLOCK,
+
+    // definition list for structs, unions, params, and returns
+    PN_DEF_LIST,
+
+    PN_EMPTY_STMT,
+    // .un = {.sub = <stmt>}
+    PN_RETURN_STMT,
+    // .bin = {.lhs = <condition>, .rhs = <stmt>}
+    PN_IF_STMT,
+    PN_WHILE_STMT,
+
+    // .un = {.sub = <ident>, .extra = &ParseExtraFnDecl}
+    PN_FN_DECL,
+    // .un = {.sub = <ident/idents>, .extra = &ParseExtraVarDecl}
+    PN_LET_DECL,
+    PN_MUT_DECL,
+    // .bin = {.lhs = <ident>, .rhs = <type>}
+    PN_TYPE_DECL,
+};
+
+typedef struct ParseExtraFnDecl {
+    ParseNodeIndex params;  // list of identifiers and types
+    ParseNodeIndex returns; // list of identifiers and types.
+    // ^ if it's a simple return, this is just the type node instead of a list.
+    ParseNodeIndex block;   // stmt block
+} ParseExtraFnDecl;
+
+typedef struct ParseExtraVarDecl {
+    ParseNodeIndex type;
+    ParseNodeIndex value;
+} ParseExtraVarDecl;

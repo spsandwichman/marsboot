@@ -110,7 +110,56 @@ static forceinline bool is_numeric_or_(char c) {
     return ('0' <= c && c <= '9') || c == '_';
 }
 
-#define push_if_eq(lit, kind) if (!strncmp(s, lit, sizeof(lit)-1)) return kind
+static bool is_base_digit(char c, u64 base) {
+    if (c == '_') return true;
+
+    if (base <= 10) {
+        return '0' <= c && c <= ('0' + base - 1);
+    } else {
+        return 
+            ('0' <= c && c <= '9') || 
+            ('a' <= c && c <= ('a' + base - 10)) ||
+            ('A' <= c && c <= ('A' + base - 10));
+    }
+}
+
+static u64 scan_integer_base(Lexer* l, u64 base, u64 start_at) {
+    u64 len = start_at;
+    while (is_base_digit(peek(l, len), base)) {
+        len++;
+    }
+    if (can_ident(peek(l, len))) {
+        CRASH("invalid digit");
+    }
+    return len;
+}
+
+static u64 scan_numeric(Lexer* l) {
+    if (l->current == '0') {
+        switch (peek(l, 1)){
+        case 'x':
+        case 'X': return scan_integer_base(l, 16, 2);
+        case 'd':
+        case 'D': return scan_integer_base(l, 10, 2);
+        case 'o':
+        case 'O': return scan_integer_base(l, 8, 2);
+        case 'b':
+        case 'B': return scan_integer_base(l, 2, 2);
+        default:
+            if (is_numeric(peek(l, 1))) {
+                return scan_integer_base(l, 10, 2);
+            }
+            CRASH("expected 0..=9 or base signifier");
+            break;
+        }
+    }
+    if (is_numeric(l->current)) {
+        return scan_integer_base(l, 10, 1);
+    }
+    CRASH("what?");
+}
+
+#define return_if_eq(lit, kind) if (!strncmp(s, lit, sizeof(lit)-1)) return kind
 
 static u8 identify_keyword(char* s, size_t len) {
     switch (len) {
@@ -118,69 +167,69 @@ static u8 identify_keyword(char* s, size_t len) {
         if (s[0] == '_') return TOK_IDENTIFIER_DISCARD;
         break;
     case 2:
-        push_if_eq("do", TOK_KEYWORD_DO);
-        push_if_eq("fn", TOK_KEYWORD_FN);
-        push_if_eq("if", TOK_KEYWORD_IF);
-        push_if_eq("in", TOK_KEYWORD_IN);
-        push_if_eq("i8", TOK_TYPE_KEYWORD_I8);
-        push_if_eq("u8", TOK_TYPE_KEYWORD_U8);
+        return_if_eq("do", TOK_KEYWORD_DO);
+        return_if_eq("fn", TOK_KEYWORD_FN);
+        return_if_eq("if", TOK_KEYWORD_IF);
+        return_if_eq("in", TOK_KEYWORD_IN);
+        return_if_eq("i8", TOK_TYPE_KEYWORD_I8);
+        return_if_eq("u8", TOK_TYPE_KEYWORD_U8);
         break;
     case 3:
-        push_if_eq("let", TOK_KEYWORD_LET);
-        push_if_eq("mut", TOK_KEYWORD_MUT);
-        push_if_eq("def", TOK_KEYWORD_DEF);
-        push_if_eq("asm", TOK_KEYWORD_ASM);
-        push_if_eq("for", TOK_KEYWORD_FOR);
-        push_if_eq("int", TOK_TYPE_KEYWORD_INT);
-        push_if_eq("i16", TOK_TYPE_KEYWORD_I16);
-        push_if_eq("i32", TOK_TYPE_KEYWORD_I32);
-        push_if_eq("i64", TOK_TYPE_KEYWORD_I64);
-        push_if_eq("u16", TOK_TYPE_KEYWORD_U16);
-        push_if_eq("u32", TOK_TYPE_KEYWORD_U32);
-        push_if_eq("u64", TOK_TYPE_KEYWORD_U64);
-        push_if_eq("f16", TOK_TYPE_KEYWORD_F16);
-        push_if_eq("f32", TOK_TYPE_KEYWORD_F32);
-        push_if_eq("f64", TOK_TYPE_KEYWORD_F64);
+        return_if_eq("let", TOK_KEYWORD_LET);
+        return_if_eq("mut", TOK_KEYWORD_MUT);
+        return_if_eq("def", TOK_KEYWORD_DEF);
+        return_if_eq("asm", TOK_KEYWORD_ASM);
+        return_if_eq("for", TOK_KEYWORD_FOR);
+        return_if_eq("int", TOK_TYPE_KEYWORD_INT);
+        return_if_eq("i16", TOK_TYPE_KEYWORD_I16);
+        return_if_eq("i32", TOK_TYPE_KEYWORD_I32);
+        return_if_eq("i64", TOK_TYPE_KEYWORD_I64);
+        return_if_eq("u16", TOK_TYPE_KEYWORD_U16);
+        return_if_eq("u32", TOK_TYPE_KEYWORD_U32);
+        return_if_eq("u64", TOK_TYPE_KEYWORD_U64);
+        return_if_eq("f16", TOK_TYPE_KEYWORD_F16);
+        return_if_eq("f32", TOK_TYPE_KEYWORD_F32);
+        return_if_eq("f64", TOK_TYPE_KEYWORD_F64);
         break;
     case 4:
-        push_if_eq("true", TOK_KEYWORD_TRUE);
-        push_if_eq("null", TOK_KEYWORD_NULL);
-        push_if_eq("type", TOK_KEYWORD_TYPE);
-        push_if_eq("case", TOK_KEYWORD_CASE);
-        push_if_eq("cast", TOK_KEYWORD_CAST);
-        push_if_eq("enum", TOK_KEYWORD_ENUM);
-        push_if_eq("else", TOK_KEYWORD_ELSE);
-        push_if_eq("uint", TOK_TYPE_KEYWORD_UINT);
-        push_if_eq("bool", TOK_TYPE_KEYWORD_BOOL);
+        return_if_eq("true", TOK_KEYWORD_TRUE);
+        return_if_eq("null", TOK_KEYWORD_NULL);
+        return_if_eq("type", TOK_KEYWORD_TYPE);
+        return_if_eq("case", TOK_KEYWORD_CASE);
+        return_if_eq("cast", TOK_KEYWORD_CAST);
+        return_if_eq("enum", TOK_KEYWORD_ENUM);
+        return_if_eq("else", TOK_KEYWORD_ELSE);
+        return_if_eq("uint", TOK_TYPE_KEYWORD_UINT);
+        return_if_eq("bool", TOK_TYPE_KEYWORD_BOOL);
         break;
     case 5:
-        push_if_eq("false", TOK_KEYWORD_FALSE);
-        push_if_eq("break", TOK_KEYWORD_BREAK);
-        push_if_eq("defer", TOK_KEYWORD_DEFER);
-        push_if_eq("union", TOK_KEYWORD_UNION);
-        push_if_eq("while", TOK_KEYWORD_WHILE);
-        push_if_eq("float", TOK_TYPE_KEYWORD_FLOAT);
+        return_if_eq("false", TOK_KEYWORD_FALSE);
+        return_if_eq("break", TOK_KEYWORD_BREAK);
+        return_if_eq("defer", TOK_KEYWORD_DEFER);
+        return_if_eq("union", TOK_KEYWORD_UNION);
+        return_if_eq("while", TOK_KEYWORD_WHILE);
+        return_if_eq("float", TOK_TYPE_KEYWORD_FLOAT);
         break;
     case 6:
-        push_if_eq("extern", TOK_KEYWORD_EXTERN);
-        push_if_eq("import", TOK_KEYWORD_IMPORT);
-        push_if_eq("return", TOK_KEYWORD_RETURN);
-        push_if_eq("struct", TOK_KEYWORD_STRUCT);
-        push_if_eq("switch", TOK_KEYWORD_SWITCH);
-        push_if_eq("sizeof", TOK_KEYWORD_SIZEOF);
-        push_if_eq("module", TOK_KEYWORD_MODULE);
+        return_if_eq("extern", TOK_KEYWORD_EXTERN);
+        return_if_eq("import", TOK_KEYWORD_IMPORT);
+        return_if_eq("return", TOK_KEYWORD_RETURN);
+        return_if_eq("struct", TOK_KEYWORD_STRUCT);
+        return_if_eq("switch", TOK_KEYWORD_SWITCH);
+        return_if_eq("sizeof", TOK_KEYWORD_SIZEOF);
+        return_if_eq("module", TOK_KEYWORD_MODULE);
         break;
     case 7:
-        push_if_eq("bitcast", TOK_KEYWORD_BITCAST);
-        push_if_eq("alignof", TOK_KEYWORD_ALIGNOF);
+        return_if_eq("bitcast", TOK_KEYWORD_BITCAST);
+        return_if_eq("alignof", TOK_KEYWORD_ALIGNOF);
         break;
     case 8:
-        push_if_eq("continue", TOK_KEYWORD_CONTINUE);
-        push_if_eq("distinct", TOK_KEYWORD_DISTINCT);
-        push_if_eq("offsetof", TOK_KEYWORD_OFFSETOF);
+        return_if_eq("continue", TOK_KEYWORD_CONTINUE);
+        return_if_eq("distinct", TOK_KEYWORD_DISTINCT);
+        return_if_eq("offsetof", TOK_KEYWORD_OFFSETOF);
         break;
     case 11:
-        push_if_eq("fallthrough", TOK_KEYWORD_FALLTHROUGH);
+        return_if_eq("fallthrough", TOK_KEYWORD_FALLTHROUGH);
         break;
     }
     return TOK_IDENTIFIER;
@@ -331,7 +380,7 @@ static void tokenize(Lexer* l) {
             u64 len = 1;
             while (!(peek(l, len) == '\'' && peek(l, len - 1) != '\\')) {
                 if (peek(l, len) == '\0') {
-                    TODO("unterminated char literal");
+                    CRASH("unterminated char literal");
                 }
                 len++;
             }
@@ -343,7 +392,7 @@ static void tokenize(Lexer* l) {
             len = 1;
             while (!(peek(l, len) == '\"' && peek(l, len - 1) != '\\')) {
                 if (peek(l, len) == '\0') {
-                    TODO("unterminated string literal");
+                    CRASH("unterminated string literal");
                 }
                 len++;
             }
@@ -360,6 +409,14 @@ static void tokenize(Lexer* l) {
             }
             u8 kind = identify_keyword(&l->text.raw[l->cursor], len);
             add_token(l, kind);
+            advance_n(l, len);
+            goto next_token;
+        }
+
+        if (is_numeric(l->current)) {
+            // TODO("scan numeric");
+            u64 len = scan_numeric(l);
+            add_token(l, TOK_LITERAL_NUMERIC);
             advance_n(l, len);
             goto next_token;
         }
