@@ -164,6 +164,7 @@ TokenBuf lex_string(string text, u16 file_index);
 
 #define NULL_NODE 0
 typedef u32 ParseNodeIndex;
+typedef u32 ParseExtraIndex;
 typedef u32 TokenIndex;
 
 typedef struct ParseNode {
@@ -177,12 +178,12 @@ typedef struct ParseNode {
 
         struct {
             ParseNodeIndex sub;
-            ParseNodeIndex extra;
+            ParseExtraIndex extra;
         } un;
 
         struct {
-            ParseNodeIndex extra;
-            u64 len; // optional, used for lists
+            ParseExtraIndex items;
+            u32 len; // optional, used for lists
         } list;
     } data;
 } ParseNode;
@@ -190,9 +191,10 @@ typedef struct ParseNode {
 typedef struct ParseTree {
 
     TokenBuf tokens;
+    TokenIndex current;
 
     ParseNode* nodes;
-    u8* node_types;
+    u8* node_kinds;
     size_t cap;
     size_t len;
 
