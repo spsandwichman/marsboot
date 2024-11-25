@@ -195,13 +195,13 @@ typedef struct ParseTree {
 
     ParseNode* nodes;
     u8* node_kinds;
-    size_t cap;
-    size_t len;
+    usize cap;
+    usize len;
 
     struct {
         ParseNodeIndex* at;
-        size_t len;
-        size_t cap;
+        usize len;
+        usize cap;
     } extra;
 
 } ParseTree;
@@ -210,9 +210,6 @@ enum {
     PN_INVALID,
     
     PN_IDENTIFIER,
-
-    // un
-    PN_PAREN,
 
     // bin
     _PN_BINOP_BEGIN,
@@ -287,14 +284,20 @@ enum {
     PN_TYPE_DECL,
 };
 
+#define extra_size_check(T) static_assert(sizeof(T) % sizeof(ParseNodeIndex) == 0)
+
 typedef struct ParseExtraFnDecl {
     ParseNodeIndex params;  // list of identifiers and types
     ParseNodeIndex returns; // list of identifiers and types.
     // ^ if it's a simple return, this is just the type node instead of a list.
     ParseNodeIndex block;   // stmt block
 } ParseExtraFnDecl;
+extra_size_check(ParseExtraFnDecl);
 
 typedef struct ParseExtraVarDecl {
     ParseNodeIndex type;
     ParseNodeIndex value;
 } ParseExtraVarDecl;
+extra_size_check(ParseExtraVarDecl);
+
+#undef extra_size_check

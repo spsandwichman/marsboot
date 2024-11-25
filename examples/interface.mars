@@ -1,0 +1,5 @@
+module interface;
+
+extern fn memalloc(size: uint) -> ^mut;
+extern fn memfree(ptr: ^mut);
+extern fn memrealloc(ptr: ^mut, new_size: uint) -> ^mut;
