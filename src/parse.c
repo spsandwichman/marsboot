@@ -913,36 +913,34 @@ static isize bin_precedence(u8 kind) {
     switch (kind) {
     case TOK_LSHIFT:
     case TOK_RSHIFT:
-        return 11;
+        return 9;
     case TOK_AND:
-        return 10;
+        return 8;
     case TOK_OR:
     case TOK_TILDE:
     case TOK_NOR:
-        return 9;
+        return 7;
     case TOK_MUL:
     case TOK_DIV:
     case TOK_MOD:
     case TOK_MOD_MOD:
-        return 8;
+        return 6;
     case TOK_ADD:
     case TOK_SUB:
-        return 7;
+        return 5;
     case TOK_EQUAL_EQUAL:
     case TOK_NOT_EQUAL:
     case TOK_LESS_THAN:
     case TOK_LESS_EQUAL:
     case TOK_GREATER_THAN:
     case TOK_GREATER_EQUAL:
-        return 6;
-    case TOK_AND_AND:
-        return 5;
-    case TOK_OR_OR:
-        return 4;
     case TOK_RANGE_EQ:
     case TOK_RANGE_LESS:
-        return 3;
     case TOK_KEYWORD_IN:
+        return 4;
+    case TOK_AND_AND:
+        return 3;
+    case TOK_OR_OR:
         return 2;
     }
     return 0;
