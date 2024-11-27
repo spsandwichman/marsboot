@@ -1,0 +1,114 @@
+file = module_decl {import_decl} {stmt}
+
+module_decl = 'module' ident ';'
+
+import_decl = 'import' ident string ';'
+
+(* generic comma-separated list *)
+list<X> = {X ','} [X]
+
+assignop = 
+    | '='
+    | '+=' | '-=' | '*=' | '/=' | '%=' | '%%='
+    | '&=' | '|=' | '~|=' | '~=' | '<<=' | '>>='
+
+simple_stmt =
+    | ('let' | 'mut') list<ident> [':' expr] ['=' expr]
+    | expr assignop expr
+    | expr
+
+extern_decl =
+    | fnproto ';'
+    | ('let' | 'mut') list<ident> ':' expr ';'
+
+stmt =
+    | simple_stmt ';'
+    | stmt_block
+    | fnproto stmt_block
+    | 'if' expr do_block [else]
+    | 'while' expr do_block
+    | 'switch' expr '{' {case_block} '}'
+    | 'when' expr do_block [when_else]
+    | 'which' expr '{' {case_block} '}'
+    | 'for' simple_stmt ';' expr ';' simple_stmt do_block
+    | 'for' ident [':' type] 'in' range_expr do_block
+    | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
+    | 'defer' stmt
+    | 'fallthrough' [expr] ';'
+
+else =
+    | 'else' do_block
+    | 'else' 'if' expr do_block else
+
+when_else =
+    | 'else' do_block
+    | 'else' 'when' expr do_block else
+
+do_block =
+    | stmt_block
+    | 'do' stmt
+
+stmt_block = "{" {stmt} "}"
+
+case_block = 'case' list<(expr | range_expr)> ':' {stmt}
+
+binop =
+    | '+' | '-' | '*' | '/' | '%' | '%%'
+    | '&' | '|' | '~|' | '~' | '<<' | '>>'
+    | '&&' | '||'
+    | '==' | '!=' | '<' | '<=' | '>' | '>='
+
+fnproto = 'fn' [ident] '(' list<item> ')' ['->' (expr | '(' list<item> ')'))]
+
+range_expr = expr ('..<' | '..=') expr
+
+(* types and expressions are unified in this grammar *)
+
+case_expr = 'case' list<(expr | range_expr)> ':' expr
+
+expr =
+    | ('if' | 'when') expr 'do' expr 'else' expr
+    | ('switch' | 'which') expr '{' list<case_expr> '}'
+    | expr binop expr
+    | unary_expr
+
+unop = '!' | '?' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof'
+
+unary_expr =
+    | ('cast' | 'bitcast') '(' expr ')' unary_expr
+    | unop unary_expr
+    | atom_expr
+
+atom_terminal = 
+    | '(' expr ')'
+    | ident | '_'
+    | integer | float | string
+    | 'true' | 'false' | 'null'
+    | 'i8' | 'i16' | 'i32' | 'i64' | 'int'
+    | 'u8' | 'u16' | 'u32' | 'u64' | 'uint'
+    | 'f16' | 'f32' | 'f64' | 'float'
+    | 'bool'
+
+    | '.' '{' list<expr> '}'
+    | '.' ident
+
+    | ('^' | '[' ']') ('let' | 'mut') [atom_terminal]
+    | '[' expr ']' atom_terminal
+    | 'distinct' atom_terminal
+    | 'struct' '{' list<item> '}'
+    | 'union' '{' list<item> '}'
+    | 'enum' expr '{' list<variant> '}'
+    | fnproto [stmt_block]
+
+variant = ident ['=' expr]
+item = ident [',' ident] ':' expr
+
+atom_expr = 
+    | atom_terminal
+    | atom_expr '::' ident
+    | atom_expr '.' ident
+    | atom_expr '.' '{' list<expr> '}'
+    | atom_expr '^'
+    | atom_expr '[' expr ']'
+    | atom_expr '[' [expr] ':' [expr] ']'
+    | atom_expr '(' list<expr> ')'

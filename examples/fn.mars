@@ -1,9 +1,9 @@
 module examples;
 
-fn add1(x, y: u64) -> u64 {
-    return x + y;
+fn add(x, y: u64, z: int) -> u64 {
+    return x;
 }
 
 fn main() -> int {
-    return cast(int) 3;
+    return 3;
 }

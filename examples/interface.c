@@ -1,13 +1,14 @@
 #include <stdlib.h>
+#include <stdint.h>
 
-void* memalloc(uintptr_t size) {
+void* _host__alloc(uintptr_t size) {
     return malloc(size);
 }
 
-void memfree(void* ptr) {
+void _host__free(void* ptr) {
     free(ptr);
 }
 
-void* memrealloc(void* ptr, uintptr_t new_size) {
+void* _host__realloc(void* ptr, uintptr_t new_size) {
     return realloc(ptr, new_size);
 }

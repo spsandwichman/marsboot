@@ -1,0 +1,4 @@
+im shifting this to be a small, bootstrap version of the mars compiler.
+this version of mars will NOT be efficient, but it will be easily modifiable,
+allowing for fast iteration and testing of language features.
+it will also only generate C code.

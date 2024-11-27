@@ -1,6 +1,8 @@
 #pragma once
 #define ORBIT_DA_H
 
+#include "crash.h"
+
 // sandwich's shitty """polymorphic""" dynamic array lib V2
 // lean and mean w/ new functions
 // all the functions are now macros, inspired by mista zozin himself (https://github.com/tsoding)
@@ -22,7 +24,7 @@
     (da_ptr)->cap = c; \
     (da_ptr)->at = malloc(sizeof((da_ptr)->at[0]) * c); \
     if ((da_ptr)->at == NULL) { \
-        printf("(%s:%d) da_init malloc failed for capacity %zu", (__FILE__), (__LINE__), c); \
+        crash("(%s:%d) da_init malloc failed for capacity %zu", (__FILE__), (__LINE__), c); \
         exit(1); \
     } \
 } while (0)
@@ -32,7 +34,7 @@
         (da_ptr)->cap *= 2; \
         (da_ptr)->at = realloc((da_ptr)->at, sizeof((da_ptr)->at[0]) * (da_ptr)->cap); \
         if ((da_ptr)->at == NULL) { \
-            printf("(%s:%d) da_append realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
+            crash("(%s:%d) da_append realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
             exit(1); \
         } \
     } \
@@ -44,7 +46,7 @@
     (da_ptr)->cap = (da_ptr)->len; \
     (da_ptr)->at = realloc((da_ptr)->at, sizeof((da_ptr)->at[0]) * (da_ptr)->cap); \
     if ((da_ptr)->at == NULL) { \
-        printf("(%s:%d) da_init realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
+        crash("(%s:%d) da_shrink realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
         exit(1); \
     } \
 } while (0)
@@ -53,7 +55,7 @@
     (da_ptr)->cap += num_slots; \
     (da_ptr)->at = realloc((da_ptr)->at, sizeof(*(da_ptr)->at) * (da_ptr)->cap); \
     if ((da_ptr)->at == NULL) { \
-        printf("(%s:%d) da_reserve realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
+        crash("(%s:%d) da_reserve realloc failed for capacity %zu", (__FILE__), (__LINE__), (da_ptr)->cap); \
         exit(1); \
     } \
 } while (0)

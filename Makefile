@@ -5,11 +5,11 @@ SRCPATHS = \
 SRC = $(wildcard $(SRCPATHS))
 OBJECTS = $(SRC:src/%.c=build/%.o)
 
-EXECUTABLE_NAME = marsfront2
+EXECUTABLE_NAME = marsboot
 ECHO = echo
 
 ifeq ($(OS),Windows_NT)
-	EXECUTABLE_NAME = marsfront2.exe
+	EXECUTABLE_NAME = marsboot.exe
 else
 	ECHO = /usr/bin/echo
 	# JANK FIX FOR SANDWICH'S DUMB ECHO ON HIS LINUX MACHINE
@@ -24,8 +24,8 @@ ASANFLAGS = -fsanitize=undefined -fsanitize=address
 CFLAGS = -mbmi2 -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
 		 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
 		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
-OPT = -O3 -flto
-# OPT = -O0
+# OPT = -O3 -flto
+OPT = -O0
 
 FILE_NUM = 0
 

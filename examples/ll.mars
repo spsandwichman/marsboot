@@ -34,7 +34,6 @@ fn append_tail(l: ^mut List, new: ^mut Node) {
     if (list.head == null) {
         list.head = new;
         list.tail = new;
-        new.next = null;
     } else {
         list.tail.next = new;
         list.tail = new;

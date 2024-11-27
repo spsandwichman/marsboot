@@ -15,7 +15,7 @@ const char* token_kind_name[] = {
 
 static void tokenize(Lexer* l);
 
-TokenBuf lex_string(string text, u16 file_index) {
+TokenBuf lex_string(string text) {
     if (text.len > UINT32_MAX) {
         CRASH("cannot lex string larger than 4GiB");
     }
@@ -32,17 +32,14 @@ TokenBuf lex_string(string text, u16 file_index) {
 
     tokenize(&l);
 
-    for_range(i, 0, tokenbuf.len) {
-        tokenbuf.at[i].file_index = file_index;
-    }
 
     return tokenbuf;
 }
 
-static void add_token(Lexer* l, u8 kind) {
+static void add_token(Lexer* l, u8 kind, usize len) {
     Token t;
-    // t.file_index = l->file_index;
-    t.src_offset = l->cursor;
+    t.raw = &l->text.raw[l->cursor];
+    t.len = len;
     t.kind = kind;
     da_append(l->tb, t);
 }
@@ -74,7 +71,7 @@ static void skip_whitespace(Lexer* l) {
         case '\t':
         case '\r':
         case '\v':
-        // case '\n':
+        case '\n':
         case '\f':
             advance(l);
             break;
@@ -146,10 +143,10 @@ static u64 scan_numeric(Lexer* l) {
         case 'b':
         case 'B': return scan_integer_base(l, 2, 2);
         default:
-            if (is_numeric(peek(l, 1))) {
+            if (is_numeric_or_(peek(l, 1))) {
                 return scan_integer_base(l, 10, 2);
             }
-            CRASH("expected 0..=9 or base signifier");
+            return 1;
             break;
         }
     }
@@ -162,6 +159,8 @@ static u64 scan_numeric(Lexer* l) {
 #define return_if_eq(lit, kind) if (!strncmp(s, lit, sizeof(lit)-1)) return kind
 
 static u8 identify_keyword(char* s, size_t len) {
+    if (len == 1 && s[0] == '_') return TOK_IDENTIFIER_DISCARD;
+
     switch (len) {
     case 1:
         if (s[0] == '_') return TOK_IDENTIFIER_DISCARD;
@@ -171,27 +170,27 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("fn", TOK_KEYWORD_FN);
         return_if_eq("if", TOK_KEYWORD_IF);
         return_if_eq("in", TOK_KEYWORD_IN);
-        return_if_eq("i8", TOK_TYPE_KEYWORD_I8);
-        return_if_eq("u8", TOK_TYPE_KEYWORD_U8);
+        return_if_eq("i8", TOK_KEYWORD_I8);
+        return_if_eq("u8", TOK_KEYWORD_U8);
         break;
     case 3:
         return_if_eq("let", TOK_KEYWORD_LET);
         return_if_eq("mut", TOK_KEYWORD_MUT);
-        return_if_eq("def", TOK_KEYWORD_DEF);
         return_if_eq("asm", TOK_KEYWORD_ASM);
         return_if_eq("for", TOK_KEYWORD_FOR);
-        return_if_eq("int", TOK_TYPE_KEYWORD_INT);
-        return_if_eq("i16", TOK_TYPE_KEYWORD_I16);
-        return_if_eq("i32", TOK_TYPE_KEYWORD_I32);
-        return_if_eq("i64", TOK_TYPE_KEYWORD_I64);
-        return_if_eq("u16", TOK_TYPE_KEYWORD_U16);
-        return_if_eq("u32", TOK_TYPE_KEYWORD_U32);
-        return_if_eq("u64", TOK_TYPE_KEYWORD_U64);
-        return_if_eq("f16", TOK_TYPE_KEYWORD_F16);
-        return_if_eq("f32", TOK_TYPE_KEYWORD_F32);
-        return_if_eq("f64", TOK_TYPE_KEYWORD_F64);
+        return_if_eq("int", TOK_KEYWORD_INT);
+        return_if_eq("i16", TOK_KEYWORD_I16);
+        return_if_eq("i32", TOK_KEYWORD_I32);
+        return_if_eq("i64", TOK_KEYWORD_I64);
+        return_if_eq("u16", TOK_KEYWORD_U16);
+        return_if_eq("u32", TOK_KEYWORD_U32);
+        return_if_eq("u64", TOK_KEYWORD_U64);
+        return_if_eq("f16", TOK_KEYWORD_F16);
+        return_if_eq("f32", TOK_KEYWORD_F32);
+        return_if_eq("f64", TOK_KEYWORD_F64);
         break;
     case 4:
+        return_if_eq("when", TOK_KEYWORD_WHEN);
         return_if_eq("true", TOK_KEYWORD_TRUE);
         return_if_eq("null", TOK_KEYWORD_NULL);
         return_if_eq("type", TOK_KEYWORD_TYPE);
@@ -199,8 +198,8 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("cast", TOK_KEYWORD_CAST);
         return_if_eq("enum", TOK_KEYWORD_ENUM);
         return_if_eq("else", TOK_KEYWORD_ELSE);
-        return_if_eq("uint", TOK_TYPE_KEYWORD_UINT);
-        return_if_eq("bool", TOK_TYPE_KEYWORD_BOOL);
+        return_if_eq("uint", TOK_KEYWORD_UINT);
+        return_if_eq("bool", TOK_KEYWORD_BOOL);
         break;
     case 5:
         return_if_eq("false", TOK_KEYWORD_FALSE);
@@ -208,7 +207,8 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("defer", TOK_KEYWORD_DEFER);
         return_if_eq("union", TOK_KEYWORD_UNION);
         return_if_eq("while", TOK_KEYWORD_WHILE);
-        return_if_eq("float", TOK_TYPE_KEYWORD_FLOAT);
+        return_if_eq("which", TOK_KEYWORD_WHICH);
+        return_if_eq("float", TOK_KEYWORD_FLOAT);
         break;
     case 6:
         return_if_eq("extern", TOK_KEYWORD_EXTERN);
@@ -237,21 +237,21 @@ static u8 identify_keyword(char* s, size_t len) {
 
 #undef n_compare
 
-#define push_simple_token(kind) do { add_token(l, kind); advance(l); goto next_token;} while (0)
-#define push_token(kind, len) do { add_token(l, kind); advance_n(l, len); goto next_token;} while (0)
+#define push_simple_token(kind) do { add_token(l, kind, 1); advance(l); goto next_token;} while (0)
+#define push_token(kind, len) do { add_token(l, kind, len); advance_n(l, len); goto next_token;} while (0)
 
 static void tokenize(Lexer* l) {
     while (!cursor_eof(l)) {
         skip_whitespace(l);
         if (cursor_eof(l)) {
-            add_token(l, TOK_EOF);
+            add_token(l, TOK_EOF, 1);
             return;
         }
 
         // printf("%d '%c'\n", l->cursor, l->current);
 
         switch (l->current) {        
-        case '\n': push_simple_token(TOK_NEWLINE);
+        // case '\n': push_simple_token(TOK_NEWLINE);
         case '(':  push_simple_token(TOK_OPEN_PAREN);
         case ')':  push_simple_token(TOK_CLOSE_PAREN);
         case '[':  push_simple_token(TOK_OPEN_BRACKET);
@@ -384,8 +384,8 @@ static void tokenize(Lexer* l) {
                 }
                 len++;
             }
-            // validity will be checked at sema-time
-            add_token(l, TOK_LITERAL_CHAR);
+            // validity will be checked at sema
+            add_token(l, TOK_LITERAL_CHAR, len + 1);
             advance_n(l, len + 1);
             goto next_token;
         case '\"':
@@ -397,7 +397,7 @@ static void tokenize(Lexer* l) {
                 len++;
             }
             // validity will be checked at sema-time
-            add_token(l, TOK_LITERAL_STRING);
+            add_token(l, TOK_LITERAL_STRING, len + 1);
             advance_n(l, len + 1);
             goto next_token;
         }
@@ -408,15 +408,14 @@ static void tokenize(Lexer* l) {
                 len++;
             }
             u8 kind = identify_keyword(&l->text.raw[l->cursor], len);
-            add_token(l, kind);
+            add_token(l, kind, len);
             advance_n(l, len);
             goto next_token;
         }
 
         if (is_numeric(l->current)) {
-            // TODO("scan numeric");
             u64 len = scan_numeric(l);
-            add_token(l, TOK_LITERAL_NUMERIC);
+            add_token(l, TOK_LITERAL_INT, len);
             advance_n(l, len);
             goto next_token;
         }
@@ -427,6 +426,10 @@ static void tokenize(Lexer* l) {
         
 
         next_token:
+        if (cursor_eof(l)) {
+            add_token(l, TOK_EOF, 1);
+            return;
+        }
     }
 
     
