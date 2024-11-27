@@ -199,6 +199,7 @@ enum {
     PN_IDENT,
     PN_DISCARD,
     PN_EXPR_STRING,
+    PN_EXPR_CHAR,
     PN_EXPR_INTEGER,
     PN_EXPR_COMPOUND,
 
@@ -239,6 +240,7 @@ enum {
     PN_EXPR_POS,
     PN_EXPR_SIZEOF,
     PN_EXPR_ALIGNOF,
+    PN_EXPR_OFFSETOF,
     PN_EXPR_DEREF,
 
     PN_EXPR_IMPLICIT_SELECTOR,
@@ -252,6 +254,9 @@ enum {
     PN_EXPR_CALL,
 
     PN_EXPR_IF,
+    PN_EXPR_WHEN,
+    PN_EXPR_SWITCH,
+    PN_EXPR_WHICH,
 
     PN_EXPR_ANON_FN,
 
@@ -377,8 +382,8 @@ typedef struct PNode {
         } switch_stmt;
         struct {
             PNode* matches; // list of exprs
-            PNode* stmts;
-        } case_block;
+            PNode* sub;
+        } switch_case;
         struct {
             PNode* callee;
             PNode* param_list;

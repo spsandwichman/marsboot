@@ -299,12 +299,13 @@ PNode* parse_if_stmt(u8 cont) {
 }
 
 PNode* parse_case_block() {
-    PNode* cb = new_node(case_block, PN_CASE_BLOCK);
+    PNode* cb = new_node(switch_case, PN_CASE_BLOCK);
     expect(TOK_KEYWORD_CASE);
     advance();
     PNodeList matches = list_new(1);
     while (!match(TOK_COLON)) {
         PNode* condition = parse_expr();
+        da_append(&matches, condition);
         if (match(TOK_COMMA)) {
             advance();
             continue;
@@ -312,7 +313,7 @@ PNode* parse_case_block() {
             break;
         }
     }
-    cb->case_block.matches = list_solidify(matches);
+    cb->switch_case.matches = list_solidify(matches);
     expect(TOK_COLON);
     advance();
 
@@ -321,7 +322,7 @@ PNode* parse_case_block() {
         PNode* stmt = parse_stmt();
         da_append(&stmts, stmt);
     }
-    cb->case_block.stmts = list_solidify(stmts);
+    cb->switch_case.sub = list_solidify(stmts);
     return cb;
 }
 
@@ -335,8 +336,8 @@ PNode* parse_switch_stmt(bool is_which) {
 
     PNodeList cases = list_new(8);
     while (!match(TOK_CLOSE_BRACE)) {
-        PNode* case_block = parse_case_block();
-        da_append(&cases, case_block);
+        PNode* switch_case = parse_case_block();
+        da_append(&cases, switch_case);
     }
 
     advance();
@@ -477,31 +478,31 @@ PNode* parse_stmt() {
             break;
         }
         PNode* ret = parse_expr();
-        if (match(TOK_SEMICOLON)) {
+        if (match(TOK_COMMA)) {
             advance();
-            stmt->expr_stmt.expr = ret;
-            span_extend(stmt, -1);
+            // return is a sequence!
+            PNodeList ret_list = list_new(4);
+            da_append(&ret_list, ret);
+            while (!match(TOK_SEMICOLON)) {
+                PNode* expr = parse_expr();
+                da_append(&ret_list, expr);
+
+                if (match(TOK_COMMA)) {
+                    advance();
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            stmt->expr_stmt.expr = list_solidify(ret_list);
+            expect(TOK_SEMICOLON);
+            advance();
             break;
         }
-        expect(TOK_COMMA);
-        advance();
-        // return is a sequence!
-        PNodeList ret_list = list_new(4);
-        da_append(&ret_list, ret);
-        while (!match(TOK_SEMICOLON)) {
-            PNode* expr = parse_expr();
-            da_append(&ret_list, expr);
-
-            if (match(TOK_COMMA)) {
-                advance();
-                continue;
-            } else {
-                break;
-            }
-        }
-        stmt->expr_stmt.expr = list_solidify(ret_list);
         expect(TOK_SEMICOLON);
         advance();
+        stmt->expr_stmt.expr = ret;
+        span_extend(stmt, -1);
         break;
     case TOK_KEYWORD_IF:
     case TOK_KEYWORD_WHEN:
@@ -562,31 +563,6 @@ PNode* parse_ident() {
     return ident;
 }
 
-static u8 tok2pn_atom[_TOK_COUNT] = {
-    [TOK_IDENTIFIER_DISCARD] = PN_DISCARD,
-    [TOK_IDENTIFIER] = PN_IDENT,
-    [TOK_LITERAL_INT] = PN_EXPR_INTEGER,
-    [TOK_LITERAL_STRING] = PN_EXPR_STRING,
-    [TOK_KEYWORD_TRUE] = PN_EXPR_TRUE,
-    [TOK_KEYWORD_FALSE] = PN_EXPR_FALSE,
-    [TOK_KEYWORD_NULL] = PN_EXPR_NULL,
-    [TOK_KEYWORD_I8] = PN_TYPE_I8,
-    [TOK_KEYWORD_I16] = PN_TYPE_I16,
-    [TOK_KEYWORD_I32] = PN_TYPE_I32,
-    [TOK_KEYWORD_I64] = PN_TYPE_I64,
-    [TOK_KEYWORD_INT] = PN_TYPE_INT,
-    [TOK_KEYWORD_U8] = PN_TYPE_U8,
-    [TOK_KEYWORD_U16] = PN_TYPE_U16,
-    [TOK_KEYWORD_U32] = PN_TYPE_U32,
-    [TOK_KEYWORD_U64] = PN_TYPE_U64,
-    [TOK_KEYWORD_UINT] = PN_TYPE_UINT,
-    [TOK_KEYWORD_F16] = PN_TYPE_F16,
-    [TOK_KEYWORD_F32] = PN_TYPE_F32,
-    [TOK_KEYWORD_F64] = PN_TYPE_F64,
-    [TOK_KEYWORD_FLOAT] = PN_TYPE_FLOAT,
-    [TOK_KEYWORD_BOOL] = PN_TYPE_BOOL,
-};
-
 // expr | '[' expr ']' '=' expr | '.' ident '=' expr
 PNode* parse_compound_item() {
     PNode* item;
@@ -627,6 +603,32 @@ PNode* parse_enum_variant() {
     }
     return lhs;
 }
+
+static u8 tok2pn_atom[_TOK_COUNT] = {
+    [TOK_IDENTIFIER_DISCARD] = PN_DISCARD,
+    [TOK_IDENTIFIER] = PN_IDENT,
+    [TOK_LITERAL_INT] = PN_EXPR_INTEGER,
+    [TOK_LITERAL_CHAR] = PN_EXPR_CHAR,
+    [TOK_LITERAL_STRING] = PN_EXPR_STRING,
+    [TOK_KEYWORD_TRUE] = PN_EXPR_TRUE,
+    [TOK_KEYWORD_FALSE] = PN_EXPR_FALSE,
+    [TOK_KEYWORD_NULL] = PN_EXPR_NULL,
+    [TOK_KEYWORD_I8] = PN_TYPE_I8,
+    [TOK_KEYWORD_I16] = PN_TYPE_I16,
+    [TOK_KEYWORD_I32] = PN_TYPE_I32,
+    [TOK_KEYWORD_I64] = PN_TYPE_I64,
+    [TOK_KEYWORD_INT] = PN_TYPE_INT,
+    [TOK_KEYWORD_U8] = PN_TYPE_U8,
+    [TOK_KEYWORD_U16] = PN_TYPE_U16,
+    [TOK_KEYWORD_U32] = PN_TYPE_U32,
+    [TOK_KEYWORD_U64] = PN_TYPE_U64,
+    [TOK_KEYWORD_UINT] = PN_TYPE_UINT,
+    [TOK_KEYWORD_F16] = PN_TYPE_F16,
+    [TOK_KEYWORD_F32] = PN_TYPE_F32,
+    [TOK_KEYWORD_F64] = PN_TYPE_F64,
+    [TOK_KEYWORD_FLOAT] = PN_TYPE_FLOAT,
+    [TOK_KEYWORD_BOOL] = PN_TYPE_BOOL,
+};
 
 // allow_none allows this to return none if there was no 
 // expression found, instead of erroring
@@ -890,6 +892,9 @@ PNode* parse_unary() {
         cast->binop.rhs = parse_unary();
         span_extend(cast, -1);
         return cast;
+
+    // this should be turned into a table, dont care rn tho
+    case TOK_KEYWORD_OFFSETOF: kind = PN_EXPR_OFFSETOF; break;
     case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
     case TOK_QUESTION: kind = PN_EXPR_BOOL_COERCE; break;
     case TOK_TILDE: kind = PN_EXPR_BIT_NOT; break;
@@ -973,13 +978,63 @@ static u8 bin_kind[_TOK_COUNT] = {
     [TOK_KEYWORD_IN] = PN_EXPR_IN,
 };
 
+PNode* parse_case_expr() {
+    PNode* cb = new_node(switch_case, PN_CASE_BLOCK);
+    expect(TOK_KEYWORD_CASE);
+    advance();
+    PNodeList matches = list_new(1);
+    while (!match(TOK_COLON)) {
+        PNode* condition = parse_expr();
+        da_append(&matches, condition);
+        if (match(TOK_COMMA)) {
+            advance();
+            continue;
+        } else {
+            break;
+        }
+    }
+    cb->switch_case.matches = list_solidify(matches);
+    expect(TOK_COLON);
+    advance();
+    cb->switch_case.sub = parse_expr();
+    return cb;
+}
+
+PNode* parse_switch_expr(bool is_which) {
+    PNode* stmt = new_node(switch_stmt, is_which ? PN_EXPR_WHICH : PN_EXPR_SWITCH);
+    advance();
+    stmt->switch_stmt.cond = parse_expr();
+    expect(TOK_OPEN_BRACE);
+    advance();
+
+
+    PNodeList cases = list_new(8);
+    while (!match(TOK_CLOSE_BRACE)) {
+        PNode* switch_case = parse_case_expr();
+        da_append(&cases, switch_case);
+        if (match(TOK_COMMA)) {
+            advance();
+            continue;
+        } else {
+            break;
+        }
+    }
+    expect(TOK_CLOSE_BRACE);
+
+    advance();
+
+    stmt->switch_stmt.cases = list_solidify(cases);
+    return stmt;
+}
+
 PNode* parse_binary(isize precedence) {
     switch (current()->kind) {
     case TOK_KEYWORD_SWITCH:
     case TOK_KEYWORD_WHICH:
-        TODO("switch/which expr");
+        return parse_switch_expr(current()->kind == TOK_KEYWORD_WHICH);
     case TOK_KEYWORD_IF:
-        PNode* tern = new_node(ternary, PN_EXPR_IF);
+    case TOK_KEYWORD_WHEN:
+        PNode* tern = new_node(ternary, current()->kind == TOK_KEYWORD_IF ? PN_EXPR_IF : PN_EXPR_WHEN);
         advance();
         tern->ternary.cond = parse_expr();
         expect(TOK_KEYWORD_DO);
@@ -1041,7 +1096,7 @@ PNode* parse_file(TokenBuf tb, string expected_module_name) {
         da_append(&list, import);
     }
 
-    printf("parse %u nodes (%u b)\n", p.node_count, p.mem_allocated);
+    printf("parse %u nodes (%u B)\n", p.node_count, p.mem_allocated);
 
     return list_solidify(list);
 }

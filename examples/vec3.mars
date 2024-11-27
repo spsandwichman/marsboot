@@ -27,3 +27,20 @@ fn vec3_inv(a: Vec3) -> Vec3 {
         1 / a.z,
     };
 }
+
+fn inline_switch_test(x: u8) -> int {
+    return switch x {
+        case 'a': 1,
+        case 'b', 'B': 2,
+        case 'c', 'd'..<'g': 3,
+        case: 0,
+    };
+}
+
+fn vec3_sum_all(vecs: []let Vec3) -> Vec3 {
+    mut sum: Vec3;
+    for i in 0..<vecs.len {
+        sum = vec3_add(sum, vecs[i]);
+    }
+    return sum;
+}

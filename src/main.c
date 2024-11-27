@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     TokenBuf tb = lex_string(str(buf));
     da_shrink(&tb);
 
-    printf("lex %d tokens (%d b)\n", tb.len, tb.len * sizeof(Token));
+    printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
 
     // foreach(Token t, tb) {
     //     printf("%s ", token_kind_name[t.kind]);

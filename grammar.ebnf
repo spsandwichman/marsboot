@@ -66,7 +66,7 @@ binop =
 
 fnproto = 'fn' [ident] '(' list<item> ')' ['->' (expr | '(' list<item> ')'))]
 
-(* types and expressions are unified in this grammar *)
+(* types and expressions are unified *)
 
 case_expr = 'case' list<expr> ':' expr
 
@@ -76,7 +76,7 @@ expr =
     | expr binop expr
     | unary_expr
 
-unop = '!' | '?' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof'
+unop = '!' | '?' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof' | 'offsetof'
 
 unary_expr =
     | ('cast' | 'bitcast') '(' expr ')' unary_expr
