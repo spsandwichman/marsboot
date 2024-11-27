@@ -246,8 +246,8 @@ enum {
     PN_EXPR_NAMESPACE, // binop
     PN_EXPR_SELECTOR, // binop
     PN_EXPR_INDEX, // binop
-    PN_EXPR_CAST,
-    PN_EXPR_BITCAST,
+    PN_EXPR_CAST, // binop
+    PN_EXPR_BITCAST, // binop
     PN_EXPR_SLICE,
     PN_EXPR_CALL,
 
@@ -263,6 +263,7 @@ enum {
 
     PN_TYPE_STRUCT,
     PN_TYPE_UNION,
+    PN_TYPE_ENUM,
 
     PN_TYPE_I8,
     PN_TYPE_I16,
@@ -285,6 +286,11 @@ enum {
     PN_LIST,
     PN_DO,
     PN_CASE_BLOCK,
+
+    // binop
+    PN_COMP_ITEM_INDEX, // [expr] = expr
+    PN_COMP_ITEM_SELECTOR, // .ident = expr
+    PN_ENUM_VARIANT_VALUED, // ident = expr
 
 };
 
@@ -392,6 +398,10 @@ typedef struct PNode {
         struct {
             PNode* fields;
         } record_type;
+        struct {
+            PNode* type;
+            PNode* variants;
+        } enum_type;
     };
 } PNode;
 

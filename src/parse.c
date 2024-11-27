@@ -196,8 +196,10 @@ PNode* parse_item_list(u8 terminator) {
         // ident [',' ident] ':' expr
         PNode* item = new_node(item, PN_ITEM);
         PNodeList identifiers = list_new(1);
-        expect(TOK_IDENTIFIER);
-        while (match(TOK_IDENTIFIER)) {
+        if (!match(TOK_IDENTIFIER) && !match(TOK_IDENTIFIER_DISCARD)) {
+            expect(TOK_IDENTIFIER);
+        }
+        while (match(TOK_IDENTIFIER) || match(TOK_IDENTIFIER_DISCARD)) {
             PNode* ident = parse_ident();
             da_append(&identifiers, ident);
             if (match(TOK_COMMA)) {
@@ -552,8 +554,10 @@ PNode* parse_string() {
 }
 
 PNode* parse_ident() {
-    expect(TOK_IDENTIFIER);
-    PNode* ident = new_node(_, PN_IDENT);
+    if (!match(TOK_IDENTIFIER) && !match(TOK_IDENTIFIER_DISCARD)) {
+        expect(TOK_IDENTIFIER);
+    }
+    PNode* ident = new_node(_, match(TOK_IDENTIFIER) ? PN_IDENT : PN_DISCARD);
     advance();
     return ident;
 }
@@ -583,6 +587,47 @@ static u8 tok2pn_atom[_TOK_COUNT] = {
     [TOK_KEYWORD_BOOL] = PN_TYPE_BOOL,
 };
 
+// expr | '[' expr ']' '=' expr | '.' ident '=' expr
+PNode* parse_compound_item() {
+    PNode* item;
+    switch (current()->kind) {
+    case TOK_OPEN_BRACKET: // [ expr ] = expr
+        item = new_node(binop, PN_COMP_ITEM_INDEX);
+        advance();
+        item->binop.lhs = parse_expr();
+        expect(TOK_CLOSE_BRACKET);
+        advance();
+        expect(TOK_EQUAL);
+        advance();
+        item->binop.rhs = parse_expr();
+        return item;
+    case TOK_PERIOD: // . ident = expr
+        item = new_node(binop, PN_COMP_ITEM_INDEX);
+        advance();
+        item->binop.lhs = parse_ident();
+        expect(TOK_EQUAL);
+        advance();
+        item->binop.rhs = parse_expr();
+        return item;
+    default:
+        return parse_expr();
+    }
+}
+
+PNode* parse_enum_variant() {
+    PNode* lhs = parse_expr();
+    if (match(TOK_EQUAL)) {
+        PNode* variant = new_node(binop, PN_ENUM_VARIANT_VALUED);
+        variant->binop.lhs = lhs;
+        span_copy(variant, lhs);
+        advance();
+        variant->binop.rhs = parse_expr();
+        span_extend(variant, -1);
+        return variant;
+    }
+    return lhs;
+}
+
 // allow_none allows this to return none if there was no 
 // expression found, instead of erroring
 // useful for ^let/^mut parsing
@@ -595,6 +640,27 @@ PNode* parse_atom_terminal(bool allow_none) {
     }
     PNode* term = NULL;
     switch (current()->kind) {
+    case TOK_KEYWORD_ENUM:
+        term = new_node(enum_type, PN_TYPE_ENUM);
+        advance();
+        term->enum_type.type = parse_expr();
+        expect(TOK_OPEN_BRACE);
+        PNodeList items = list_new(8);
+        advance();
+        while (!match(TOK_CLOSE_BRACE)) {
+            PNode* item = parse_enum_variant();
+            da_append(&items, item);
+            if (match(TOK_COMMA)) {
+                advance();
+                continue;
+            } else {
+                break;
+            }
+        }
+        expect(TOK_CLOSE_BRACE);
+        span_extend(term,0);
+        advance();
+        break;
     case TOK_KEYWORD_STRUCT:
     case TOK_KEYWORD_UNION:
         term = new_node(record_type, match(TOK_KEYWORD_UNION) ? PN_TYPE_UNION : PN_TYPE_STRUCT);
@@ -659,11 +725,6 @@ PNode* parse_atom_terminal(bool allow_none) {
         // allow for subtype to be nothing
         term->ref_type.sub = parse_atom_terminal(true);
         break;
-    // case TOK_KEYWORD_TYPEOF:
-    //     term = new_node(unop, PN_TYPE_TYPEOF);
-    //     advance();
-    //     term->unop.sub = parse_atom_terminal(false);
-    //     break;
     case TOK_KEYWORD_DISTINCT:
         term = new_node(unop, PN_TYPE_DISTINCT);
         advance();
@@ -671,7 +732,25 @@ PNode* parse_atom_terminal(bool allow_none) {
         break;
     case TOK_PERIOD:
         if (peek(1)->kind == TOK_OPEN_BRACE) {
-            TODO("compound literal");
+            term = new_node(compound, PN_EXPR_COMPOUND);
+            term->compound.type = NULL;
+            advance();
+            advance();
+            PNodeList items = list_new(8);
+            while (!match(TOK_CLOSE_BRACE)) {
+                PNode* item = parse_compound_item();
+                da_append(&items, item);
+                if (match(TOK_COMMA)) {
+                    advance();
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            expect(TOK_CLOSE_BRACE);
+            span_extend(term,0);
+            term->compound.expr_list = list_solidify(items);
+            advance();
         } else {
             term = new_node(unop, PN_EXPR_IMPLICIT_SELECTOR);
             advance();
@@ -722,8 +801,27 @@ PNode* parse_atom() {
             span_extend(atom, -1);
             break;
         case TOK_PERIOD:
-            if (peek(1)->kind == TOK_OPEN_BRACKET) {
-                TODO("compound");
+            if (peek(1)->kind == TOK_OPEN_BRACE) {
+                atom = new_node(compound, PN_EXPR_COMPOUND);
+                atom->compound.type = left;
+                advance();
+                advance();
+                PNodeList items = list_new(8);
+                while (!match(TOK_CLOSE_BRACE)) {
+                    PNode* item = parse_compound_item();
+                    da_append(&items, item);
+                    if (match(TOK_COMMA)) {
+                        advance();
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                expect(TOK_CLOSE_BRACE);
+                span_extend(atom,0);
+                atom->compound.expr_list = list_solidify(items);
+                advance();
+                break;
             }
             atom = new_node(binop, PN_EXPR_SELECTOR);
             atom->binop.lhs = left;
@@ -740,7 +838,32 @@ PNode* parse_atom() {
             span_extend(atom, -1);
             break;
         case TOK_OPEN_BRACKET:
-            TODO("array shit");
+            advance();
+            PNode* left_indexer = NULL;
+            if (!match(TOK_COLON)) {
+                left_indexer = parse_expr();
+            }
+            if (match(TOK_COLON)) {
+                atom = new_node(slice, PN_EXPR_SLICE);
+                atom->slice.left_bound = left_indexer;
+                advance();
+                if (!match(TOK_CLOSE_BRACKET)) {
+                    atom->slice.right_bound = parse_expr();
+                }
+                span_extend(atom, 0);
+                expect(TOK_CLOSE_BRACKET);
+                advance();
+            } else {
+                // regular indexed access
+                atom = new_node(binop, PN_EXPR_INDEX);
+                span_copy(atom, left);
+                atom->binop.lhs = left;
+                atom->binop.rhs = left_indexer;
+                span_extend(atom, 0);
+                expect(TOK_CLOSE_BRACKET);
+                advance();
+            }
+            break;
         default:
             return atom;
         }
@@ -853,6 +976,9 @@ static u8 bin_kind[_TOK_COUNT] = {
 
 PNode* parse_binary(isize precedence) {
     switch (current()->kind) {
+    case TOK_KEYWORD_SWITCH:
+    case TOK_KEYWORD_WHICH:
+        TODO("switch/which expr");
     case TOK_KEYWORD_IF:
         PNode* tern = new_node(ternary, PN_EXPR_IF);
         advance();
@@ -916,8 +1042,7 @@ PNode* parse_file(TokenBuf tb, string expected_module_name) {
         da_append(&list, import);
     }
 
-    printf("nodes %d\n", p.node_count);
-    printf("nodes mem %d\n", p.mem_allocated);
+    printf("parse %u nodes (%u b)\n", p.node_count, p.mem_allocated);
 
     return list_solidify(list);
 }

@@ -17,7 +17,6 @@ int main(int argc, char** argv) {
 
     char* buf = malloc(size + 1);
     memset(buf, 0, size + 1);
-    printf("lex %d bytes\n", size);
 
     fread(buf, 1, size, f);
 
@@ -25,6 +24,8 @@ int main(int argc, char** argv) {
 
     TokenBuf tb = lex_string(str(buf));
     da_shrink(&tb);
+
+    printf("lex %d tokens (%d b)\n", tb.len, tb.len * sizeof(Token));
 
     // foreach(Token t, tb) {
     //     printf("%s ", token_kind_name[t.kind]);
