@@ -227,6 +227,9 @@ enum {
     PN_EXPR_LESS_EQ,
     PN_EXPR_GREATER,
     PN_EXPR_GREATER_EQ,
+    PN_EXPR_RANGE_LESS,
+    PN_EXPR_RANGE_EQ,
+    PN_EXPR_IN,
 
     // unop
     PN_EXPR_BOOL_NOT,
@@ -252,9 +255,6 @@ enum {
 
     PN_EXPR_ANON_FN,
 
-    PN_RANGE_LESS,
-    PN_RANGE_EQ,
-
     PN_TYPE_TYPEOF,
     PN_TYPE_POINTER,
     PN_TYPE_SLICE,
@@ -262,6 +262,7 @@ enum {
     PN_TYPE_DISTINCT,
 
     PN_TYPE_STRUCT,
+    PN_TYPE_UNION,
 
     PN_TYPE_I8,
     PN_TYPE_I16,
@@ -369,7 +370,7 @@ typedef struct PNode {
             PNode* cases;
         } switch_stmt;
         struct {
-            PNode* match;
+            PNode* matches; // list of exprs
             PNode* stmts;
         } case_block;
         struct {

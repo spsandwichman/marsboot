@@ -1,9 +1,15 @@
 module examples;
 
-fn add(x, y: u64, z: int) -> u64 {
-    return x;
+fn in_range(x, min, max: int) -> bool {
+    return x in min..=max;
 }
 
 fn main() -> int {
     return 3;
 }
+
+type Vec3 = struct {
+    x, y, z: float;
+};
+
+let v = Vec3.{1, 2, 3};

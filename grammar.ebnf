@@ -31,7 +31,7 @@ stmt =
     | 'when' expr do_block [when_else]
     | 'which' expr '{' {case_block} '}'
     | 'for' simple_stmt ';' expr ';' simple_stmt do_block
-    | 'for' ident [':' type] 'in' range_expr do_block
+    | 'for' ident [':' type] 'in' expr do_block
     | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
     | 'defer' stmt
     | 'fallthrough' [expr] ';'
@@ -50,21 +50,21 @@ do_block =
 
 stmt_block = "{" {stmt} "}"
 
-case_block = 'case' list<(expr | range_expr)> ':' {stmt}
+case_block = 'case' list<expr> ':' {stmt}
 
 binop =
     | '+' | '-' | '*' | '/' | '%' | '%%'
     | '&' | '|' | '~|' | '~' | '<<' | '>>'
     | '&&' | '||'
     | '==' | '!=' | '<' | '<=' | '>' | '>='
+    | '..<' | '..='
+    | 'in'
 
 fnproto = 'fn' [ident] '(' list<item> ')' ['->' (expr | '(' list<item> ')'))]
 
-range_expr = expr ('..<' | '..=') expr
-
 (* types and expressions are unified in this grammar *)
 
-case_expr = 'case' list<(expr | range_expr)> ':' expr
+case_expr = 'case' list<expr> ':' expr
 
 expr =
     | ('if' | 'when') expr 'do' expr 'else' expr
@@ -89,7 +89,7 @@ atom_terminal =
     | 'f16' | 'f32' | 'f64' | 'float'
     | 'bool'
 
-    | '.' '{' list<expr> '}'
+    | '.' '{' list<compound_item> '}'
     | '.' ident
 
     | ('^' | '[' ']') ('let' | 'mut') [atom_terminal]
@@ -100,15 +100,17 @@ atom_terminal =
     | 'enum' expr '{' list<variant> '}'
     | fnproto [stmt_block]
 
-variant = ident ['=' expr]
-item = ident [',' ident] ':' expr
-
 atom_expr = 
     | atom_terminal
     | atom_expr '::' ident
     | atom_expr '.' ident
-    | atom_expr '.' '{' list<expr> '}'
+    | atom_expr '.' '{' list<compound_item> '}'
     | atom_expr '^'
     | atom_expr '[' expr ']'
     | atom_expr '[' [expr] ':' [expr] ']'
     | atom_expr '(' list<expr> ')'
+
+
+variant = ident ['=' expr]
+item = ident [',' ident] ':' expr
+compound_item = expr | '[' expr ']' '=' expr | '.' ident '=' expr

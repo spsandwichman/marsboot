@@ -8,6 +8,7 @@ static struct Parser {
     usize len;
     usize cursor;
 
+    // stats
     usize node_count;
     usize mem_allocated;
 } p;
@@ -295,28 +296,13 @@ PNode* parse_if_stmt(u8 cont) {
     return tern;
 }
 
-PNode* parse_possible_range_expr() {
-    PNode* lhs = parse_expr();
-    if (match(TOK_RANGE_EQ) || match(TOK_RANGE_LESS)) {
-        PNode* range = new_node(binop, match(TOK_RANGE_EQ) ? PN_RANGE_EQ : PN_RANGE_LESS);
-        span_copy(range, lhs);
-        range->binop.lhs = lhs;
-        advance();
-        range->binop.rhs = parse_expr();
-        span_extend(range, -1);
-        return range;
-    }
-    return lhs;
-}
-
 PNode* parse_case_block() {
     PNode* cb = new_node(case_block, PN_CASE_BLOCK);
     expect(TOK_KEYWORD_CASE);
     advance();
     PNodeList matches = list_new(1);
     while (!match(TOK_COLON)) {
-        PNode* condition = parse_possible_range_expr();
-
+        PNode* condition = parse_expr();
         if (match(TOK_COMMA)) {
             advance();
             continue;
@@ -324,14 +310,7 @@ PNode* parse_case_block() {
             break;
         }
     }
-    if (matches.len == 0) {
-        cb->case_block.match = NULL;
-    } else if (matches.len == 1) {
-        cb->case_block.match = matches.at[0];
-        da_destroy(&matches);
-    } else {
-        cb->case_block.match = list_solidify(matches);
-    }
+    cb->case_block.matches = list_solidify(matches);
     expect(TOK_COLON);
     advance();
 
@@ -418,7 +397,7 @@ PNode* parse_for_stmt() {
         }
         expect(TOK_KEYWORD_IN);
         advance();
-        fl->for_ranged.range = parse_possible_range_expr();
+        fl->for_ranged.range = parse_expr();
         fl->for_ranged.block = parse_do_group();
         return fl;
     } else {
@@ -617,7 +596,8 @@ PNode* parse_atom_terminal(bool allow_none) {
     PNode* term = NULL;
     switch (current()->kind) {
     case TOK_KEYWORD_STRUCT:
-        term = new_node(record_type, PN_TYPE_STRUCT);
+    case TOK_KEYWORD_UNION:
+        term = new_node(record_type, match(TOK_KEYWORD_UNION) ? PN_TYPE_UNION : PN_TYPE_STRUCT);
         advance();
         expect(TOK_OPEN_BRACE);
         advance();
@@ -810,31 +790,36 @@ static isize bin_precedence(u8 kind) {
     switch (kind) {
     case TOK_LSHIFT:
     case TOK_RSHIFT:
-        return 9;
+        return 11;
     case TOK_AND:
-        return 8;
+        return 10;
     case TOK_OR:
     case TOK_TILDE:
     case TOK_NOR:
-        return 7;
+        return 9;
     case TOK_MUL:
     case TOK_DIV:
     case TOK_MOD:
     case TOK_MOD_MOD:
-        return 6;
+        return 8;
     case TOK_ADD:
     case TOK_SUB:
-        return 5;
+        return 7;
     case TOK_EQUAL_EQUAL:
     case TOK_NOT_EQUAL:
     case TOK_LESS_THAN:
     case TOK_LESS_EQUAL:
     case TOK_GREATER_THAN:
     case TOK_GREATER_EQUAL:
-        return 4;
+        return 6;
     case TOK_AND_AND:
-        return 3;
+        return 5;
     case TOK_OR_OR:
+        return 4;
+    case TOK_RANGE_EQ:
+    case TOK_RANGE_LESS:
+        return 3;
+    case TOK_KEYWORD_IN:
         return 2;
     }
     return 0;
@@ -861,6 +846,9 @@ static u8 bin_kind[_TOK_COUNT] = {
     [TOK_LESS_EQUAL] = PN_EXPR_LESS_EQ,
     [TOK_GREATER_THAN] = PN_EXPR_GREATER,
     [TOK_GREATER_EQUAL] = PN_EXPR_GREATER_EQ,
+    [TOK_RANGE_EQ] = PN_EXPR_RANGE_EQ,
+    [TOK_RANGE_LESS] = PN_EXPR_RANGE_LESS,
+    [TOK_KEYWORD_IN] = PN_EXPR_IN,
 };
 
 PNode* parse_binary(isize precedence) {
