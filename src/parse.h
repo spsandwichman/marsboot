@@ -390,7 +390,7 @@ typedef struct PNode {
         } for_ranged;
         struct {
             PNode* fields;
-        } struct_type;
+        } record_type;
     };
 } PNode;
 

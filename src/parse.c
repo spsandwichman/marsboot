@@ -617,11 +617,11 @@ PNode* parse_atom_terminal(bool allow_none) {
     PNode* term = NULL;
     switch (current()->kind) {
     case TOK_KEYWORD_STRUCT:
-        term = new_node(struct_type, PN_TYPE_STRUCT);
+        term = new_node(record_type, PN_TYPE_STRUCT);
         advance();
         expect(TOK_OPEN_BRACE);
         advance();
-        term->struct_type.fields = parse_item_list(TOK_CLOSE_BRACE);
+        term->record_type.fields = parse_item_list(TOK_CLOSE_BRACE);
         expect(TOK_CLOSE_BRACE);
         advance();
         break;
