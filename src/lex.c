@@ -24,14 +24,12 @@ TokenBuf lex_string(string text) {
     da_init(&tokenbuf, 128);
 
     Lexer l = {0};
-    // l.file_index = file_index;
     l.tb = &tokenbuf;
     l.text = text;
     l.cursor = 0;
     l.current = text.raw[0];
 
     tokenize(&l);
-
 
     return tokenbuf;
 }
@@ -177,6 +175,7 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("let", TOK_KEYWORD_LET);
         return_if_eq("mut", TOK_KEYWORD_MUT);
         return_if_eq("asm", TOK_KEYWORD_ASM);
+        return_if_eq("def", TOK_KEYWORD_DEF);
         return_if_eq("for", TOK_KEYWORD_FOR);
         return_if_eq("int", TOK_KEYWORD_INT);
         return_if_eq("i16", TOK_KEYWORD_I16);

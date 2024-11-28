@@ -33,8 +33,6 @@ int main(int argc, char** argv) {
     // printf("\n");
 
     parse_file(tb, NULL_STR);
-    
-    
 }
 
 Context ctx;

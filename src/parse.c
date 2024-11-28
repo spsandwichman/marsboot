@@ -133,13 +133,18 @@ PNode* parse_import_decl() {
 
 // ('let' | 'mut') list<ident> [':' expr] ['=' expr]
 PNode* parse_var_decl(bool is_extern) {
-    PNode* decl = new_node(var_decl, PN_STMT_VAR_DECL);
-    if (match(TOK_KEYWORD_LET)) {
-        decl->var_decl.mutable = false;
-    } else if (match(TOK_KEYWORD_MUT)) {
-        decl->var_decl.mutable = true;
-    } else {
-        report_token(true, "expected let or mut");
+    PNode* decl = new_node(decl, PN_STMT_DECL);
+    switch (current()->kind) {
+    case TOK_KEYWORD_LET: decl->decl.kind = DECLKIND_LET; break;
+    case TOK_KEYWORD_MUT: decl->decl.kind = DECLKIND_MUT; break;
+    case TOK_KEYWORD_DEF: 
+        decl->decl.kind = DECLKIND_DEF;
+        if (is_extern) {
+            report_token(true, "cannot declare a compile-time constant as extern");
+        }
+        break;
+    default:
+        report_token(true, "expected let, mut, or def");
     }
     advance();
 
@@ -169,12 +174,12 @@ PNode* parse_var_decl(bool is_extern) {
             }
         }
     }
-    decl->var_decl.ident = ident;
+    decl->decl.ident = ident;
 
 
     if (match(TOK_COLON)) {
         advance();
-        decl->var_decl.type = parse_expr();
+        decl->decl.type = parse_expr();
     } else if (is_extern) {
         report_token(true, "extern declaration requires type");
     }
@@ -184,7 +189,9 @@ PNode* parse_var_decl(bool is_extern) {
             report_token(true, "extern declaration cannot have a value");
         }
         advance();
-        decl->var_decl.value = parse_expr();
+        decl->decl.value = parse_expr();
+    } else if (decl->decl.kind == DECLKIND_DEF) {
+        report_token(true, "def declaration must have a value");
     }
     
     return decl;
@@ -368,6 +375,7 @@ PNode* parse_simple_stmt() {
     switch (current()->kind) {
     case TOK_KEYWORD_LET:
     case TOK_KEYWORD_MUT:
+    case TOK_KEYWORD_DEF:
         stmt = parse_var_decl(false);
         break;
     default:
@@ -448,16 +456,6 @@ PNode* parse_extern_decl() {
 PNode* parse_stmt() {
     PNode* stmt;
     switch (current()->kind) {
-    case TOK_KEYWORD_TYPE:
-        stmt = new_node(binop, PN_STMT_TYPE_DECL);
-        advance();
-        stmt->binop.lhs = parse_ident();
-        expect(TOK_EQUAL);
-        advance();
-        stmt->binop.rhs = parse_expr();
-        expect(TOK_SEMICOLON);
-        advance();
-        break;
     case TOK_KEYWORD_EXTERN:
         stmt = parse_extern_decl();
         break;

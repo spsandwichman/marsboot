@@ -97,6 +97,7 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_KEYWORD_CAST,      "cast") \
     TOKEN(TOK_KEYWORD_CONTINUE,  "continue") \
     TOKEN(TOK_KEYWORD_DEFER,     "defer") \
+    TOKEN(TOK_KEYWORD_DEF,       "def") \
     TOKEN(TOK_KEYWORD_DISTINCT,  "distinct") \
     TOKEN(TOK_KEYWORD_DO,        "do") \
     TOKEN(TOK_KEYWORD_ENUM,      "enum") \
@@ -164,10 +165,9 @@ enum {
 
     PN_STMT_MODULE_DECL,
     PN_STMT_IMPORT_DECL,
-    PN_STMT_VAR_DECL,
+    PN_STMT_DECL,
     PN_STMT_FN_DECL,
     PN_STMT_EXTERN_DECL,
-    PN_STMT_TYPE_DECL,
 
     PN_STMT_EMPTY,
 
@@ -308,6 +308,12 @@ typedef struct PNodeBase {
     u8 kind;
 } PNodeBase;
 
+enum {
+    DECLKIND_LET,
+    DECLKIND_MUT,
+    DECLKIND_DEF,
+};
+
 typedef struct PNode PNode;
 typedef struct PNode {
     PNodeBase base;
@@ -329,8 +335,8 @@ typedef struct PNode {
             PNode* ident; // could be IDENT or IDENT_LIST
             PNode* type;
             PNode* value;
-            bool mutable;
-        } var_decl;
+            u8 kind;
+        } decl;
         struct {
             PNode* sub;
         } unop;

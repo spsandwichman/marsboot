@@ -13,7 +13,7 @@ assignop =
     | '&=' | '|=' | '~|=' | '~=' | '<<=' | '>>='
 
 simple_stmt =
-    | ('let' | 'mut') list<ident> [':' expr] ['=' expr]
+    | ('let' | 'mut' | 'def') list<ident> [':' expr] ['=' expr]
     | expr assignop expr
     | expr
 
