@@ -2,12 +2,12 @@ module llist;
 
 import runtime "./interface";
 
-type Node = struct {
+def Node = struct {
     val: int,
     next: ^mut Node,
 };
 
-type List = struct {
+def List = struct {
     head: ^mut Node,
     tail: ^mut Node,
 };
