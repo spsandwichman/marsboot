@@ -456,7 +456,9 @@ PNode* parse_extern_decl() {
 PNode* parse_stmt() {
     PNode* stmt;
     switch (current()->kind) {
-    
+    case TOK_OPEN_BRACE:
+        stmt = parse_stmt_group();
+        break;
     case TOK_KEYWORD_EXTERN:
         stmt = parse_extern_decl();
         break;
@@ -520,17 +522,24 @@ PNode* parse_stmt() {
         break;
     case TOK_KEYWORD_FOR:
         stmt = parse_for_stmt();
+        break;
     case TOK_KEYWORD_DEFER:
-        stmt = new_node(unop, PN_STMT_FALLTHROUGH);
+        stmt = new_node(unop, PN_STMT_DEFER);
         advance();
         stmt->unop.sub = parse_stmt();
         span_extend(stmt, -1);
         break;
     case TOK_KEYWORD_FALLTHROUGH:
-        stmt = new_node(unop, PN_STMT_FALLTHROUGH);
+        stmt = new_node(fallthrough, PN_STMT_FALLTHROUGH);
         advance();
         if (!match(TOK_SEMICOLON)) {
-            stmt->unop.sub = parse_expr();
+            stmt->fallthrough.first = parse_expr();
+            if (match(TOK_COMMA)) {
+                advance();
+                if (!match(TOK_SEMICOLON)) {
+                    stmt->fallthrough.second = parse_expr();
+                }
+            }
         }
         expect(TOK_SEMICOLON);
         advance();
@@ -915,6 +924,7 @@ PNode* parse_unary() {
         return cast;
 
     // this should be turned into a table, dont care rn tho
+    case TOK_AND: kind = PN_EXPR_ADDR; break;
     case TOK_KEYWORD_OFFSETOF: kind = PN_EXPR_OFFSETOF; break;
     case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
     case TOK_QUESTION: kind = PN_EXPR_BOOL_COERCE; break;

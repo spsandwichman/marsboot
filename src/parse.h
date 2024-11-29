@@ -236,6 +236,7 @@ enum {
     PN_EXPR_IN,
 
     // unop
+    PN_EXPR_ADDR,
     PN_EXPR_BOOL_NOT,
     PN_EXPR_BOOL_COERCE,
     PN_EXPR_BIT_NOT,
@@ -347,6 +348,10 @@ typedef struct PNode {
         struct {
             PNode* label;
         } cflow;
+        struct {
+            PNode* first;
+            PNode* second;
+        } fallthrough;
         struct {
             PNode* sub;
         } unop;

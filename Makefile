@@ -19,13 +19,13 @@ CC = gcc
 LD = gcc
 
 INCLUDEPATHS = -Isrc
-DEBUGFLAGS = -pg -g
+DEBUGFLAGS = -pg -g -rdynamic
 ASANFLAGS = -fsanitize=undefined -fsanitize=address
-CFLAGS = -mbmi2 -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
+CFLAGS = -march=native -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
 		 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
 		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
 # OPT = -O3 -flto
-OPT = -O0
+OPT = -Og -g -rdynamic
 
 FILE_NUM = 0
 

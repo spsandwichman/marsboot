@@ -36,7 +36,7 @@ stmt =
     | 'defer' stmt
     | 'break' [ident] ';'
     | 'continue' [ident] ';'
-    | 'fallthrough' [expr] ';'
+    | 'fallthrough' [expr [',' [expr]]] ';'
     | ident ':' stmt
 
 else =
@@ -79,7 +79,7 @@ expr =
     | expr binop expr
     | unary_expr
 
-unop = '!' | '?' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof' | 'offsetof'
+unop = '&' | '!' | '?' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof' | 'offsetof'
 
 unary_expr =
     | ('cast' | 'bitcast') '(' expr ')' unary_expr

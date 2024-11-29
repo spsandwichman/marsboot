@@ -17,7 +17,7 @@ noreturn void crash(char* error, ...) {
     strings = backtrace_symbols(array, size);
 
     if (strings != NULL) {
-        printf("Obtained %d stack frames\n", size);
+        printf("\nObtained %d stack frames\n", size);
         for (int i = 0; i < size; i++) {
             string output_str = str(strings[i]);
             // if (output_str.raw[0] == '.') {
@@ -34,7 +34,7 @@ noreturn void crash(char* error, ...) {
         }
     }
 
-    free(strings); // this is partially unsafe?
+    // free(strings); // this is partially unsafe?
 #endif
     exit(-1); // lmao
 }
