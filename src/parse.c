@@ -456,6 +456,7 @@ PNode* parse_extern_decl() {
 PNode* parse_stmt() {
     PNode* stmt;
     switch (current()->kind) {
+    
     case TOK_KEYWORD_EXTERN:
         stmt = parse_extern_decl();
         break;
@@ -535,6 +536,28 @@ PNode* parse_stmt() {
         advance();
         span_extend(stmt, -1);
         break;
+    case TOK_KEYWORD_CONTINUE:
+    case TOK_KEYWORD_BREAK:
+        stmt = new_node(cflow, match(TOK_KEYWORD_BREAK) ? PN_STMT_BREAK : PN_STMT_CONTINUE);
+        advance();
+        if (match(TOK_IDENTIFIER)) {
+            stmt->cflow.label = parse_ident();
+        }
+        expect(TOK_SEMICOLON);
+        advance();
+        span_extend(stmt, -1);
+        break;
+    case TOK_IDENTIFIER:
+        if (peek(1)->kind == TOK_COLON) {
+            // label!
+            stmt = new_node(label, PN_STMT_LABEL);
+            stmt->label.ident = parse_ident();
+            advance();
+            stmt->label.stmt = parse_stmt();
+            span_extend(stmt, -1);
+            break;
+        }
+        // else, fallthrough to simple_stmt parsing
     default:
         stmt = parse_simple_stmt();
         expect(TOK_SEMICOLON);

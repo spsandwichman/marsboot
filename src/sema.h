@@ -24,6 +24,7 @@ enum {
 
     _TYPE_SIMPLE_END,
 
+    TYPE_FUNCTION,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_ARRAY,
@@ -33,11 +34,6 @@ enum {
     TYPE_DISTINCT,
 };
 
-typedef struct TypeNodeBase {
-    u8 kind;
-    u32 number;
-} TypeNodeBase;
-
 typedef struct TypeRecordField {
     string name;
     Type type;
@@ -45,11 +41,17 @@ typedef struct TypeRecordField {
 } TypeRecordField;
 
 typedef struct TypeEnumVariant {
-
+    string name;
+    usize value;
 } TypeEnumVariant;
 
+typedef struct TypeNodeBase {
+    u8 kind;
+    u32 number;
+} TypeNodeBase;
+
 typedef struct TypeNode {
-    TypeNodeBase x;
+    TypeNodeBase base;
     union {
         Type distinct;
         struct {
@@ -69,9 +71,12 @@ typedef struct TypeNode {
             usize align;
         } as_record;
         struct {
+            TypeEnumVariant* at;
+            usize len;
+            usize cap;
+
             Type underlying;
         } as_enum;
-        
     };
 } TypeNode;
 

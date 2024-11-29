@@ -34,7 +34,10 @@ stmt =
     | 'for' ident [':' type] 'in' expr do_block
     | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
     | 'defer' stmt
+    | 'break' [ident] ';'
+    | 'continue' [ident] ';'
     | 'fallthrough' [expr] ';'
+    | ident ':' stmt
 
 else =
     | 'else' do_block

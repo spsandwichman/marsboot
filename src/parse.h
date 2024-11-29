@@ -195,6 +195,9 @@ enum {
     PN_STMT_WHICH,
     PN_STMT_DEFER,
     PN_STMT_FALLTHROUGH,
+    PN_STMT_BREAK,
+    PN_STMT_CONTINUE,
+    PN_STMT_LABEL,
 
     PN_IDENT,
     PN_DISCARD,
@@ -337,6 +340,13 @@ typedef struct PNode {
             PNode* value;
             u8 kind;
         } decl;
+        struct {
+            PNode* ident;
+            PNode* stmt;
+        } label;
+        struct {
+            PNode* label;
+        } cflow;
         struct {
             PNode* sub;
         } unop;
