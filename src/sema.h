@@ -24,7 +24,6 @@ enum {
 
     _TYPE_SIMPLE_END,
 
-    TYPE_FUNCTION,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_ARRAY,
@@ -32,6 +31,8 @@ enum {
     TYPE_POINTER,
     TYPE_SLICE,
     TYPE_DISTINCT,
+
+    TYPE_TUPLE,
 };
 
 typedef struct TypeRecordField {

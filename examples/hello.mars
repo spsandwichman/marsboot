@@ -1,0 +1,7 @@
+module hello_world;
+
+import os "./os";
+
+fn main() {
+    os::print("hello world!\n");
+}

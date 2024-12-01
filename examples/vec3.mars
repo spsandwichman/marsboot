@@ -1,4 +1,4 @@
-module examples;
+module vec3;
 
 def Vec3 = struct {
     x, y, z: float,

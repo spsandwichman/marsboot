@@ -1,6 +1,0 @@
-module host;
-
-extern fn alloc(size: uint) -> ^mut;
-extern fn free(ptr: ^mut);
-extern fn realloc(ptr: ^mut, new_size: uint) -> ^mut;
-extern fn print(str: []let u8);
