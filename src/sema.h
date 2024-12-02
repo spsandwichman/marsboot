@@ -50,7 +50,8 @@ typedef struct TypeEnumVariant {
 typedef struct TNode {
     u8 kind;
     bool visited; // for shit
-    u32 num;
+    u32 num_a;
+    u32 num_b;
 
     union {
         Type as_distinct;
@@ -78,10 +79,12 @@ typedef struct TNode {
 
 typedef struct TypeGraph {
     struct {
+        Type* equiv;
         TNode** at;
         u32 len;
         u32 cap;
-    } handle2node;
+    } handles;
+
 } TypeGraph;
 
 void type_init();

@@ -8,7 +8,7 @@ static usize align_forward(usize ptr, usize align) {
 }
 
 TNode* type(Type t) {
-    return tg.handle2node.at[t];
+    return tg.handles.at[t];
 }
 
 Type type_new(u8 kind) {
@@ -17,8 +17,16 @@ Type type_new(u8 kind) {
     memset(t, 0, sizeof(*t));
     t->kind = kind;
 
-    da_append(&tg.handle2node, t);
-    return tg.handle2node.len - 1;
+    // da_append(&tg.handles, t);
+    tg.handles.len++;
+    if (tg.handles.len > tg.handles.cap) {
+        tg.handles.cap *= 2;
+        tg.handles.at = realloc(tg.handles.at, tg.handles.cap * sizeof(tg.handles.at[0]));
+        tg.handles.equiv = realloc(tg.handles.equiv, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+        memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    }
+    tg.handles.at[tg.handles.len - 1] = t;
+    return tg.handles.len - 1;
 }
 
 Type type_new_record(u8 kind, usize len) {
@@ -37,8 +45,8 @@ Type type_new_ref(u8 kind, Type pointee, bool mutable) {
 }
 
 void type_print_graph() {
-    for_range(t, 0, tg.handle2node.len) {
-        printf("(%6x) % 3d : ", type(t), t);
+    for_range(t, 0, tg.handles.len) {
+        printf("(%d, %d) (%6x) % 3d : ", type(t)->num_a, type(t)->num_b, type(t), t);
         switch(type(t)->kind) {
         case TYPE_NONE: printf("none"); break;
         case TYPE_BOOL: printf("bool"); break;
@@ -77,17 +85,16 @@ static usize inc(usize n) {
 }
 
 static void set(Type a, Type b, usize num) {
-    type(a)->num = num;
-    type(b)->num = num;
+    type(a)->num_a = num;
+    type(b)->num_b = num;
 }
 
-// merge type b into type a
+// set up B to be merged into A on the next pass
 static void merge(Type a, Type b) {
-    tg.handle2node.at[b] = tg.handle2node.at[a];
+    tg.handles.equiv[b] = a;
 }
 
-// if compress != 0, merge type b to type a
-bool type_compare(Type a, Type b, usize compress) {
+bool type_compare(Type a, Type b, usize n) {
     if (a == b) 
         return true;
     if (type(a) == type(b)) 
@@ -95,15 +102,8 @@ bool type_compare(Type a, Type b, usize compress) {
     if (type(a)->kind != type(b)->kind) 
         return false;
 
-    bool eq = false;
-    if (type(a)->num != 0 || type(b)->num != 0) {
-        if (type(a)->num != type(b)->num)
-            return false;
-        eq = true;
-    }
-    if (eq) {
-        if (compress) merge(a, b);
-        return true;
+    if (type(a)->num_a != 0 || type(b)->num_b != 0) {
+        return (type(a)->num_a == type(b)->num_b);
     }
 
     switch (type(a)->kind) {
@@ -113,17 +113,12 @@ bool type_compare(Type a, Type b, usize compress) {
         if (type(a)->as_ref.mutable != type(b)->as_ref.mutable) {
             return false;
         }
-        set(a, b, compress);
-        eq = type_compare(type(a)->as_ref.pointee, type(b)->as_ref.pointee, inc(compress));
+        set(a, b, n);
+        bool eq = type_compare(type(a)->as_ref.pointee, type(b)->as_ref.pointee, inc(n));
         set(a, b, 0);
-        break;
+        return eq;
     default:
         return false;
-    }
-
-    if (eq) {
-        if (compress) merge(a, b);
-        return true;
     }
     return false;
 }
@@ -131,21 +126,29 @@ bool type_compare(Type a, Type b, usize compress) {
 // condense typegraph
 // O(fucking horrible)
 void type_condense() {
-    redo:
     bool eq = false;
-    for_range(a, _TYPE_SIMPLE_END, tg.handle2node.len) {
-        for_range(b, a, tg.handle2node.len) {
+    for_range(a, _TYPE_SIMPLE_END, tg.handles.len) {
+        for_range(b, a, tg.handles.len) {
             if (type(a) == type(b)) continue;
-            eq = type_compare(a, b, true);
-            // if (eq) goto redo;
-            TODO("change fron merging on the fly to creating a list and merging equivalences");
+            eq = type_compare(a, b, 1);
+            // if (eq) printf("a %d <- b %d\n", a, b);
+            if (eq) merge(a, b);
         }
     }
-    // assert(!eq);
+    for_range(from, 0, tg.handles.len) {
+        Type to = tg.handles.equiv[from];
+        if (to == 0) continue;
+        tg.handles.at[from] = tg.handles.at[to];
+        tg.handles.equiv[from] = 0;
+    }
 }
 
 void type_init() {
-    da_init(&tg.handle2node, 128);
+    tg.handles.len = 0;
+    tg.handles.cap = 128;
+    tg.handles.at = malloc(tg.handles.cap * sizeof(tg.handles.at[0]));
+    tg.handles.equiv = malloc(tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
 
     for_range(i, TYPE_NONE, _TYPE_SIMPLE_END) {
         assert(i == type_new(i));
@@ -156,16 +159,13 @@ void type_init() {
     {
         Type a = type_new_ref(TYPE_POINTER, TYPE_NONE, false);
         Type link = type_new_ref(TYPE_POINTER, a, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
-        link = type_new_ref(TYPE_POINTER, link, false);
+        for_range(i, 0, 1000) {
+            link = type_new_ref(TYPE_POINTER, link, false);
+        }
+        // link = type_new_ref(TYPE_POINTER, link, false);
         type(a)->as_ref.pointee = link;
     }
 
-    // type_compare(a, b, true);
     type_print_graph();
     printf("\n");
     type_condense();
