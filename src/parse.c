@@ -148,7 +148,7 @@ PNode* parse_var_decl(bool is_extern) {
     }
     advance();
 
-    PNode* ident = parse_expr();
+    PNode* ident = parse_ident();
     // turn ident into a identifier list if there's more than one
     if (match(TOK_COMMA)) {
         advance();
@@ -158,8 +158,7 @@ PNode* parse_var_decl(bool is_extern) {
             ident_list.span.len = ident->base.len;
             da_append(&ident_list, ident);
             while (match(TOK_IDENTIFIER)) {
-                ident = parse_expr();
-                // parse_expr() so it can fail in sema and give a better error
+                ident = parse_ident();
                 da_append(&ident_list, ident);
                 if (match(TOK_COMMA)) {
                     advance();
@@ -397,15 +396,17 @@ PNode* parse_simple_stmt() {
 
 PNode* parse_for_stmt() {
     expect(TOK_KEYWORD_FOR);
-    if (peek(2)->kind == TOK_COLON || peek(2)->kind == TOK_KEYWORD_IN) {
+    advance();
+    Token* begin = current();
+    PNode* left = parse_simple_stmt();
+    if (current()->kind == TOK_KEYWORD_IN) {
         // parse ranged for loop
         PNode* fl = new_node(for_ranged, PN_STMT_FOR_RANGED);
-        advance();
-        fl->for_ranged.var = parse_ident();
-        if (match(TOK_COLON)) {
-            advance();
-            fl->for_ranged.type = parse_expr();
-        }
+        // copy span
+        fl->base.raw = begin->raw;
+        fl->base.len = begin->len;
+
+        fl->for_ranged.decl = left;
         expect(TOK_KEYWORD_IN);
         advance();
         fl->for_ranged.range = parse_expr();
@@ -414,10 +415,11 @@ PNode* parse_for_stmt() {
     } else {
         // parse cstyle loop
         PNode* fl = new_node(for_cstyle, PN_STMT_FOR_CSTYLE);
-        advance();
-        if (!match(TOK_SEMICOLON)) {
-            fl->for_cstyle.init = parse_simple_stmt();
-        }
+        // copy span
+        fl->base.raw = begin->raw;
+        fl->base.len = begin->len;
+
+        fl->for_cstyle.init = left;
         expect(TOK_SEMICOLON);
         advance();
         if (!match(TOK_SEMICOLON)) {

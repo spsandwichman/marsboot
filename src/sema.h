@@ -15,10 +15,10 @@ enum {
     TYPE_U32,
     TYPE_I64,
     TYPE_U64,
-    TYPE_UNTYPED_INT,
     TYPE_F16,
     TYPE_F32,
     TYPE_F64,
+    TYPE_UNTYPED_INT,
     TYPE_UNTYPED_FLOAT,
     TYPE_UNTYPED_STRING,
 
@@ -46,18 +46,17 @@ typedef struct TypeEnumVariant {
     usize value;
 } TypeEnumVariant;
 
-typedef struct TypeNodeBase {
-    u8 kind;
-    u32 number;
-} TypeNodeBase;
 
-typedef struct TypeNode {
-    TypeNodeBase base;
+typedef struct TNode {
+    u8 kind;
+    bool visited; // for shit
+    u32 num;
+
     union {
-        Type distinct;
+        Type as_distinct;
         struct {
+            Type pointee;
             bool mutable;
-            Type subtype;
         } as_ref;
         struct {
             Type sub;
@@ -66,25 +65,25 @@ typedef struct TypeNode {
         struct {
             TypeRecordField* at;
             usize len;
-            usize cap;
-
             usize size;
             usize align;
         } as_record;
         struct {
             TypeEnumVariant* at;
             usize len;
-            usize cap;
-
             Type underlying;
         } as_enum;
     };
-} TypeNode;
+} TNode;
 
 typedef struct TypeGraph {
     struct {
-        TypeNode** at;
+        TNode** at;
         u32 len;
         u32 cap;
     } handle2node;
 } TypeGraph;
+
+void type_init();
+Type type_new(u8 kind);
+TNode* type(Type t);

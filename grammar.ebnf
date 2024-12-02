@@ -31,7 +31,7 @@ stmt =
     | 'when' expr do_block [when_else]
     | 'which' expr '{' {case_block} '}'
     | 'for' simple_stmt ';' expr ';' simple_stmt do_block
-    | 'for' ident [':' type] 'in' expr do_block
+    | 'for' ('let' | 'mut') ident [':' type] 'in' expr do_block
     | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
     | 'defer' stmt
     | 'break' [ident] ';'

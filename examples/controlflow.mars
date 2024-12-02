@@ -22,13 +22,16 @@ fn control_flow(foo: int) {
     for mut i = 0; i < 10; i += 1 do foo *= i;
 
     // ranged for loop
-    for i in 0..<10 {
+    // 'let' and 'mut' here signify
+    // whether the loop body can modify
+    // the iteration variable or not
+    for let i in 0..<10 {
         foo *= i;
     }
 
     // labels
-    outer: for i in 0..<10 {
-        for j in 0..<10 {
+    outer: for let i in 0..<10 {
+        for let j in 0..<10 {
             if j == 5 {
                 break outer;
             }

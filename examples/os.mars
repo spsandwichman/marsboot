@@ -1,11 +1,13 @@
 module os;
 
 when builtin::arch == .C {
+    // when transpiling to C, use 
     extern fn alloc(size: uint) -> ^mut;
     extern fn free(ptr: ^mut);
     extern fn realloc(ptr: ^mut, new_size: uint) -> ^mut;
     extern fn print(str: []let u8);
 } else {
+    // null allocator otherwise!
     fn alloc(size: uint) -> ^mut {
         return null;
     }

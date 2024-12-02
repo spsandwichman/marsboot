@@ -3,9 +3,11 @@
 #include <stdio.h>
 
 typedef struct {
-    uint8_t* raw;
+    const uint8_t* raw;
     uintptr_t len;
-} builtin_slice_u8;
+} builtin_slice_let_u8;
+
+// on arch == .C, 
 
 void* _host__alloc(uintptr_t size) {
     return malloc(size);
@@ -19,7 +21,7 @@ void* _host__realloc(void* ptr, uintptr_t new_size) {
     return realloc(ptr, new_size);
 }
 
-void _host__print(builtin_slice_u8 str) {
+void _host__print(builtin_slice_let_u8 str) {
     for (uintptr_t i = 0; i < str.len; ++i) {
         putchar(str.raw[i]);
     }

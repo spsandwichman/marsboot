@@ -1,6 +1,7 @@
 #define ORBIT_IMPLEMENTATION
 #include "mars.h"
 #include "crash.h"
+#include "sema.h"
 
 int main(int argc, char** argv) {
 #ifndef _WIN32
@@ -33,6 +34,8 @@ int main(int argc, char** argv) {
     // printf("\n");
 
     parse_file(tb, NULL_STR);
+
+    type_init();
 }
 
 Context ctx;

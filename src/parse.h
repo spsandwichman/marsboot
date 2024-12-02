@@ -303,9 +303,6 @@ enum {
 
 };
 
-typedef u32 TypeHandle; // TODO
-
-
 typedef struct PNodeBase {
     char* raw; // source span for error reporting
     u32 len;
@@ -416,8 +413,7 @@ typedef struct PNode {
             PNode* block;
         } for_cstyle;
         struct {
-            PNode* var;
-            PNode* type;
+            PNode* decl;
             PNode* range;
             PNode* block;
         } for_ranged;

@@ -30,7 +30,7 @@ fn vec3_inv(a: Vec3) -> Vec3 {
 
 fn vec3_sum_all(vecs: []let Vec3) -> Vec3 {
     mut sum: Vec3;
-    for i in 0..<vecs.len {
+    for let i in 0..<vecs.len {
         sum.x += vecs[i].x;
         sum.y += vecs[i].y;
         sum.z += vecs[i].z;
