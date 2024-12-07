@@ -84,9 +84,13 @@ typedef struct TypeGraph {
         u32 len;
         u32 cap;
     } handles;
-
 } TypeGraph;
 
 void type_init();
 Type type_new(u8 kind);
 TNode* type(Type t);
+
+
+typedef struct SemaExpr {
+
+} SemaExpr;

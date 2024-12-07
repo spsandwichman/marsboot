@@ -1,4 +1,5 @@
 #include "sema.h"
+#include "ptrmap.h"
 
 TypeGraph tg;
 
@@ -45,7 +46,15 @@ Type type_new_ref(u8 kind, Type pointee, bool mutable) {
 }
 
 void type_print_graph() {
+    PtrMap has_printed;
+    ptrmap_init(&has_printed, 128);
     for_range(t, 0, tg.handles.len) {
+        TNode* type_node = type(t);
+        if (ptrmap_get(&has_printed, type_node) != PTRMAP_NOT_FOUND) {
+            continue;
+        }
+        ptrmap_put(&has_printed, type_node, (void*)1234);
+
         printf("(%d, %d) (%6x) % 3d : ", type(t)->num_a, type(t)->num_b, type(t), t);
         switch(type(t)->kind) {
         case TYPE_NONE: printf("none"); break;
@@ -58,10 +67,10 @@ void type_print_graph() {
         case TYPE_U32: printf("u32"); break;
         case TYPE_I64: printf("i64"); break;
         case TYPE_U64: printf("u64"); break;
-        case TYPE_UNTYPED_INT: printf("untyped_int"); break;
         case TYPE_F16: printf("f16"); break;
         case TYPE_F32: printf("f32"); break;
         case TYPE_F64: printf("f64"); break;
+        case TYPE_UNTYPED_INT: printf("untyped_int"); break;
         case TYPE_UNTYPED_FLOAT: printf("untyped_float"); break;
         case TYPE_UNTYPED_STRING: printf("untyped_string"); break;
         case TYPE_POINTER:
@@ -101,6 +110,8 @@ bool type_compare(Type a, Type b, usize n) {
         return true;
     if (type(a)->kind != type(b)->kind) 
         return false;
+    if (a < _TYPE_SIMPLE_END)
+        return true;
 
     if (type(a)->num_a != 0 || type(b)->num_b != 0) {
         return (type(a)->num_a == type(b)->num_b);
@@ -115,7 +126,6 @@ bool type_compare(Type a, Type b, usize n) {
         }
         set(a, b, n);
         bool eq = type_compare(type(a)->as_ref.pointee, type(b)->as_ref.pointee, inc(n));
-        set(a, b, 0);
         return eq;
     default:
         return false;
@@ -123,23 +133,45 @@ bool type_compare(Type a, Type b, usize n) {
     return false;
 }
 
+void type_reset_num(Type a) {
+    if (type(a)->num_a == 0 && type(a)->num_b == 0) {
+        return;
+    }
+
+    type(a)->num_a = 0;
+    type(a)->num_b = 0;
+
+    switch (type(a)->kind) {
+    case TYPE_DISTINCT:
+    case TYPE_POINTER:
+        type_reset_num(type(a)->as_ref.pointee);
+        break;
+    }
+}
+
+
 // condense typegraph
 // O(fucking horrible)
 void type_condense() {
-    bool eq = false;
-    for_range(a, _TYPE_SIMPLE_END, tg.handles.len) {
-        for_range(b, a, tg.handles.len) {
-            if (type(a) == type(b)) continue;
-            eq = type_compare(a, b, 1);
-            // if (eq) printf("a %d <- b %d\n", a, b);
-            if (eq) merge(a, b);
+    bool eq = true;
+    while (eq) {
+        eq = false;
+        for_range(a, _TYPE_SIMPLE_END, tg.handles.len) {
+            for_range(b, a, tg.handles.len) {
+                if (type(a) == type(b)) continue;
+                bool is_eq = type_compare(a, b, 1);
+                type_reset_num(a);
+                type_reset_num(b);
+                if (is_eq) merge(a, b);
+                eq = eq || is_eq;
+            }
         }
-    }
-    for_range(from, 0, tg.handles.len) {
-        Type to = tg.handles.equiv[from];
-        if (to == 0) continue;
-        tg.handles.at[from] = tg.handles.at[to];
-        tg.handles.equiv[from] = 0;
+        for_range(from, 0, tg.handles.len) {
+            Type to = tg.handles.equiv[from];
+            if (to == 0) continue;
+            tg.handles.at[from] = tg.handles.at[to];
+            tg.handles.equiv[from] = 0;
+        }
     }
 }
 
@@ -159,16 +191,20 @@ void type_init() {
     {
         Type a = type_new_ref(TYPE_POINTER, TYPE_NONE, false);
         Type link = type_new_ref(TYPE_POINTER, a, false);
-        for_range(i, 0, 1000) {
+        for_range(i, 0, 250) {
             link = type_new_ref(TYPE_POINTER, link, false);
         }
-        // link = type_new_ref(TYPE_POINTER, link, false);
+        type(a)->as_ref.pointee = link;
+    }
+    {
+        Type a = type_new_ref(TYPE_POINTER, TYPE_NONE, false);
+        Type link = type_new_ref(TYPE_POINTER, a, false);
+        for_range(i, 0, 750) {
+            link = type_new_ref(TYPE_POINTER, link, false);
+        }
         type(a)->as_ref.pointee = link;
     }
 
-    type_print_graph();
-    printf("\n");
     type_condense();
-
     type_print_graph();
 }
