@@ -6,6 +6,7 @@ when builtin::arch == .C {
     extern fn free(ptr: ^mut);
     extern fn realloc(ptr: ^mut, new_size: uint) -> ^mut;
     extern fn print(str: []let u8);
+    extern fn putc(char: u8);
 } else {
     // null allocator otherwise!
     fn alloc(size: uint) -> ^mut {
@@ -18,6 +19,9 @@ when builtin::arch == .C {
         return null;
     }
     fn print(str: []let u8) {
+        // stub
+    }
+    fn putc(char: u8) {
         // stub
     }
 }

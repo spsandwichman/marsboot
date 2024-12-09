@@ -176,6 +176,7 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("mut", TOK_KEYWORD_MUT);
         return_if_eq("asm", TOK_KEYWORD_ASM);
         return_if_eq("def", TOK_KEYWORD_DEF);
+        return_if_eq("dyn", TOK_KEYWORD_DYN);
         return_if_eq("for", TOK_KEYWORD_FOR);
         return_if_eq("int", TOK_KEYWORD_INT);
         return_if_eq("i16", TOK_KEYWORD_I16);
@@ -192,7 +193,6 @@ static u8 identify_keyword(char* s, size_t len) {
         return_if_eq("when", TOK_KEYWORD_WHEN);
         return_if_eq("true", TOK_KEYWORD_TRUE);
         return_if_eq("null", TOK_KEYWORD_NULL);
-        return_if_eq("type", TOK_KEYWORD_TYPE);
         return_if_eq("case", TOK_KEYWORD_CASE);
         return_if_eq("cast", TOK_KEYWORD_CAST);
         return_if_eq("enum", TOK_KEYWORD_ENUM);
@@ -212,6 +212,7 @@ static u8 identify_keyword(char* s, size_t len) {
     case 6:
         return_if_eq("extern", TOK_KEYWORD_EXTERN);
         return_if_eq("import", TOK_KEYWORD_IMPORT);
+        return_if_eq("typeid", TOK_KEYWORD_TYPEID);
         return_if_eq("return", TOK_KEYWORD_RETURN);
         return_if_eq("struct", TOK_KEYWORD_STRUCT);
         return_if_eq("switch", TOK_KEYWORD_SWITCH);

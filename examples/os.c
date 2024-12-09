@@ -26,3 +26,7 @@ void _os__print(MARS_BUILTIN__SLICE_let_u8 str) {
         putchar(str.raw[i]);
     }
 }
+
+void _os__putc(uint8_t c) {
+    putchar(c);
+}

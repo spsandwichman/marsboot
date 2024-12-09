@@ -660,6 +660,8 @@ static u8 tok2pn_atom[_TOK_COUNT] = {
     [TOK_KEYWORD_F64] = PN_TYPE_F64,
     [TOK_KEYWORD_FLOAT] = PN_TYPE_FLOAT,
     [TOK_KEYWORD_BOOL] = PN_TYPE_BOOL,
+    [TOK_KEYWORD_DYN] = PN_TYPE_DYN,
+    [TOK_KEYWORD_TYPEID] = PN_TYPE_TYPEID,
 };
 
 // allow_none allows this to return none if there was no 

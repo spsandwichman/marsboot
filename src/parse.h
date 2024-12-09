@@ -88,7 +88,6 @@ typedef da(Token) TokenBuf;
 \
     TOKEN(TOK_KEYWORD_LET,   "let") \
     TOKEN(TOK_KEYWORD_MUT,   "mut") \
-    TOKEN(TOK_KEYWORD_TYPE,  "type") \
 \
     TOKEN(TOK_KEYWORD_ASM,       "asm") \
     TOKEN(TOK_KEYWORD_BITCAST,   "bitcast") \
@@ -136,6 +135,8 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_KEYWORD_U64,  "u64") \
 \
     TOKEN(TOK_KEYWORD_BOOL, "bool") \
+    TOKEN(TOK_KEYWORD_DYN,  "dyn") \
+    TOKEN(TOK_KEYWORD_TYPEID,  "typeid") \
 \
     TOKEN(TOK_KEYWORD_FLOAT,"float") \
     TOKEN(TOK_KEYWORD_F16,  "f16") \
@@ -289,6 +290,8 @@ enum {
     PN_TYPE_F64,
     PN_TYPE_FLOAT,
     PN_TYPE_BOOL,
+    PN_TYPE_DYN,
+    PN_TYPE_TYPEID,
 
     PN_ITEM, // for param/return lists. many identifiers, one type
     PN_FNPROTO,
