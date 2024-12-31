@@ -4,9 +4,11 @@
 
 typedef u32 Type; // handle
 
-enum {
+enum TypeKind {
     TYPE_NONE,
     TYPE_BOOL,
+    TYPE_DYN,
+    TYPE_TYPEID,
     TYPE_I8,
     TYPE_U8,
     TYPE_I16,
@@ -27,8 +29,10 @@ enum {
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_ARRAY,
+    TYPE_ARRAY_LEN_UNKNOWN,
     TYPE_ENUM,
     TYPE_POINTER,
+    TYPE_HEADLESS_SLICE,
     TYPE_SLICE,
     TYPE_DISTINCT,
 
@@ -45,7 +49,6 @@ typedef struct TypeEnumVariant {
     string name;
     usize value;
 } TypeEnumVariant;
-
 
 typedef struct TNode {
     u8 kind;
@@ -79,6 +82,7 @@ typedef struct TNode {
 
 typedef struct TypeGraph {
     struct {
+        string* names; // attach a type handle to a name for better error printing
         Type* equiv;
         TNode** at;
         u32 len;
@@ -89,8 +93,96 @@ typedef struct TypeGraph {
 void type_init();
 Type type_new(u8 kind);
 TNode* type(Type t);
+void type_condense();
 
+// ---------------------------------------------------------
+
+typedef struct SemaStmt SemaStmt;
+typedef struct Entity Entity;
+typedef struct EntityTable EntityTable;
+
+// ---------------------------------------------------------
+
+typedef struct ConstVal {
+    Type type;
+    union {
+        u8  u8;
+        u16 u16;
+        u32 u32;
+        u64 u64;
+        i8  i8;
+        i16 i16;
+        i32 i32;
+        i64 i64;
+        f16 f16;
+        f32 f32;
+        f64 f64;
+    };
+} ConstVal;
+
+enum EntityStorageKind {
+    STORAGE_EXTERN,
+    STORAGE_GLOBAL,
+    STORAGE_LOCAL,
+    STORAGE_DEF,
+};
+
+typedef struct Entity {
+    Type type;
+    u8 storage;
+    bool mutable;
+    string name;
+    EntityTable* tbl;
+    SemaStmt* decl;
+    ConstVal constval;
+} Entity;
+
+typedef struct EntityTable {
+    Entity** at;
+    u32 len;
+    u32 cap;
+
+    EntityTable* parent;
+} EntityTable;
+
+// ---------------------------------------------------------
+
+typedef struct Module {
+    string name;
+    EntityTable* global;
+} Module;
+
+enum SemaExprKind {
+    SEXPR_INVALID = 0,
+
+    SEXPR_CONSTVAL,
+    SEXPR_ENTITY,
+};
 
 typedef struct SemaExpr {
-
+    u8 kind;
+    bool mutable;
+    Type type;
+    PNode* pnode;
+    union {
+        ConstVal constval;
+    };
 } SemaExpr;
+
+enum SemaStmtKind {
+    SSTMT_INVALID = 0,
+
+    SSTMT_DECL,
+};
+
+typedef struct SemaStmt {
+    u8 kind;
+    PNode* pnode;
+
+    union {
+        struct {
+            Entity* entity;
+            SemaExpr* value;
+        } decl;
+    };
+} SemaStmt;

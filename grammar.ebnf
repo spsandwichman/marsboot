@@ -101,7 +101,7 @@ atom_terminal =
     | '.' '{' list<compound_item> '}'
     | '.' ident
 
-    | ('^' | '[' ']') ('let' | 'mut') [atom_terminal]
+    | ('^' | '[' [ '^' ] ']') ('let' | 'mut') [atom_terminal]
     | '[' expr ']' atom_terminal
     | 'distinct' atom_terminal
     | 'struct' '{' list<item> '}'
@@ -118,7 +118,6 @@ atom_expr =
     | atom_expr '[' expr ']'
     | atom_expr '[' [expr] ':' [expr] ']'
     | atom_expr '(' list<expr> ')'
-
 
 variant = ident ['=' expr]
 item = ident [',' ident] ':' expr

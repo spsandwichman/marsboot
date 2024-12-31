@@ -62,7 +62,7 @@ static void span_extend(PNode* node, isize offset) {
     node->base.len = p.tb[p.cursor + offset].raw + p.tb[p.cursor + offset].len - node->base.raw;
 }
 
-static string span(PNode* p) {
+string pnode_span(PNode* p) {
     return (string){.raw = p->base.raw, .len = p->base.len};
 }
 
@@ -725,7 +725,22 @@ PNode* parse_atom_terminal(bool allow_none) {
         advance();
         break;
     case TOK_OPEN_BRACKET:
-        if (peek(1)->kind == TOK_CLOSE_BRACKET) {
+        if (peek(1)->kind == TOK_CARET) {
+            term = new_node(ref_type, PN_TYPE_HEADLESS_SLICE);
+            advance();
+            advance();
+            expect(TOK_CLOSE_BRACKET);
+            advance();
+            if (match(TOK_KEYWORD_MUT)) {
+                term->ref_type.mutable = true;
+            } else if (match(TOK_KEYWORD_LET)) {
+                term->ref_type.mutable = false;
+            } else {
+                report_token(true, "expected mut or let");
+            }
+            advance();
+            term->ref_type.sub = parse_atom_terminal(false);
+        } else if (peek(1)->kind == TOK_CLOSE_BRACKET) {
             term = new_node(ref_type, PN_TYPE_SLICE);
             advance();
             advance();
@@ -1114,7 +1129,7 @@ PNode* parse_file(TokenBuf tb, string expected_module_name) {
     p.len = tb.len;
 
     PNode* mod_decl = parse_module_decl();
-    if (expected_module_name.raw != NULL && !string_eq(expected_module_name, span(mod_decl->module_decl.ident))) {
+    if (expected_module_name.raw != NULL && !string_eq(expected_module_name, pnode_span(mod_decl->module_decl.ident))) {
         return NULL;
     }
 

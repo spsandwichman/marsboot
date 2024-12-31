@@ -24,6 +24,7 @@ Type type_new(u8 kind) {
         tg.handles.cap *= 2;
         tg.handles.at = realloc(tg.handles.at, tg.handles.cap * sizeof(tg.handles.at[0]));
         tg.handles.equiv = realloc(tg.handles.equiv, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+        tg.handles.names = realloc(tg.handles.names, tg.handles.cap * sizeof(tg.handles.names[0]));
         memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
     }
     tg.handles.at[tg.handles.len - 1] = t;
@@ -59,6 +60,8 @@ void type_print_graph() {
         switch(type(t)->kind) {
         case TYPE_NONE: printf("none"); break;
         case TYPE_BOOL: printf("bool"); break;
+        case TYPE_DYN: printf("dyn"); break;
+        case TYPE_TYPEID: printf("typeid"); break;
         case TYPE_I8: printf("i8"); break;
         case TYPE_U8: printf("u8"); break;
         case TYPE_I16: printf("i16"); break;
@@ -121,6 +124,8 @@ bool type_compare(Type a, Type b, usize n) {
     case TYPE_DISTINCT:
         return false;
     case TYPE_POINTER:
+    case TYPE_SLICE:
+    case TYPE_HEADLESS_SLICE:
         if (type(a)->as_ref.mutable != type(b)->as_ref.mutable) {
             return false;
         }
@@ -144,6 +149,8 @@ void type_reset_num(Type a) {
     switch (type(a)->kind) {
     case TYPE_DISTINCT:
     case TYPE_POINTER:
+    case TYPE_SLICE:
+    case TYPE_HEADLESS_SLICE:
         type_reset_num(type(a)->as_ref.pointee);
         break;
     }
@@ -175,36 +182,23 @@ void type_condense() {
     }
 }
 
+void type_attach_name(Type t, string name) {
+    tg.handles.names[t] = name;
+}
+
 void type_init() {
     tg.handles.len = 0;
     tg.handles.cap = 128;
     tg.handles.at = malloc(tg.handles.cap * sizeof(tg.handles.at[0]));
     tg.handles.equiv = malloc(tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    tg.handles.names = malloc(tg.handles.cap * sizeof(tg.handles.names[0]));
     memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    memset(tg.handles.names, 0, tg.handles.cap * sizeof(tg.handles.names[0]));
 
     for_range(i, TYPE_NONE, _TYPE_SIMPLE_END) {
         assert(i == type_new(i));
     }
 
-    printf("typesystem init\n");
-
-    {
-        Type a = type_new_ref(TYPE_POINTER, TYPE_NONE, false);
-        Type link = type_new_ref(TYPE_POINTER, a, false);
-        for_range(i, 0, 250) {
-            link = type_new_ref(TYPE_POINTER, link, false);
-        }
-        type(a)->as_ref.pointee = link;
-    }
-    {
-        Type a = type_new_ref(TYPE_POINTER, TYPE_NONE, false);
-        Type link = type_new_ref(TYPE_POINTER, a, false);
-        for_range(i, 0, 750) {
-            link = type_new_ref(TYPE_POINTER, link, false);
-        }
-        type(a)->as_ref.pointee = link;
-    }
-
+    printf("typegraph init\n");
     type_condense();
-    type_print_graph();
 }

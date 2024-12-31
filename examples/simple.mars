@@ -1,0 +1,3 @@
+module simple;
+
+let x: i64 = 1;

@@ -8,10 +8,18 @@ int main(int argc, char** argv) {
     init_signal_handler();
 #endif
 
-
+    if (argc == 1) {
+        printf("no file provided\n");
+        exit(0);
+    }
 
     FILE* f = fopen(argv[1], "rb");
-    
+
+    if (f == NULL) {
+        printf("cannot open file '%s'\n", argv[1]);
+        exit(0);
+    }
+
     fseek(f, 0, SEEK_END);
     size_t size = ftell(f);
     fseek(f, 0, SEEK_SET);

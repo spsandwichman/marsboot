@@ -1,0 +1,5 @@
+module add;
+
+fn add_some_shit(x, y: int) -> int {
+    return x + y;
+}

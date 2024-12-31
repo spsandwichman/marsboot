@@ -1,0 +1,90 @@
+common type categories for this document:
+    Base: any base type.
+    Numeric: any integer, float, or pointer.
+    Float: any floating point number
+    Integer: any integer
+    IntLike: any integer or pointer.
+
+
+note:
+    for all operations accepting an IntLike, 
+    pointers behave like native-size unsigned integers.
+    cast(uint) ptr + 1 == cast(uint)(ptr + 1)
+
+operations:
+
+    <T> + <T>  => <T>       where T: IntLike | Float
+    <T> - <T>  => <T>       where T: IntLike | Float
+    <T> * <T>  => <T>       where T: IntLike | Float
+    <T> / <T>  => <T>       where T: IntLike | Float
+    <T> % <T>  => <T>       where T: IntLike | Float
+    <T> %% <T> => <T>       where T: IntLike | Float
+
+    <T> & <T>  => <T>       where T: IntLike
+    <T> | <T>  => <T>       where T: IntLike
+    <T> ~| <T> => <T>       where T: IntLike
+    <T> ~ <T>  => <T>       where T: IntLike
+    <T> << <T> => <T>       where T: IntLike
+    <T> >> <T> => <T>       where T: IntLike
+
+    <T> == <T> => <bool>    where T: Base
+    <T> != <T> => <bool>    where T: Base
+    <T> > <T>  => <bool>    where T: Base
+    <T> < <T>  => <bool>    where T: Base
+    <T> >= <T> => <bool>    where T: Base
+    <T> <= <T> => <bool>    where T: Base
+
+    if two compatible types are combined in a binary operation,
+    a low priority type is converted to a higher priority type.
+    if the two types are of equal priority, the operation is
+    invalid and must be
+    implicit cast priority:
+        [^]let T, [^]mut T, ^let T, ^mut T
+        i64, u64, f64
+        i32, u32, f32
+        i16, u16, f16
+        i8, u8
+        bool
+
+    <bool> && <bool> => <bool>
+    <bool> || <bool> => <bool>
+
+    +<T>    => <T>          where T: Numeric
+    -<T>    => <T>          where T: Numeric
+    ~<T>    => <T>          where T: IntLike
+    !<bool> => <bool>
+    ?<T>    => <bool>       where T: IntLike | Bool
+
+    cast(A) <B>    => <A>
+    bitcast(A) <B> => <A>   where sizeof A == sizeof B
+
+    &<T> => <^mut/let T>    mutability of pointer is taken from mutability of expression
+    <^mut/let T>^ => <T>    
+
+    <[N]T>[<N>]         => <T>          where N: Numeric
+    <[]let/mut T>[<N>]  => <T>          where N: Numeric
+    <[^]let/mut T>[<N>] => <T>          where N: Numeric
+
+    <[N]T>[:]       => <[]let/mut T>    where N: Numeric
+    <[N]T>[<N>:]    => <[]let/mut T>    where N: Numeric
+    <[N]T>[:<N>]    => <[]let/mut T>    where N: Numeric
+    <[N]T>[<N>:<N>] => <[]let/mut T>    where N: Numeric
+
+    <[]let/mut T>[:]       => <[]let/mut T>     where N: Numeric (warn that this does nothing)
+    <[]let/mut T>[<N>:]    => <[]let/mut T>     where N: Numeric
+    <[]let/mut T>[:<N>]    => <[]let/mut T>     where N: Numeric
+    <[]let/mut T>[<N>:<N>] => <[]let/mut T>     where N: Numeric
+    
+    <[^]let/mut T>[:]       => <[^]let/mut T>   where N: Numeric (warn that this does nothing)
+    <[^]let/mut T>[<N>:]    => <[^]let/mut T>   where N: Numeric
+    <[^]let/mut T>[:<N>]    => <[]let/mut T>    where N: Numeric
+    <[^]let/mut T>[<N>:<N>] => <[]let/mut T>    where N: Numeric
+
+    sizeof <T>  => <untyped_int>
+    sizeof T    => <untyped_int>
+    alignof <T> => <untyped_int>
+    alignof T   => <untyped_int>
+
+    <T>.field => <F>    where T: struct | union
+    <T>.field => <F>    where T: ^let/mut struct | ^let/mut union
+    T.variant => <T>    where T: enum

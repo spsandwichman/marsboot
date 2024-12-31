@@ -1,0 +1,73 @@
+implicit:
+
+    enum T -> T
+
+    bool -> i<N>
+    bool -> u<N>
+
+    i<N> -> i<M>    where N < M
+    u<N> -> u<M>    where N < M
+    // yes, this means that arithmetic between different signs of integers is invalid
+
+    []mut T -> []let T
+
+    ^mut T  -> ^let T
+    ^mut T  -> ^let
+    ^mut T  -> ^mut
+    ^mut T  -> [^]mut T
+    ^mut T  -> [^]let T
+    ^mut    -> ^mut T
+    ^mut    -> ^let T
+    ^mut    -> ^let
+    ^mut    -> [^]mut T
+    ^mut    -> [^]let T
+    ^let T  -> ^let
+    ^let T  -> [^]let T
+    ^let    -> ^let T
+    ^let    -> [^]let T
+
+    [^]mut T -> [^]let T
+    [^]mut T -> ^mut T
+    [^]mut T -> ^let T
+    [^]mut T -> ^mut
+    [^]mut T -> ^let
+    [^]let T -> ^let T
+    [^]let T -> ^let
+
+    T -> dyn
+
+    untyped_string -> []let u8  // default
+    untyped_string -> []mut u8
+    untyped_string -> [_]u8
+
+    untyped_int -> int // default
+    untyped_int -> i<N>
+    untyped_int -> u<N>
+
+    untyped_float -> u<N>
+    untyped_float -> i<N>
+    untyped_float -> f<N>
+    untyped_float -> float // default
+
+explicit:
+    (everything from implicit)
+
+    T -> enum T
+
+    dyn -> T
+
+    // floats and ints cast to each other all day long
+    i<N> -> i<M>
+    i<N> -> u<M>
+    i<N> -> f<M>
+    u<N> -> i<M>
+    u<N> -> u<M>
+    u<N> -> f<M>
+    f<N> -> i<M>
+    f<N> -> u<M>
+    f<N> -> f<M>
+
+    ^let/mut T -> uint
+    ^let/mut T -> int
+    [^]let/mut T -> uint
+    [^]let/mut T -> int

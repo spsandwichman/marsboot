@@ -15,7 +15,7 @@ typedef uintptr_t usize;
 
 typedef double   f64;
 typedef float    f32;
-// typedef _Float16 f16;
+typedef _Float16 f16;
 
 typedef uint8_t bool;
 #define false ((bool)0)

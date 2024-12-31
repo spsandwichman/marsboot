@@ -151,7 +151,7 @@ typedef da(Token) TokenBuf;
 \
     TOKEN(_TOK_COUNT, "") \
 
-enum {
+enum TokenKind {
 #define TOKEN(enum, str) enum,
     TOKEN_LIST
 #undef TOKEN
@@ -161,7 +161,7 @@ extern const char* token_kind_name[];
 
 TokenBuf lex_string(string text);
 
-enum {
+enum PNodeKind {
     PN_INVALID,
 
     PN_STMT_MODULE_DECL,
@@ -267,6 +267,7 @@ enum {
 
     PN_TYPE_TYPEOF,
     PN_TYPE_POINTER,
+    PN_TYPE_HEADLESS_SLICE,
     PN_TYPE_SLICE,
     PN_TYPE_ARRAY,
     PN_TYPE_DISTINCT,
@@ -312,7 +313,7 @@ typedef struct PNodeBase {
     u8 kind;
 } PNodeBase;
 
-enum {
+enum DeclKind {
     DECLKIND_LET,
     DECLKIND_MUT,
     DECLKIND_DEF,
@@ -429,6 +430,8 @@ typedef struct PNode {
         } enum_type;
     };
 } PNode;
+
+string pnode_span(PNode* p);
 
 PNode* parse_file(TokenBuf tb, string expected_module_name);
 PNode* parse_ident();
