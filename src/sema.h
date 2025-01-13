@@ -5,7 +5,7 @@
 typedef u32 Type; // handle
 
 enum TypeKind {
-    TYPE_NONE,
+    TYPE_UNKNOWN,
     TYPE_BOOL,
     TYPE_DYN,
     TYPE_TYPEID,
@@ -147,9 +147,12 @@ typedef struct EntityTable {
 
 // ---------------------------------------------------------
 
+da_typedef(SemaStmt);
+
 typedef struct Module {
     string name;
     EntityTable* global;
+    da(SemaStmt) decls;
 } Module;
 
 enum SemaExprKind {
@@ -157,15 +160,17 @@ enum SemaExprKind {
 
     SEXPR_CONSTVAL,
     SEXPR_ENTITY,
+    SEXPR_TYPE,
 };
 
 typedef struct SemaExpr {
     u8 kind;
-    bool mutable;
+    bool mutable : 1;
     Type type;
     PNode* pnode;
     union {
         ConstVal constval;
+        Type type;
     };
 } SemaExpr;
 
@@ -186,3 +191,5 @@ typedef struct SemaStmt {
         } decl;
     };
 } SemaStmt;
+
+Module* sema_check_module(PNode* top);

@@ -6,11 +6,11 @@ StringBuilder* sb;
 
 void c_emit_typename(Type t) {
     switch (t) {
-    case TYPE_NONE: sb_append_c(sb, "void"); break;
-    case TYPE_BOOL: sb_append_c(sb, "bool"); break;
-    case TYPE_DYN: sb_append_c(sb, "dyn"); break;
-    case TYPE_TYPEID: sb_append_c(sb, "typeid"); break;
-    case TYPE_I8: sb_append_c(sb, "i8"); break;
+    case TYPE_UNKNOWN: CRASH("emitting unknown type"); break;
+    case TYPE_BOOL: sb_append_c(sb, "Mars_bool"); break;
+    case TYPE_DYN: sb_append_c(sb, "Mars_dyn"); break;
+    case TYPE_TYPEID: sb_append_c(sb, "Mars_typeid"); break;
+    case TYPE_I8: sb_append_c(sb,  "i8"); break;
     case TYPE_I16: sb_append_c(sb, "i16"); break;
     case TYPE_I32: sb_append_c(sb, "i32"); break;
     case TYPE_I64: sb_append_c(sb, "i64"); break;

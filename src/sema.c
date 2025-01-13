@@ -63,6 +63,8 @@ static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
     case PN_TYPE_DYN:    return TYPE_DYN;
     case PN_TYPE_TYPEID: return TYPE_TYPEID;
     }
+    TODO("ingest complex type");
+    return TYPE_UNKNOWN;
 }
 
 Type ingest_type(Module* m, EntityTable* etbl, PNode* pn) {
@@ -87,7 +89,7 @@ SemaStmt* check_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     }
     Entity* ent = etbl_put(etbl, name);
 
-    Type ent_type = TYPE_NONE;
+    Type ent_type = TYPE_UNKNOWN;
     if (pstmt->decl.type) {
         ent_type = ingest_type(m, etbl, pstmt->decl.type);
     }
@@ -106,6 +108,14 @@ SemaStmt* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
     case PN_STMT_DECL:
         return check_decl(m, etbl, pstmt);
     default:
-        TODO("fuck you lmao XD");
+        TODO("lmao XD");
     }
+}
+
+Module sema_check_module(PNode* top) {
+    Module mod = {
+        .name = constr("placeholder"),
+    };
+    assert(top->base.kind == PN_LIST);
+    da_init(&mod.decls, top->list.len);
 }

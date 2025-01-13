@@ -36,14 +36,12 @@ int main(int argc, char** argv) {
 
     printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
 
-    // foreach(Token t, tb) {
-    //     printf("%s ", token_kind_name[t.kind]);
-    // }
-    // printf("\n");
-
-    parse_file(tb, NULL_STR);
+    PNode* top = parse_file(tb, NULL_STR);
 
     type_init();
+
+    Module* mod = sema_check_module(top);
+
 }
 
 Context ctx;

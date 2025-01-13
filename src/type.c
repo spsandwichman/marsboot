@@ -58,7 +58,7 @@ void type_print_graph() {
 
         printf("(%d, %d) (%6x) % 3d : ", type(t)->num_a, type(t)->num_b, type(t), t);
         switch(type(t)->kind) {
-        case TYPE_NONE: printf("none"); break;
+        case TYPE_UNKNOWN: printf("none"); break;
         case TYPE_BOOL: printf("bool"); break;
         case TYPE_DYN: printf("dyn"); break;
         case TYPE_TYPEID: printf("typeid"); break;
@@ -195,7 +195,7 @@ void type_init() {
     memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
     memset(tg.handles.names, 0, tg.handles.cap * sizeof(tg.handles.names[0]));
 
-    for_range(i, TYPE_NONE, _TYPE_SIMPLE_END) {
+    for_range(i, TYPE_UNKNOWN, _TYPE_SIMPLE_END) {
         assert(i == type_new(i));
     }
 

@@ -7,7 +7,7 @@ implicit:
 
     i<N> -> i<M>    where N < M
     u<N> -> u<M>    where N < M
-    // yes, this means that arithmetic between different signs of integers is invalid
+    // yes, arithmetic/comparison between different signs is invalid
 
     []mut T -> []let T
 
@@ -25,6 +25,8 @@ implicit:
     ^let T  -> [^]let T
     ^let    -> ^let T
     ^let    -> [^]let T
+
+    fn -> ^let 
 
     [^]mut T -> [^]let T
     [^]mut T -> ^mut T
