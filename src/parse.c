@@ -401,16 +401,16 @@ PNode* parse_for_stmt() {
     PNode* left = parse_simple_stmt();
     if (current()->kind == TOK_KEYWORD_IN) {
         // parse ranged for loop
-        PNode* fl = new_node(for_ranged, PN_STMT_FOR_RANGED);
+        PNode* fl = new_node(for_nd, PN_STMT_for_nD);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
 
-        fl->for_ranged.decl = left;
+        fl->for_nd.decl = left;
         expect(TOK_KEYWORD_IN);
         advance();
-        fl->for_ranged.range = parse_expr();
-        fl->for_ranged.block = parse_do_group();
+        fl->for_nd.range = parse_expr();
+        fl->for_nd.block = parse_do_group();
         return fl;
     } else {
         // parse cstyle loop

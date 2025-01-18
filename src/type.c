@@ -49,7 +49,7 @@ Type type_new_ref(u8 kind, Type pointee, bool mutable) {
 void type_print_graph() {
     PtrMap has_printed;
     ptrmap_init(&has_printed, 128);
-    for_range(t, 0, tg.handles.len) {
+    for_n(t, 0, tg.handles.len) {
         TNode* type_node = type(t);
         if (ptrmap_get(&has_printed, type_node) != PTRMAP_NOT_FOUND) {
             continue;
@@ -163,8 +163,8 @@ void type_condense() {
     bool eq = true;
     while (eq) {
         eq = false;
-        for_range(a, _TYPE_SIMPLE_END, tg.handles.len) {
-            for_range(b, a, tg.handles.len) {
+        for_n(a, _TYPE_SIMPLE_END, tg.handles.len) {
+            for_n(b, a, tg.handles.len) {
                 if (type(a) == type(b)) continue;
                 bool is_eq = type_compare(a, b, 1);
                 type_reset_num(a);
@@ -173,7 +173,7 @@ void type_condense() {
                 eq = eq || is_eq;
             }
         }
-        for_range(from, 0, tg.handles.len) {
+        for_n(from, 0, tg.handles.len) {
             Type to = tg.handles.equiv[from];
             if (to == 0) continue;
             tg.handles.at[from] = tg.handles.at[to];
@@ -186,6 +186,14 @@ void type_attach_name(Type t, string name) {
     tg.handles.names[t] = name;
 }
 
+bool type_has_name(Type t) {
+    return tg.handles.names[t].raw == NULL;
+}
+
+string type_get_name(Type t) {
+    return tg.handles.names[t];
+}
+
 void type_init() {
     tg.handles.len = 0;
     tg.handles.cap = 128;
@@ -195,7 +203,7 @@ void type_init() {
     memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
     memset(tg.handles.names, 0, tg.handles.cap * sizeof(tg.handles.names[0]));
 
-    for_range(i, TYPE_UNKNOWN, _TYPE_SIMPLE_END) {
+    for_n(i, TYPE_UNKNOWN, _TYPE_SIMPLE_END) {
         assert(i == type_new(i));
     }
 

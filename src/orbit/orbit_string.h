@@ -59,14 +59,14 @@ string strprintf(char* format, ...) {
 
 string string_concat(string a, string b) {
     string c = string_alloc(a.len + b.len);
-    for_range(i, 0, a.len) c.raw[i] = a.raw[i];
-    for_range(i, 0, b.len) c.raw[a.len + i] = b.raw[i];
+    for_n(i, 0, a.len) c.raw[i] = a.raw[i];
+    for_n(i, 0, b.len) c.raw[a.len + i] = b.raw[i];
     return c;
 }
 
 void string_concat_buf(string buf, string a, string b) {
-    for_range(i, 0, a.len) buf.raw[i] = a.raw[i];
-    for_range(i, 0, b.len) buf.raw[a.len + i] = b.raw[i];
+    for_n(i, 0, a.len) buf.raw[i] = a.raw[i];
+    for_n(i, 0, b.len) buf.raw[a.len + i] = b.raw[i];
 }
 
 bool string_ends_with(string source, string ending) {
@@ -104,7 +104,7 @@ int string_cmp(string a, string b) {
 
 bool string_eq(string a, string b) {
     if (a.len != b.len) return false;
-    for_range(i, 0, a.len) {
+    for_n(i, 0, a.len) {
         if (a.raw[i] != b.raw[i]) return false;
     }
     return true;

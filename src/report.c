@@ -68,7 +68,7 @@ static string find_line(string source, char* location, usize* line, usize* col) 
 
     char* start_of_current_line = source.raw;
 
-    for_range(i, 0, source.len) {
+    for_n(i, 0, source.len) {
         if (source.raw[i] == '\n') {
             start_of_current_line = &source.raw[i + 1];
             ++*line;
@@ -115,10 +115,10 @@ void emit_report(bool error, string source, string path, string highlight, char*
     }
 
     printf("\n %zu | ", line_num);
-    for_range(i, 0, line.len) {
+    for_n(i, 0, line.len) {
         if (line.raw + i == highlight.raw) {
-            printf(Bold "%s", color);
             // printf(Underline);
+            printf(Bold "%s", color);
         } else if (line.raw + i >= highlight.raw + highlight.len) {
             printf(Reset);
         }
@@ -132,7 +132,7 @@ void emit_report(bool error, string source, string path, string highlight, char*
         printf(" ");
     }
     printf("  |"Bold"%s", color);
-    for_range(i, 0, line.len + 1) {
+    for_n(i, 0, line.len + 1) {
         if (line.raw + i <= highlight.raw) {
             printf(" ");
         } else if (line.raw + i <= highlight.raw + highlight.len) {

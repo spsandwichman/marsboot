@@ -40,7 +40,7 @@ void ptrmap_put(PtrMap* hm, void* key, void* val) {
     }
 
     // search for nearby free slot
-    for_urange(index, 1, min(MAX_SEARCH, hm->cap)) {
+    for_n(index, 1, min(MAX_SEARCH, hm->cap)) {
         size_t i = (index + hash_index) % hm->cap;
         if ((hm->keys[i] == NULL) || hm->keys[hash_index] == key) {
             hm->keys[i] = key;
@@ -76,7 +76,7 @@ void* ptrmap_get(PtrMap* hm, void* key) {
     }
 
     // linear search next slots
-    for_urange(index, 1, min(MAX_SEARCH, hm->cap)) {
+    for_n(index, 1, min(MAX_SEARCH, hm->cap)) {
         size_t i = (index + hash_index) % hm->cap;
         if (hm->keys[i] == NULL) return PTRMAP_NOT_FOUND;
         if (hm->keys[i] == key) return hm->vals[i];
@@ -98,7 +98,7 @@ void ptrmap_remove(PtrMap* hm, void* key) {
     }
 
     // linear search next slots
-    for_urange(index, 1, min(MAX_SEARCH, hm->cap)) {
+    for_n(index, 1, min(MAX_SEARCH, hm->cap)) {
         size_t i = (index + hash_index) % hm->cap;
         if (hm->keys[i] == NULL) return;
         if (hm->keys[hash_index] == key) {

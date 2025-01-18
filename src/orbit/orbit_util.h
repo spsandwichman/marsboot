@@ -30,11 +30,8 @@
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-#define for_range_incl(iterator, start, end) for (intptr_t iterator = (start); iterator <= (end); ++iterator)
-#define for_range(iterator, start, end) for (intptr_t iterator = (start); iterator < (end); ++iterator)
-#define for_reverse(iterator, start, end) for (intptr_t iterator = (start) - 1; iterator >= (end); --iterator)
-
-#define for_urange_incl(iterator, start, end) for (uintptr_t iterator = (start); iterator <= (end); ++iterator)
-#define for_urange(iterator, start, end) for (uintptr_t iterator = (start); iterator < (end); ++iterator)
+#define for_n_eq(iterator, start, end) for (isize iterator = (start); iterator <= (end); ++iterator)
+#define for_n(iterator, start, end) for (isize iterator = (start); iterator < (end); ++iterator)
+#define for_n_reverse(iterator, start, end) for (isize iterator = (start) - 1; iterator >= (end); --iterator)
 
 #define is_pow_2(i) ((i) != 0 && ((i) & ((i)-1)) == 0)

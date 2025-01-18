@@ -95,6 +95,9 @@ Type type_new(u8 kind);
 TNode* type(Type t);
 void type_condense();
 
+bool type_has_name(Type t);
+string type_get_name(Type t);
+
 // ---------------------------------------------------------
 
 typedef struct SemaStmt SemaStmt;
@@ -124,16 +127,28 @@ enum EntityStorageKind {
     STORAGE_EXTERN,
     STORAGE_GLOBAL,
     STORAGE_LOCAL,
-    STORAGE_DEF,
+    STORAGE_COMPTIME, // 'def' decl
+};
+
+enum EntityCheckStatus {
+    CHK_NONE, // has not been checked yet
+    CHK_IN_PROGRESS, // currently being checked. value references to this entity are invalid
+    CHK_IN_PROGRESS_TYPE_AVAILABLE,
+    CHK_DONE,
 };
 
 typedef struct Entity {
     Type type;
     u8 storage;
+    u8 check_status;
     bool mutable;
+
     string name;
     EntityTable* tbl;
+
     SemaStmt* decl;
+    PNode* decl_pnode;
+
     ConstVal constval;
 } Entity;
 
@@ -170,7 +185,7 @@ typedef struct SemaExpr {
     PNode* pnode;
     union {
         ConstVal constval;
-        Type type;
+
     };
 } SemaExpr;
 
@@ -192,4 +207,4 @@ typedef struct SemaStmt {
     };
 } SemaStmt;
 
-Module* sema_check_module(PNode* top);
+Module sema_check_module(PNode* top);

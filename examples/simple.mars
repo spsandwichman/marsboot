@@ -1,3 +1,4 @@
 module simple;
 
-let x: i64 = 10;
+// let y = x + 1;
+let x: int = 0b10;

@@ -33,14 +33,14 @@ int main(int argc, char** argv) {
 
     TokenBuf tb = lex_string(str(buf));
     da_shrink(&tb);
-
     printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
-
+    
     PNode* top = parse_file(tb, NULL_STR);
 
     type_init();
+    Module mod = sema_check_module(top);
 
-    Module* mod = sema_check_module(top);
+    
 
 }
 
@@ -57,7 +57,7 @@ SourceFile ctx_add_file(string path, string text) {
 
 // requires 'text' to be a strict substring of source
 SourceFile* ctx_find_from_substring(char* raw, usize len) {
-    for_range(i, 0, ctx.files.len) {
+    for_n(i, 0, ctx.files.len) {
         SourceFile* src = &ctx.files.at[i];
         if (src->text.raw <= raw && raw <= src->text.raw + src->text.len) {
             return src;

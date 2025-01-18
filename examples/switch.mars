@@ -1,0 +1,56 @@
+switch foo {
+case 1:
+    // each case has implicit 'break;' and its own scope
+    mut y = 1;
+case 4, 5, 6: // match multiple cases
+    mut y = 2;
+case 7, 8..=10: // match ranges
+
+    fallthrough; // fall through to the next case
+case 10:
+    let y = foo / 3 + 10;
+    fallthrough y; // jump to the matching case
+case: // optional 'default' branch
+    foo -= 1;
+}
+
+switch foo
+case 1 {
+    // each case has implicit 'break;' and its own scope
+    mut y = 1;
+}
+case 4, 5, 6 { // match multiple cases
+    mut y = 2;
+}
+case 7, 8..=10 { // match ranges
+
+    fallthrough; // fall through to the next case
+}
+case 10 {
+    let y = foo / 3 + 10;
+    fallthrough y; // jump to the matching case
+}
+case { // optional 'default' branch
+    foo -= 1;
+}
+
+
+switch foo {
+    case 1 {
+        // each case has implicit 'break;' and its own scope
+        mut y = 1;
+    }
+    4, 5, 6 => { // match multiple cases
+        mut y = 2;
+    }
+    7, 8..=10 => { // match ranges
+        fallthrough; // fall through to the next case
+    }
+    10 => {
+        let y = foo / 3 + 10;
+        fallthrough y; // jump to the matching case
+    }
+    else => { // optional 'default' branch
+        foo -= 1;
+    }
+}
