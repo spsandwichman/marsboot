@@ -1,7 +1,10 @@
 #define ORBIT_IMPLEMENTATION
+
 #include "mars.h"
 #include "crash.h"
 #include "sema.h"
+#include "emitjkl.h"
+#include "emitc.h"
 
 int main(int argc, char** argv) {
 #ifndef _WIN32
@@ -40,8 +43,39 @@ int main(int argc, char** argv) {
     type_init();
     Module mod = sema_check_module(top);
 
-    
+    // -----------------------------------
 
+
+    Type vec3 = type_new_record(&mod, TYPE_STRUCT, 3);
+    
+    type_attach_name(vec3, constr("Vec3"));
+    type(vec3)->as_record.at[0].name = constr("x");
+    type(vec3)->as_record.at[0].type = TYPE_I64;
+    type(vec3)->as_record.at[1].name = constr("y");
+    type(vec3)->as_record.at[1].type = TYPE_I64;
+    type(vec3)->as_record.at[2].name = constr("z");
+    type(vec3)->as_record.at[2].type = TYPE_I64;
+
+    // Type llnode = type_new_record(TYPE_STRUCT, 2);
+    // type_attach_name(llnode, constr("LLNode"));
+    // type(llnode)->as_record.at[0].name = constr("data");
+    // type(llnode)->as_record.at[0].type = TYPE_I64;
+    // type(llnode)->as_record.at[1].name = constr("next");
+    // type(llnode)->as_record.at[1].type = type_new_ref(TYPE_POINTER, llnode, true);
+
+    // Type foo = type_new_record(TYPE_STRUCT, 2);
+    // type_attach_name(foo, constr("Foo"));
+    // type(foo)->as_record.at[0].name = constr("vec");
+    // type(foo)->as_record.at[0].type = vec3;
+    // type(foo)->as_record.at[1].name = constr("node");
+    // type(foo)->as_record.at[1].type = llnode;
+
+    // -----------------------------------
+
+    string header = c_header(&mod);
+
+    printf("---------- C ----------\n");
+    printf(str_fmt, str_arg(header));
 }
 
 Context ctx;

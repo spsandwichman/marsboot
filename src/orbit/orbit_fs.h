@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_FS_H
 #define ORBIT_FS_H
 
 #if !defined(PATH_MAX)
@@ -438,3 +438,5 @@ bool fs_write(fs_file* file, void* buf, size_t len) {
     return (size_written == len);
 }
 #endif
+
+#endif // ORBIT_FS_H

@@ -305,7 +305,7 @@ PNode* parse_if_stmt(u8 cont) {
 }
 
 PNode* parse_case_block() {
-    PNode* cb = new_node(switch_case, PN_CASE_BLOCK);
+    PNode* cb = new_node(case_block, PN_CASE_BLOCK);
     expect(TOK_KEYWORD_CASE);
     advance();
     PNodeList matches = list_new(1);
@@ -319,16 +319,8 @@ PNode* parse_case_block() {
             break;
         }
     }
-    cb->switch_case.matches = list_solidify(matches);
-    expect(TOK_COLON);
-    advance();
-
-    PNodeList stmts = list_new(8);
-    while (!match(TOK_KEYWORD_CASE) && !match(TOK_CLOSE_BRACE)) {
-        PNode* stmt = parse_stmt();
-        da_append(&stmts, stmt);
-    }
-    cb->switch_case.sub = list_solidify(stmts);
+    cb->case_block.matches = list_solidify(matches);
+    cb->case_block.sub = parse_do_group();
     return cb;
 }
 
@@ -341,9 +333,9 @@ PNode* parse_switch_stmt(bool is_which) {
 
 
     PNodeList cases = list_new(8);
-    while (!match(TOK_CLOSE_BRACE)) {
-        PNode* switch_case = parse_case_block();
-        da_append(&cases, switch_case);
+    while (!match(TOK_KEYWORD_CASE)) {
+        PNode* case_block = parse_case_block();
+        da_append(&cases, case_block);
     }
 
     advance();
@@ -726,7 +718,7 @@ PNode* parse_atom_terminal(bool allow_none) {
         break;
     case TOK_OPEN_BRACKET:
         if (peek(1)->kind == TOK_CARET) {
-            term = new_node(ref_type, PN_TYPE_HEADLESS_SLICE);
+            term = new_node(ref_type, PN_TYPE_BOUNDLESS_SLICE);
             advance();
             advance();
             expect(TOK_CLOSE_BRACKET);
@@ -1029,7 +1021,7 @@ static u8 bin_kind[_TOK_COUNT] = {
 };
 
 PNode* parse_case_expr() {
-    PNode* cb = new_node(switch_case, PN_CASE_BLOCK);
+    PNode* cb = new_node(case_block, PN_CASE_BLOCK);
     expect(TOK_KEYWORD_CASE);
     advance();
     PNodeList matches = list_new(1);
@@ -1043,10 +1035,10 @@ PNode* parse_case_expr() {
             break;
         }
     }
-    cb->switch_case.matches = list_solidify(matches);
+    cb->case_block.matches = list_solidify(matches);
     expect(TOK_COLON);
     advance();
-    cb->switch_case.sub = parse_expr();
+    cb->case_block.sub = parse_expr();
     return cb;
 }
 
@@ -1060,8 +1052,8 @@ PNode* parse_switch_expr(bool is_which) {
 
     PNodeList cases = list_new(8);
     while (!match(TOK_CLOSE_BRACE)) {
-        PNode* switch_case = parse_case_expr();
-        da_append(&cases, switch_case);
+        PNode* case_block = parse_case_expr();
+        da_append(&cases, case_block);
         if (match(TOK_COMMA)) {
             advance();
             continue;

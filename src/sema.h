@@ -1,14 +1,21 @@
-#pragma once
+#ifndef SEMA_H
+#define SEMA_H
 
 #include "parse.h"
+
+typedef struct Module Module;
 
 typedef u32 Type; // handle
 
 enum TypeKind {
     TYPE_UNKNOWN,
+
+    TYPE_VOID,
+    TYPE_NEVER, // currently unused
     TYPE_BOOL,
     TYPE_DYN,
     TYPE_TYPEID,
+
     TYPE_I8,
     TYPE_U8,
     TYPE_I16,
@@ -20,6 +27,7 @@ enum TypeKind {
     TYPE_F16,
     TYPE_F32,
     TYPE_F64,
+
     TYPE_UNTYPED_INT,
     TYPE_UNTYPED_FLOAT,
     TYPE_UNTYPED_STRING,
@@ -32,11 +40,11 @@ enum TypeKind {
     TYPE_ARRAY_LEN_UNKNOWN,
     TYPE_ENUM,
     TYPE_POINTER,
-    TYPE_HEADLESS_SLICE,
+    TYPE_BOUNDLESS_SLICE,
     TYPE_SLICE,
     TYPE_DISTINCT,
 
-    TYPE_TUPLE,
+    TYPE_TUPLE, // apparently not implemented yet?? lmao
 };
 
 typedef struct TypeRecordField {
@@ -47,7 +55,7 @@ typedef struct TypeRecordField {
 
 typedef struct TypeEnumVariant {
     string name;
-    usize value;
+    isize value;
 } TypeEnumVariant;
 
 typedef struct TNode {
@@ -83,24 +91,33 @@ typedef struct TNode {
 typedef struct TypeGraph {
     struct {
         string* names; // attach a type handle to a name for better error printing
-        Type* equiv;
+        Module** mods; // every type has a module attached to it, where it was declared
         TNode** at;
+        Type* equiv;
         u32 len;
         u32 cap;
     } handles;
 } TypeGraph;
+extern TypeGraph tg;
 
 void type_init();
-Type type_new(u8 kind);
+Type type_new(Module* m, u8 kind);
+Type type_new_record(Module* m, u8 kind, usize len);
+Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
 TNode* type(Type t);
 void type_condense();
 
 bool type_has_name(Type t);
 string type_get_name(Type t);
+void type_attach_name(Type t, string name);
+
+string type_to_string(Type t, bool use_names);
+
+
 
 // ---------------------------------------------------------
 
-typedef struct SemaStmt SemaStmt;
+typedef struct SemaNode SemaNode;
 typedef struct Entity Entity;
 typedef struct EntityTable EntityTable;
 
@@ -146,7 +163,7 @@ typedef struct Entity {
     string name;
     EntityTable* tbl;
 
-    SemaStmt* decl;
+    SemaNode* decl;
     PNode* decl_pnode;
 
     ConstVal constval;
@@ -162,49 +179,40 @@ typedef struct EntityTable {
 
 // ---------------------------------------------------------
 
-da_typedef(SemaStmt);
+da_typedef(SemaNode);
 
 typedef struct Module {
     string name;
     EntityTable* global;
-    da(SemaStmt) decls;
+    da(SemaNode) decls;
 } Module;
 
 enum SemaExprKind {
     SEXPR_INVALID = 0,
-
-    SEXPR_CONSTVAL,
-    SEXPR_ENTITY,
-    SEXPR_TYPE,
 };
 
-typedef struct SemaExpr {
+typedef struct SemaNode {
     u8 kind;
-    bool mutable : 1;
     Type type;
     PNode* pnode;
     union {
         ConstVal constval;
-
-    };
-} SemaExpr;
-
-enum SemaStmtKind {
-    SSTMT_INVALID = 0,
-
-    SSTMT_DECL,
-};
-
-typedef struct SemaStmt {
-    u8 kind;
-    PNode* pnode;
-
-    union {
         struct {
             Entity* entity;
-            SemaExpr* value;
+            SemaNode* value;
         } decl;
     };
-} SemaStmt;
+} SemaNode;
+
+enum SemaNodeKind {
+    SN_INVALID = 0,
+
+    SN_CONSTVAL,
+    SN_ENTITY,
+
+    SN_DECL,
+};
 
 Module sema_check_module(PNode* top);
+
+#endif // SEMA_H

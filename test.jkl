@@ -1,0 +1,30 @@
+TYPE i8:   BYTE
+TYPE u8:  UBYTE
+TYPE i16:   INT
+TYPE u16:  UINT
+TYPE i32:  LONG
+TYPE u32: ULONG
+TYPE i64:  QUAD
+TYPE u64: UQUAD
+TYPE typeid: UWORD
+TYPE bool: UBYTE
+STRUCT dyn
+    data: ^VOID,
+    id: typeid,
+END
+
+STRUCT Vec3
+    x: i64,
+    y: i64,
+    z: i64,
+END
+
+STRUCT LLNode
+    data: i64,
+    next: ^LLNode,
+END
+
+STRUCT Foo
+    vec: Vec3,
+    node: LLNode,
+END

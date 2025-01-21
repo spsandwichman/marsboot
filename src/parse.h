@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PARSE_H
+#define PARSE_H
 
 #include "mars.h"
 
@@ -267,7 +268,7 @@ enum PNodeKind {
 
     PN_TYPE_TYPEOF,
     PN_TYPE_POINTER,
-    PN_TYPE_HEADLESS_SLICE,
+    PN_TYPE_BOUNDLESS_SLICE,
     PN_TYPE_SLICE,
     PN_TYPE_ARRAY,
     PN_TYPE_DISTINCT,
@@ -405,7 +406,7 @@ typedef struct PNode {
         struct {
             PNode* matches; // list of exprs
             PNode* sub;
-        } switch_case;
+        } case_block;
         struct {
             PNode* callee;
             PNode* param_list;
@@ -439,3 +440,5 @@ PNode* parse_string();
 PNode* parse_stmt();
 
 PNode* parse_expr();
+
+#endif // PARSE_H

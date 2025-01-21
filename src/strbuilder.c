@@ -11,6 +11,15 @@ void sb_destroy(StringBuilder* sb) {
     *sb = (StringBuilder){0};
 }
 
+void sb_append_char(StringBuilder* sb, char c) {
+    if (sb->len + 1 > sb->cap) {
+        sb->buffer = realloc(sb->buffer, sb->cap * 2);
+        sb->cap *= 2;
+    }
+    sb->buffer[sb->len] = c;
+    sb->len += 1;
+}
+
 void sb_append(StringBuilder* sb, string s) {
     if (sb->len + s.len > sb->cap) {
         sb->buffer = realloc(sb->buffer, sb->cap * 2);
@@ -21,12 +30,14 @@ void sb_append(StringBuilder* sb, string s) {
 }
 
 void sb_append_c(StringBuilder* sb, const char* s) {
-    if (sb->len + strlen(s) > sb->cap) {
-        sb->buffer = realloc(sb->buffer, sb->cap * 2);
+    size_t len = strlen(s);
+    if (sb->len + len > sb->cap) {
         sb->cap *= 2;
+        sb->cap += len;
+        sb->buffer = realloc(sb->buffer, sb->cap);
     }
-    memcpy(&sb->buffer[sb->len], s, strlen(s));
-    sb->len += strlen(s);
+    memcpy(&sb->buffer[sb->len], s, len);
+    sb->len += len;
 }
 void sb_printf(StringBuilder* sb, const char* fmt, ...) {
     va_list varargs;

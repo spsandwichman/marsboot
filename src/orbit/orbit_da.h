@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_DA_H
 #define ORBIT_DA_H
 
 #include "crash.h"
@@ -106,3 +106,5 @@
         keep && count != size; \
         keep = !keep, count++) \
       for(item = array indexer; keep; keep = !keep)
+
+#endif // ORBIT_DA_H

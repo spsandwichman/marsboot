@@ -30,10 +30,10 @@ stmt =
     | fnproto stmt_block
     | 'if' expr do_block [else]
     | 'while' expr do_block
-    | 'switch' expr '{' {case_block} '}'
+    | 'switch' expr {case_block}
+    | 'which' expr {case_block} 
     | 'when' expr do_block [when_else]
-    | 'when ' expr ';' (* like static_assert! *)
-    | 'which' expr '{' {case_block} '}'
+    (* | 'when ' expr ';' *)
     | 'for' simple_stmt ';' expr ';' simple_stmt do_block
     | 'for' ('let' | 'mut') ident [':' type] 'in' expr do_block
     | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
@@ -46,7 +46,7 @@ stmt =
 
 else =
     | 'else' do_block
-    | 'else' 'if' expr do_block else
+    | 'else' 'if' expr do_block [else]
     ;
 
 when_else =
@@ -61,7 +61,7 @@ do_block =
 
 stmt_block = "{" {stmt} "}";
 
-case_block = 'case' list<expr> ':' {stmt};
+case_block = 'case' list<expr> do_block;
 
 (* in levels of precedence *)
 binop =

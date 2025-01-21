@@ -41,19 +41,23 @@ fn control_flow(foo: int) {
         }
     }
 
-    switch foo {
-    case 1:
+    switch foo
+    case 1 {
         // each case has implicit 'break;' and its own scope
         mut y = 1;
-    case 4, 5, 6: // match multiple cases
+    }
+    case 4, 5, 6 { // match multiple cases
         mut y = 2;
-    case 7, 8..=10: // match ranges
+    }
+    case 7, 8..=10 { // match ranges
 
         fallthrough; // fall through to the next case
-    case 10:
+    }
+    case 10 {
         let y = foo / 3 + 10;
         fallthrough y; // jump to the matching case
-    case: // optional 'default' branch
+    }
+    case { // optional 'default' branch
         foo -= 1;
     }
 

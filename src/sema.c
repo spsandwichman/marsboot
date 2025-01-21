@@ -39,12 +39,12 @@ Entity* etbl_put(EntityTable* etbl, string name) {
     return ent;
 }
 
-SemaExpr* new_expr(Module* m, PNode* pn, u8 kind) {
-    SemaExpr* expr = malloc(sizeof(*expr));
-    memset(expr, 0, sizeof(*expr));
-    expr->kind = kind;
-    expr->pnode = pn;
-    return expr;
+SemaNode* new_node(Module* m, PNode* pn, u8 kind) {
+    SemaNode* node = malloc(sizeof(*node));
+    memset(node, 0, sizeof(*node));
+    node->kind = kind;
+    node->pnode = pn;
+    return node;
 }
 
 static u64 eval_integer(PNode* pn, char* raw, usize len) {
@@ -94,11 +94,11 @@ static u64 eval_integer(PNode* pn, char* raw, usize len) {
     return value;
 }
 
-SemaExpr* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
+SemaNode* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     // get integer value
     i64 value = eval_integer(pn, pn->base.raw, pn->base.len);
 
-    SemaExpr* integer = new_expr(m, pn, SEXPR_CONSTVAL);
+    SemaNode* integer = new_node(m, pn, SN_CONSTVAL);
 
     if (expected == TYPE_UNKNOWN) {
         expected = TYPE_UNTYPED_INT;
@@ -113,10 +113,12 @@ SemaExpr* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn, Type expec
     return integer;
 }
 
-SemaExpr* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
+SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     switch (pn->base.kind) {
     case PN_EXPR_INTEGER:
         return check_expr_integer(m, etbl, pn, expected);
+    default:
+        report_pnode(true, pn, "expected valid expression");
     }
     TODO("");
 }
@@ -163,14 +165,7 @@ Type ingest_type(Module* m, EntityTable* etbl, PNode* pn) {
     return t;
 }
 
-SemaStmt* new_stmt(Module* m, u8 kind) {
-    SemaStmt* stmt = malloc(sizeof(*stmt));
-    memset(stmt, 0, sizeof(*stmt));
-    stmt->kind = kind;
-    return stmt;
-}
-
-SemaStmt* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
     string name = pnode_span(pstmt->decl.ident);
 
@@ -189,7 +184,7 @@ SemaStmt* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     }
 
     u8 decl_kind = pstmt->decl.kind;
-    SemaStmt* stmt = new_stmt(m, SSTMT_DECL);
+    SemaNode* stmt = new_node(m, pstmt, SN_DECL);
 
     stmt->decl.entity = ent;
     stmt->decl.value = check_expr(m, etbl, pstmt->decl.value, ent->type);
@@ -198,20 +193,18 @@ SemaStmt* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     return stmt;
 }
 
-SemaStmt* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
+SemaNode* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_STMT_DECL:
         return check_var_decl(m, etbl, pstmt);
     default:
-        printf("attempt check on stmt %d\n", pstmt->base.kind);
+        report_pnode(true, pstmt, "expected statement");
     }
     TODO("lmao XD");
 }
 
 Module sema_check_module(PNode* top) {
-    Module mod = {
-        .name = constr("placeholder"),
-    };
+    Module mod;
     assert(top->base.kind == PN_LIST);
     da_init(&mod.decls, top->list.len);
     mod.global = etbl_new(NULL);
@@ -230,6 +223,9 @@ Module sema_check_module(PNode* top) {
             Entity* ent = etbl_put(mod.global, ident_name);
             ent->check_status = CHK_NONE;
             ent->decl_pnode = tls;
+            break;
+        default:
+            UNREACHABLE;
         }
     }
 

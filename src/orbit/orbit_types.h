@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_TYPES_H
 #define ORBIT_TYPES_H
 
 typedef uint64_t u64;
@@ -20,3 +20,5 @@ typedef _Float16 f16;
 typedef uint8_t bool;
 #define false ((bool)0)
 #define true ((bool)1)
+
+#endif // ORBIT_TYPES_H

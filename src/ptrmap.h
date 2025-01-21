@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PTRMAP_H
+#define PTRMAP_H
 
 // ptrmap associates a void* with another void*.
 
@@ -20,3 +21,5 @@ void ptrmap_destroy(PtrMap* hm);
 void ptrmap_put(PtrMap* hm, void* key, void* val);
 void ptrmap_remove(PtrMap* hm, void* key);
 void* ptrmap_get(PtrMap* hm, void* key);
+
+#endif // PTRMAP_H

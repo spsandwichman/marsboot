@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_UTIL_H
 #define ORBIT_UTIL_H
 
 #ifdef _MSC_VER
@@ -35,3 +35,5 @@
 #define for_n_reverse(iterator, start, end) for (isize iterator = (start) - 1; iterator >= (end); --iterator)
 
 #define is_pow_2(i) ((i) != 0 && ((i) & ((i)-1)) == 0)
+
+#endif // ORBIT_UTIL_H

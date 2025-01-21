@@ -1,68 +1,233 @@
-#include "mars.h"
-#include "sema.h"
+#include "emitc.h"
 #include "strbuilder.h"
 
-StringBuilder* sb;
+/* C emission.
 
-static const char* const c_prelude = 
-    "#include <stdint.h>\n"
-    "\n"
-    "typedef int8_t   i8;\n"
-    "typedef int16_t  i16;\n"
-    "typedef int32_t  i32;\n"
-    "typedef int64_t  i64;\n"
-    "typedef uint8_t  u8;\n"
-    "typedef uint16_t u16;\n"
-    "typedef uint32_t u32;\n"
-    "typedef uint64_t u64;\n"
-    "typedef _Float16 f16;\n"
-    "typedef float    f32;\n"
-    "typedef double   f64;\n"
-    "\n"
-    "#define false 0\n"
-    "#define true  1\n"
-    "typedef uint8_t bool;\n"
-    "\n"
-    "typedef uint64_t typeid;\n"
-    "\n"
-    "typedef struct {\n"
-    "    void* _data_;\n"
-    "    typeid _typeid_;\n"
-    "} dyn;\n"
+    all names get mangled as {module}_{entity}
+    enum variants get mangled as {module}_{type}_{variant}
+    enum types are defined under the `enum` namespace, 
+    but are globally `typedef`d to their underlying type. for example:
+        module foo;
+        def Bar = enum u8 {
+            A, B, C
+        };
+    gets emitted as:
+        enum foo_Bar {
+            foo_Bar_A = 0, foo_Bar_B = 1, foo_Bar_C = 2
+        };
+        typedef u8 foo_Bar;
+
+    anonymous names get mangled as _{module}_anon_{rand}
+        where {rand} is some sort of random but unique value,
+        often a pointer or internal handle of some kind
+
+*/
+
+static StringBuilder* sb;
+static Module* m;
+
+static void c_emit_mangled(string name) {
+    sb_append(sb, m->name);
+    sb_append_char(sb, '_');
+    sb_append(sb, name);
+}
+
+static void c_emit_mangled_variant(Type t, string name) {
+    sb_append(sb, m->name);
+    sb_append_char(sb, '_');
+    sb_append(sb, name);
+}
+
+// included in every module's header file.
+static const char* const builtin_prelude = 
+    "#ifndef MARS_BUILTINS\n"
+    "    #define MARS_BUILTINS\n"
+    "    #include <stdint.h>\n"
+    "    typedef int8_t   i8;\n"
+    "    typedef int16_t  i16;\n"
+    "    typedef int32_t  i32;\n"
+    "    typedef int64_t  i64;\n"
+    "    typedef uint8_t  u8;\n"
+    "    typedef uint16_t u16;\n"
+    "    typedef uint32_t u32;\n"
+    "    typedef uint64_t u64;\n"
+    "    typedef _Float16 f16;\n" // f16 causes problems on some platforms/compilers, should only emit if needed
+    "    typedef float    f32;\n"
+    "    typedef double   f64;\n"
+    "    typedef uint8_t  bool;\n"
+    "    typedef uint64_t typeid;\n"
+    "    typedef struct {\n"
+    "        void* data;\n"
+    "        typeid id;\n"
+    "    } dyn;\n"
+    "    #define false (bool)0\n"
+    "    #define true  (bool)1\n"
+    "#endif // MARS_BUILTINS\n\n"
 ;
 
-void c_emit_prelude() {
-    sb_append_c(sb, c_prelude);
-}
-
-void c_emit_typename(Type t) {
-    switch (t) {
-    case TYPE_UNKNOWN: CRASH("emitting unknown type"); break;
-    case TYPE_BOOL: sb_append_c(sb, "bool"); break;
-    case TYPE_DYN: sb_append_c(sb, "dyn"); break;
-    case TYPE_TYPEID: sb_append_c(sb, "typeid"); break;
-    case TYPE_I8: sb_append_c(sb,  "i8"); break;
-    case TYPE_I16: sb_append_c(sb, "i16"); break;
-    case TYPE_I32: sb_append_c(sb, "i32"); break;
-    case TYPE_I64: sb_append_c(sb, "i64"); break;
-    case TYPE_U8:  sb_append_c(sb, "u8"); break;
-    case TYPE_U16: sb_append_c(sb, "u16"); break;
-    case TYPE_U32: sb_append_c(sb, "u32"); break;
-    case TYPE_U64: sb_append_c(sb, "u64"); break;
-    case TYPE_F16: sb_append_c(sb, "f16"); break;
-    case TYPE_F32: sb_append_c(sb, "f32"); break;
-    case TYPE_F64: sb_append_c(sb, "f64"); break;
-    default:
-        if (type_has_name(t)) {
-            sb_append(sb, type_get_name(t));
-        } else {
-            sb_printf(sb, "_Type_%d", t);
-        }
-        break;
+static void c_emit_type(Type t, bool force_full_type) {
+    if (!force_full_type && type_has_name(t)) {
+        sb_append(sb, type_get_name(t));
+        return;
     }
+
+    switch(type(t)->kind) {
+    case TYPE_STRUCT:
+        sb_append_c(sb, "struct ");
+        if (force_full_type && type_has_name(t)) {
+            sb_append(sb, type_get_name(t));
+        }
+        sb_append_c(sb, "{\n");
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField* field = &type(t)->as_record.at[i];
+            sb_append_c(sb, "    ");
+            c_emit_declaration(false, field->name, field->type, false);
+            sb_append_c(sb, ";\n");
+        }
+        sb_append_c(sb, "}");
+        break;
+    case TYPE_UNION:
+        sb_append_c(sb, "union {\n");
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField* field = &type(t)->as_record.at[i];
+            sb_append_c(sb, "    ");
+            c_emit_declaration(false, field->name, field->type, false);
+            sb_append_c(sb, ";\n");
+        }
+        sb_append_c(sb, "}");
+        break;
+    case TYPE_SLICE:
+    case TYPE_ENUM:
+    default:
+        UNREACHABLE;
+    }
+
 }
 
-void c_emit_typename_ptr(Type t) {
-    c_emit_typename(t);
-    sb_append_c(sb, "*");
+static bool is_standalone_type(Type t) {
+    if (t < _TYPE_SIMPLE_END || type_has_name(t)) {
+        return true;
+    }
+
+    switch (type(t)->kind) {
+    case TYPE_STRUCT:
+    case TYPE_UNION:
+    case TYPE_ENUM:
+    case TYPE_SLICE:
+        return true;
+    }
+    return false;
+}
+
+da_typedef(Type);
+
+static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* declarators) {
+    if (declarators->len == 0) {
+        if (!mutable) {
+            sb_append_c(sb, "const ");
+        }
+        sb_append(sb, ident);
+        return;
+        return;
+    }
+    Type declarator = declarators->at[--declarators->len];
+
+    switch (type(declarator)->kind) {
+    case TYPE_POINTER:
+        
+        if (!type(declarator)->as_ref.mutable) {
+            sb_append_c(sb, "const ");
+        }
+        sb_append_c(sb, "(*");
+        c_emit_declarator(mutable, ident, base, declarators);
+        sb_append_c(sb, ")");
+        break;
+    case TYPE_ARRAY:
+        c_emit_declarator(mutable, ident, base, declarators);
+        sb_printf(sb, "[%zu]", type(declarator)->as_array.len);
+        break;
+    default:
+        UNREACHABLE;
+    }
+    
+}
+
+
+// force_full_type is used for type declarations and stuff
+void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type) {
+    static da(Type) declarators;
+    if (declarators.cap == 0) {
+        da_init(&declarators, 4);
+    }
+    
+    // find base type
+    Type base = t;
+    while (!is_standalone_type(base)) {
+        da_append(&declarators, base);
+        switch (type(base)->kind) {
+        case TYPE_POINTER:
+            base = type(base)->as_ref.pointee;
+            break;
+        case TYPE_ARRAY:
+            base = type(base)->as_array.sub;
+            break;
+        default:
+            break;
+        }
+    }
+
+    // emit base type
+    c_emit_type(base, false);
+    sb_append_c(sb, " ");
+
+    // emit declarators
+    c_emit_declarator(mutable, ident, base, &declarators);
+
+    da_destroy(&declarators);
+}
+
+static char to_upper(char c) {
+    if ('a' <= c && c <= 'z') return c - 'a' + 'A';
+    return c;
+}
+
+static void c_emit_header_define_symbol(string name) {
+    // "foobar" -> "FOOBAR_H"
+    for_n(i, 0, name.len) {
+        sb_append_char(sb, to_upper(name.raw[i]));
+    }
+    sb_append_c(sb, "_H");
+}
+
+static void c_header_internal(Module* m) {
+    sb_append_c(sb, "#ifndef ");
+    c_emit_header_define_symbol(m->name);
+    sb_append_c(sb, "\n#define ");
+    c_emit_header_define_symbol(m->name);
+    sb_append_c(sb, "\n\n");
+
+    // builtin types
+    sb_append_c(sb, builtin_prelude);
+
+    // emit predecl typedefs
+    
+    sb_append_c(sb, "#endif // ");
+    c_emit_header_define_symbol(m->name);
+    sb_append_c(sb, "\n");
+
+}
+
+string c_header(Module* mod) {
+    type_condense();
+
+    StringBuilder strbuilder;
+    sb = &strbuilder;
+    m = mod;
+
+    sb_init(sb);
+    c_header_internal(m);
+
+    string s = string_alloc(sb->len);
+    sb_write(sb, s.raw);
+    return s;
 }

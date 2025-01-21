@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_H
 #define ORBIT_H
 
 // orbit systems utility header
@@ -23,3 +23,5 @@
 #include "orbit/orbit_da.h"
 #include "orbit/orbit_string.h"
 #include "orbit/orbit_fs.h"
+
+#endif // ORBIT_H

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CRASH_H
+#define CRASH_H
 
 #include <stdnoreturn.h>
 
@@ -12,3 +13,5 @@ void init_signal_handler();
 #endif
 
 noreturn void crash(char* error, ...);
+
+#endif // CRASH_H

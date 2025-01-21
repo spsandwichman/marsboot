@@ -1,4 +1,4 @@
-#pragma once
+#ifndef ORBIT_STRING_H
 #define ORBIT_STRING_H
 
 // strings and string-related utils.
@@ -136,3 +136,5 @@ void printstr(string str) {
     printn(str.raw, str.len);
 }
 #endif
+
+#endif // ORBIT_STRING_H
