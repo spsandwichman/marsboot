@@ -193,6 +193,7 @@ enum SemaExprKind {
 
 typedef struct SemaNode {
     u8 kind;
+    bool mutable;
     Type type;
     PNode* pnode;
     union {

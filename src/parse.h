@@ -160,7 +160,7 @@ enum TokenKind {
 
 extern const char* token_kind_name[];
 
-TokenBuf lex_string(string text);
+TokenBuf lex_string(string text, string path);
 
 enum PNodeKind {
     PN_INVALID,

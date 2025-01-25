@@ -17,25 +17,31 @@
         };
         typedef u8 foo_Bar;
 
-    anonymous names get mangled as _{module}_anon_{rand}
+    anonymous entities get mangled as _{module}_anon_{rand}
         where {rand} is some sort of random but unique value,
         often a pointer or internal handle of some kind
 
 */
 
 static StringBuilder* sb;
-static Module* m;
 
-static void c_emit_mangled(string name) {
+static string mangled(Module* m, string name) {
     sb_append(sb, m->name);
     sb_append_char(sb, '_');
     sb_append(sb, name);
 }
 
-static void c_emit_mangled_variant(Type t, string name) {
+static string mangled_variant(Module* m, Type t, string name) {
     sb_append(sb, m->name);
     sb_append_char(sb, '_');
     sb_append(sb, name);
+}
+
+static string mangled_anon(Module* m, void* rand) {
+    sb_append_char(sb, '_');
+    sb_append(sb, m->name);
+    sb_append_c(sb, "_anon_");
+    sb_printf(sb, "%zu", rand);
 }
 
 // included in every module's header file.
@@ -222,10 +228,9 @@ string c_header(Module* mod) {
 
     StringBuilder strbuilder;
     sb = &strbuilder;
-    m = mod;
 
     sb_init(sb);
-    c_header_internal(m);
+    c_header_internal(mod);
 
     string s = string_alloc(sb->len);
     sb_write(sb, s.raw);

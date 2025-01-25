@@ -1,0 +1,22 @@
+module syscall;
+
+when builtin::arch == .x86_64;
+when builtin::system == .linux;
+
+fn read(fd: int, buf: []let u8) -> int {
+    mut retval: int;
+   
+    let ptr = buf.raw;
+    let len = buf.len;
+    // compiler infers that ins = {fd, ptr, len} and outs = {retval}
+    // register allocator works around the syscall and register defs/uses here
+    asm {
+        mov rax, 0x01
+        mov rdi, {fd}
+        mov rsi, {ptr}
+        mov rdx, {len}
+        syscall
+        mov {retval}, rax
+    }
+    return retval;
+}

@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
     ctx_add_file(str(argv[1]), str(buf));
 
-    TokenBuf tb = lex_string(str(buf));
+    TokenBuf tb = lex_string(str(buf), str(argv[1]));
     da_shrink(&tb);
     printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
     
@@ -46,15 +46,15 @@ int main(int argc, char** argv) {
     // -----------------------------------
 
 
-    Type vec3 = type_new_record(&mod, TYPE_STRUCT, 3);
+    // Type vec3 = type_new_record(&mod, TYPE_STRUCT, 3);
     
-    type_attach_name(vec3, constr("Vec3"));
-    type(vec3)->as_record.at[0].name = constr("x");
-    type(vec3)->as_record.at[0].type = TYPE_I64;
-    type(vec3)->as_record.at[1].name = constr("y");
-    type(vec3)->as_record.at[1].type = TYPE_I64;
-    type(vec3)->as_record.at[2].name = constr("z");
-    type(vec3)->as_record.at[2].type = TYPE_I64;
+    // type_attach_name(vec3, constr("Vec3"));
+    // type(vec3)->as_record.at[0].name = constr("x");
+    // type(vec3)->as_record.at[0].type = TYPE_I64;
+    // type(vec3)->as_record.at[1].name = constr("y");
+    // type(vec3)->as_record.at[1].type = TYPE_I64;
+    // type(vec3)->as_record.at[2].name = constr("z");
+    // type(vec3)->as_record.at[2].type = TYPE_I64;
 
     // Type llnode = type_new_record(TYPE_STRUCT, 2);
     // type_attach_name(llnode, constr("LLNode"));
@@ -72,10 +72,10 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-    string header = c_header(&mod);
+    // string header = jkl_header(&mod);
 
-    printf("---------- C ----------\n");
-    printf(str_fmt, str_arg(header));
+    // printf("---------- C ----------\n");
+    // printf(str_fmt, str_arg(header));
 }
 
 Context ctx;

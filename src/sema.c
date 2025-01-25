@@ -22,7 +22,7 @@ EntityTable* etbl_new(EntityTable* parent) {
 }
 
 Entity* etbl_search(EntityTable* etbl, string name) {
-    if (etbl != NULL) return NULL;
+    if (etbl == NULL) return NULL;
     foreach (Entity* e, *etbl) {
         if (string_eq(e->name, name)) {
             return e;
@@ -117,6 +117,8 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     switch (pn->base.kind) {
     case PN_EXPR_INTEGER:
         return check_expr_integer(m, etbl, pn, expected);
+    case PN_EXPR_ADD:
+        // return check_expr_binary_op(m, etbl, pn, expected);
     default:
         report_pnode(true, pn, "expected valid expression");
     }
@@ -150,11 +152,16 @@ static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
     return TYPE_UNKNOWN;
 }
 
-static Type normalize_untyped(Type t) {
+static Type normalize_untyped(Module* m, Type t) {
+    static Type default_string_type = 0;
+    if (default_string_type == 0) {
+        default_string_type = type_new_ref(m, TYPE_SLICE, TYPE_U8, false);
+    }
+
     switch (t) {
     case TYPE_UNTYPED_FLOAT: return TYPE_F64;
     case TYPE_UNTYPED_INT: return TYPE_I64;
-    case TYPE_UNTYPED_STRING: TODO("");
+    case TYPE_UNTYPED_STRING: return default_string_type;
     }
     return t;
 }
@@ -169,15 +176,17 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
     string name = pnode_span(pstmt->decl.ident);
 
-    if (etbl_search(etbl, name)) {
+    Entity* ent = etbl_search(etbl, name);
+    if ((etbl == m->global && ent->decl_pnode != pstmt) || (etbl != m->global && ent != NULL)) {
         report_pnode(true, pstmt->decl.ident, "name already declared");
+    } else {
+        ent = etbl_put(etbl, name);
     }
-    Entity* ent = etbl_put(etbl, name);
     ent->check_status = CHK_IN_PROGRESS;
     ent->mutable = pstmt->decl.kind == DECLKIND_MUT;
     ent->decl_pnode = pstmt;
-
     ent->type = TYPE_UNKNOWN;
+
     if (pstmt->decl.type) {
         ent->type = ingest_type(m, etbl, pstmt->decl.type);
         ent->check_status = CHK_IN_PROGRESS_TYPE_AVAILABLE;
@@ -189,6 +198,8 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     stmt->decl.entity = ent;
     stmt->decl.value = check_expr(m, etbl, pstmt->decl.value, ent->type);
     ent->type = stmt->decl.value->type;
+    ent->check_status = CHK_DONE;
+    stmt->type = TYPE_VOID;
 
     return stmt;
 }
@@ -199,8 +210,8 @@ SemaNode* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
         return check_var_decl(m, etbl, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement");
+        return NULL;
     }
-    TODO("lmao XD");
 }
 
 Module sema_check_module(PNode* top) {

@@ -3,6 +3,7 @@
 typedef struct Lexer {
     TokenBuf* tb;
     string text;
+    string path;
     u32 cursor;
     char current;
 } Lexer;
@@ -15,7 +16,7 @@ const char* token_kind_name[] = {
 
 static void tokenize(Lexer* l);
 
-TokenBuf lex_string(string text) {
+TokenBuf lex_string(string text, string path) {
     if (text.len > UINT32_MAX) {
         CRASH("cannot lex string larger than 4GiB");
     }
@@ -26,6 +27,7 @@ TokenBuf lex_string(string text) {
     Lexer l = {0};
     l.tb = &tokenbuf;
     l.text = text;
+    l.path = path;
     l.cursor = 0;
     l.current = text.raw[0];
 
@@ -118,8 +120,21 @@ static bool is_base_digit(char c, u64 base) {
     }
 }
 
+static void report_lexer(Lexer* l, bool error, u64 offset, char* message, ...) {
+    va_list args;
+    va_start(args, message);
+
+    string highlight = {l->text.raw + l->cursor + offset, 1};
+
+    emit_report(error, l->text, l->path, highlight, message, args);
+    va_end(args);
+}
+
 static u64 scan_integer_base(Lexer* l, u64 base, u64 start_at) {
     u64 len = start_at;
+    if (!is_base_digit(peek(l, len), base)) {
+        report_lexer(l, true, start_at, "expected base %llu digit", base);
+    }
     while (is_base_digit(peek(l, len), base)) {
         len++;
     }
