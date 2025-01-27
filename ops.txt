@@ -3,6 +3,7 @@ common type categories for this document:
     Numeric: any integer, float, or pointer.
     Float: any floating point number
     Integer: any integer
+    Unsigned: any unsigned integer
     IntLike: any integer or pointer.
 
 
@@ -13,38 +14,44 @@ note:
 
 operations:
 
-    <T> + <T>  => <T>       where T: IntLike | Float
-    <T> - <T>  => <T>       where T: IntLike | Float
-    <T> * <T>  => <T>       where T: IntLike | Float
-    <T> / <T>  => <T>       where T: IntLike | Float
-    <T> % <T>  => <T>       where T: IntLike | Float
-    <T> %% <T> => <T>       where T: IntLike | Float
+    <T> + <T>  -> <T>       where T: IntLike
+    <T> - <T>  -> <T>       where T: IntLike
+    <T> * <T>  -> <T>       where T: IntLike
+    <T> / <T>  -> <T>       where T: IntLike
+    <T> % <T>  -> <T>       where T: IntLike
+    <T> %% <T> -> <T>       where T: IntLike
 
-    <T> & <T>  => <T>       where T: IntLike
-    <T> | <T>  => <T>       where T: IntLike
-    <T> ~| <T> => <T>       where T: IntLike
-    <T> ~ <T>  => <T>       where T: IntLike
-    <T> << <T> => <T>       where T: IntLike
-    <T> >> <T> => <T>       where T: IntLike
+    <T> + <T>  -> <T>       where T: Float
+    <T> - <T>  -> <T>       where T: Float
+    <T> * <T>  -> <T>       where T: Float
+    <T> / <T>  -> <T>       where T: Float
 
-    <T> == <T> => <bool>    where T: Base
-    <T> != <T> => <bool>    where T: Base
-    <T> > <T>  => <bool>    where T: Base
-    <T> < <T>  => <bool>    where T: Base
-    <T> >= <T> => <bool>    where T: Base
-    <T> <= <T> => <bool>    where T: Base
+    <T> & <T>  -> <T>       where T: IntLike
+    <T> | <T>  -> <T>       where T: IntLike
+    <T> ~| <T> -> <T>       where T: IntLike
+    <T> ~ <T>  -> <T>       where T: IntLike
 
-    if two compatible types are combined in a binary operation,
+    <T> == <T> -> <bool>    where T: Base
+    <T> != <T> -> <bool>    where T: Base
+    <T> > <T>  -> <bool>    where T: Numeric
+    <T> < <T>  -> <bool>    where T: Numeric
+    <T> >= <T> -> <bool>    where T: Base
+    <T> <= <T> -> <bool>    where T: Base
+
+    if two compatible types are combined in the above operations,
     a low priority type is converted to a higher priority type.
     if the two types are of equal priority, the operation is
-    invalid and must be
+    invalid and one side must be explicitly cast.
     implicit cast priority:
-        [^]let T, [^]mut T, ^let T, ^mut T
-        i64, u64, f64
-        i32, u32, f32
-        i16, u16, f16
-        i8, u8
-        bool
+        6: [^]let T, [^]mut T, ^let T, ^mut T
+        5: ^let, ^mut,
+        4: i64, u64, f64
+        3: i32, u32, f32
+        2: i16, u16, f16
+        1: i8, u8
+        
+    <T> << <U> -> <T>       where T: IntLike, U: UnsignedInteger
+    <T> >> <U> -> <T>       where T: IntLike, U: UnsignedInteger
 
     <bool> && <bool> => <bool>
     <bool> || <bool> => <bool>
@@ -53,7 +60,7 @@ operations:
     -<T>    => <T>          where T: Numeric
     ~<T>    => <T>          where T: IntLike
     !<bool> => <bool>
-    ?<T>    => <bool>       where T: IntLike | Bool
+    ?<T>    => <bool>       where T: IntLike
 
     cast(A) <B>    => <A>
     bitcast(A) <B> => <A>   where sizeof A == sizeof B

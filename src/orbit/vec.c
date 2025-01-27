@@ -25,21 +25,23 @@ void _vec_reserve(_VecGeneric* v, size_t stride, size_t slots) {
     }
 }
 
-void _vec_append(_VecGeneric* v, size_t stride, void* element) {
-    if (1 + v->len > v->cap) {
-        v->cap *= 2;
-        v->at = realloc(v->at, v->cap * stride);
-    }
-    memcpy(v->at + v->len * stride, element, stride);
-    ++v->len;
-}
-
-// these can easily be macros, but i want to keep all implementations in this file.
-// any compiler worth its salt should be able to inline this no trouble
-void _vec_clear(_VecGeneric* v) {
-    v->len = 0;
-}
 
 void _vec_destroy(_VecGeneric* v) {
+    free(v->at);
     *v = (_VecGeneric){0};
+}
+
+Vec_typedef(int);
+
+static void test() {
+
+    Vec(int) v = vec_new(int, 10);
+    vec_append(&v, 1);
+    vec_append(&v, 2);
+    vec_append(&v, 3);
+    vec_append(&v, 4);
+
+    for_vec(int x, &v) {
+        printf("%d\n", x);
+    }
 }

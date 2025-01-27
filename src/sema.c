@@ -168,7 +168,7 @@ static Type normalize_untyped(Module* m, Type t) {
 
 Type ingest_type(Module* m, EntityTable* etbl, PNode* pn) {
     Type t = ingest_type_internal(m, etbl, pn);
-    type_condense();
+    // type_condense();
     return t;
 }
 

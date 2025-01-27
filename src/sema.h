@@ -34,6 +34,7 @@ enum TypeKind {
 
     _TYPE_SIMPLE_END,
 
+    TYPE_FUNCTION,
     TYPE_STRUCT,
     TYPE_UNION,
     TYPE_ARRAY,
@@ -52,6 +53,12 @@ typedef struct TypeRecordField {
     Type type;
     usize offset;
 } TypeRecordField;
+
+typedef struct TypeFnParameter {
+    string name;
+    Type type;
+    usize offset;
+} TypeFnParameter;
 
 typedef struct TypeEnumVariant {
     string name;
@@ -81,10 +88,19 @@ typedef struct TNode {
             usize align;
         } as_record;
         struct {
+            TypeFnParameter* at;
+            usize len;
+            Type return_type;
+        } as_function;
+        struct {
             TypeEnumVariant* at;
             usize len;
             Type underlying;
         } as_enum;
+        struct {
+            Type* at;
+            usize len;
+        } as_tuple;
     };
 } TNode;
 
@@ -105,7 +121,7 @@ Type type_new(Module* m, u8 kind);
 Type type_new_record(Module* m, u8 kind, usize len);
 Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
 TNode* type(Type t);
-void type_condense();
+// void type_condense();
 
 bool type_has_name(Type t);
 string type_get_name(Type t);

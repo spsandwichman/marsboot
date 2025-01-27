@@ -57,10 +57,10 @@ static const char* const builtin_prelude =
     "    typedef uint16_t u16;\n"
     "    typedef uint32_t u32;\n"
     "    typedef uint64_t u64;\n"
-    "    typedef _Float16 f16;\n" // f16 causes problems on some platforms/compilers, should only emit if needed
+    "    typedef _Float16 f16; // TODO f16 causes problems on some platforms/compilers, should only emit if needed\n" 
     "    typedef float    f32;\n"
     "    typedef double   f64;\n"
-    "    typedef uint8_t  bool;\n"
+    "    typedef _Bool  bool;\n"
     "    typedef uint64_t typeid;\n"
     "    typedef struct {\n"
     "        void* data;\n"
@@ -162,7 +162,7 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
 // force_full_type is used for type declarations and stuff
 void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type) {
     static da(Type) declarators;
-    if (declarators.cap == 0) {
+    if (declarators.at == NULL) { // there should really be a macro for checking uninitialized lol
         da_init(&declarators, 4);
     }
     
@@ -221,10 +221,12 @@ static void c_header_internal(Module* m) {
     c_emit_header_define_symbol(m->name);
     sb_append_c(sb, "\n");
 
+    // yeah i think that would be based
+    // did u see the 'vec' type i started trying to work on
 }
 
 string c_header(Module* mod) {
-    type_condense();
+    // type_condense();
 
     StringBuilder strbuilder;
     sb = &strbuilder;

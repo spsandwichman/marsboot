@@ -133,6 +133,9 @@ static void report_lexer(Lexer* l, bool error, u64 offset, char* message, ...) {
 static u64 scan_integer_base(Lexer* l, u64 base, u64 start_at) {
     u64 len = start_at;
     if (!is_base_digit(peek(l, len), base)) {
+        if (base == 10) {
+            return len;
+        }
         report_lexer(l, true, start_at, "expected base %llu digit", base);
     }
     while (is_base_digit(peek(l, len), base)) {
@@ -149,8 +152,6 @@ static u64 scan_numeric(Lexer* l) {
         switch (peek(l, 1)){
         case 'x':
         case 'X': return scan_integer_base(l, 16, 2);
-        case 'd':
-        case 'D': return scan_integer_base(l, 10, 2);
         case 'o':
         case 'O': return scan_integer_base(l, 8, 2);
         case 'b':

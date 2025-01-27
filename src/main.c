@@ -45,7 +45,6 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-
     // Type vec3 = type_new_record(&mod, TYPE_STRUCT, 3);
     
     // type_attach_name(vec3, constr("Vec3"));
@@ -74,8 +73,6 @@ int main(int argc, char** argv) {
 
     // string header = jkl_header(&mod);
 
-    // printf("---------- C ----------\n");
-    // printf(str_fmt, str_arg(header));
 }
 
 Context ctx;

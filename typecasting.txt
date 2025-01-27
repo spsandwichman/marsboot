@@ -1,30 +1,43 @@
 implicit:
+    T -> dyn
+
+    never -> T
 
     enum T -> T
 
-    bool -> i<N>
-    bool -> u<N>
-
     i<N> -> i<M>    where N < M
     u<N> -> u<M>    where N < M
-    // yes, arithmetic/comparison between different signs is invalid
+    // cannot implicitly convert signedness
+
+    untyped_string -> []let u8  // default
+    untyped_string -> []mut u8
+    untyped_string -> [_]u8
+
+    untyped_int -> int // default
+    untyped_int -> i<N>
+    untyped_int -> u<N>
+    untyped_int -> f<N>
+
+    untyped_float -> float // default
+    untyped_float -> f<N>
 
     []mut T -> []let T
 
-    ^mut T  -> ^let T
-    ^mut T  -> ^let
-    ^mut T  -> ^mut
-    ^mut T  -> [^]mut T
-    ^mut T  -> [^]let T
-    ^mut    -> ^mut T
-    ^mut    -> ^let T
-    ^mut    -> ^let
-    ^mut    -> [^]mut T
-    ^mut    -> [^]let T
-    ^let T  -> ^let
-    ^let T  -> [^]let T
-    ^let    -> ^let T
-    ^let    -> [^]let T
+    ^mut T -> ^let T
+    ^mut T -> ^let
+    ^mut T -> ^mut
+    ^mut   -> ^mut T
+    ^mut   -> ^let T
+    ^mut   -> ^let
+    ^mut   -> [^]mut T
+    ^mut   -> [^]let T
+    ^let T -> ^let
+    ^let   -> ^let T
+    ^let   -> [^]let T
+
+    ^mut [N]T -> [^]mut T
+    ^mut [N]T -> [^]let T
+    ^let [N]T -> [^]let T
 
     fn -> ^let 
 
@@ -35,21 +48,6 @@ implicit:
     [^]mut T -> ^let
     [^]let T -> ^let T
     [^]let T -> ^let
-
-    T -> dyn
-
-    untyped_string -> []let u8  // default
-    untyped_string -> []mut u8
-    untyped_string -> [_]u8
-
-    untyped_int -> int // default
-    untyped_int -> i<N>
-    untyped_int -> u<N>
-
-    untyped_float -> u<N>
-    untyped_float -> i<N>
-    untyped_float -> f<N>
-    untyped_float -> float // default
 
 explicit:
     (everything from implicit)
