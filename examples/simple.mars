@@ -1,3 +1,6 @@
 module simple;
 
-mut x = 1 + 2;
+def foo = 1;
+def bar = 1;
+
+mut baz: int = foo + bar;

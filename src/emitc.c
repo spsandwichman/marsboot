@@ -84,6 +84,7 @@ static const char* const builtin_prelude =
     "#ifndef NO_MARS_BUILTINS\n"
     "    #define NO_MARS_BUILTINS\n"
     "    #include <stdint.h>\n"
+    "    #include <stdbool.h>\n"
     "    typedef int8_t   i8;\n"
     "    typedef int16_t  i16;\n"
     "    typedef int32_t  i32;\n"
@@ -97,14 +98,11 @@ static const char* const builtin_prelude =
     "    //      we should only emit it if it's used\n"
     "    typedef float    f32;\n"
     "    typedef double   f64;\n"
-    "    typedef _Bool    bool;\n"
     "    typedef uint64_t typeid;\n"
     "    typedef struct dyn {\n"
     "        void* _raw;\n"
     "        typeid _id;\n"
     "    } dyn;\n"
-    "    #define false (bool)0\n"
-    "    #define true  (bool)1\n"
     "#endif // NO_MARS_BUILTINS\n\n"
 ;
 
@@ -143,6 +141,8 @@ static void c_emit_type(Type t, bool force_full_type) {
     case TYPE_SLICE:
     case TYPE_ENUM:
     default:
+        string typestr = type_gen_string(t, false);
+        printf("cannot emit type "str_fmt"\n", str_arg(typestr));
         UNREACHABLE;
     }
 
@@ -230,6 +230,49 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
     da_clear(&declarators);
 }
 
+void c_emit_constval(SemaNode* n) {
+    switch (n->constval.type) {
+    case TYPE_I8:  sb_printf(sb, "%lld", (i8)n->constval.i8); break;
+    case TYPE_I16: sb_printf(sb, "%lld", (i16)n->constval.i16); break;
+    case TYPE_I32: sb_printf(sb, "%lld", (i32)n->constval.i32); break;
+    case TYPE_UNTYPED_INT:
+    case TYPE_I64: sb_printf(sb, "%lld", (i64)n->constval.i64); break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+void c_emit_simple_expr(SemaNode* n) {
+    switch (n->kind) {
+    case SN_CONSTVAL:
+        c_emit_constval(n);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+// prepare a module for c emission
+void c_prepare(Module* m) {
+    // mangle type names
+    for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
+        if (type_has_name(t)) {
+            string mangled = gen_mangled(m, type_get_name(t));
+            type_attach_name(t, mangled);
+        } else {
+            string mangled = gen_mangled_anon(m, "type", type(t));
+            type_attach_name(t, mangled);
+        }
+    }
+
+    // mangle entity names
+    for_n(i, 0, m->decls.len) {
+        SemaNode* decl = m->decls.at[i];
+        Entity* ent = decl->decl.entity;
+        ent->name = gen_mangled(m, ent->name);
+    }
+}
+
 static char to_upper(char c) {
     if ('a' <= c && c <= 'z') return c - 'a' + 'A';
     return c;
@@ -253,25 +296,45 @@ static void c_header_internal(Module* m) {
     // builtin types
     sb_append_c(sb, builtin_prelude);
 
-    // mangle type names
-    for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
-        if (type_has_name(t)) {
-            string mangled = gen_mangled(m, type_get_name(t));
-            type_attach_name(t, mangled);
-        } else {
-            string mangled = gen_mangled_anon(m, "type", type(t));
-            type_attach_name(t, mangled);
-        }
-    }
-
     // emit predecl typedefs
-    
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
         string typename = type_get_name(t);
         sb_append_c(sb, "typedef ");
         c_emit_declaration(true, typename, t, true);
         sb_append_c(sb, ";\n\n");
     }
+
+    // emit variable extern decls
+    for_n(i, 0, m->decls.len) {
+        SemaNode* decl = m->decls.at[i];
+        Entity* ent = decl->decl.entity; 
+
+        if (ent->storage == STORAGE_COMPTIME) continue;
+
+        sb_append_c(sb, "extern ");
+        c_emit_declaration(ent->mutable, ent->name, ent->type, false);
+        sb_append_c(sb, ";\n");
+    }
+
+    sb_append_c(sb, "\n");
+
+    // emit def defines
+    for_n(i, 0, m->decls.len) {
+        SemaNode* decl = m->decls.at[i];
+        Entity* ent = decl->decl.entity; 
+
+        if (ent->storage != STORAGE_COMPTIME) continue;
+
+        sb_append_c(sb, "#define ");
+        sb_append(sb, ent->name);
+        sb_append_c(sb, " (");
+        c_emit_declaration(true, constr(""), ent->type, false);
+        sb_append_c(sb, ")(");
+        c_emit_simple_expr(decl->decl.value);
+        sb_append_c(sb, ")\n");
+    }
+    
+    sb_append_c(sb, "\n");
 
     sb_append_c(sb, "#endif // ");
     c_emit_header_define_symbol(m->name);
@@ -286,6 +349,39 @@ string c_header(Module* mod) {
 
     sb_init(sb);
     c_header_internal(mod);
+
+    string s = string_alloc(sb->len);
+    sb_write(sb, s.raw);
+    return s;
+}
+
+static void c_body_internal(Module* m) {
+    sb_append_c(sb, "#include \"");
+    sb_append(sb, m->name);
+    sb_append_c(sb, ".h\"\n\n");
+
+    // emit variable extern decls
+    for_n(i, 0, m->decls.len) {
+        SemaNode* decl = m->decls.at[i];
+        Entity* ent = decl->decl.entity; 
+        if (ent->storage == STORAGE_COMPTIME) continue;
+
+        c_emit_declaration(ent->mutable, ent->name, ent->type, false);
+        sb_append_c(sb, " = ");
+        c_emit_simple_expr(decl->decl.value);
+        sb_append_c(sb, ";\n");
+
+    }
+}
+
+string c_body(Module* mod) {
+    // type_condense();
+
+    StringBuilder strbuilder;
+    sb = &strbuilder;
+
+    sb_init(sb);
+    c_body_internal(mod);
 
     string s = string_alloc(sb->len);
     sb_write(sb, s.raw);

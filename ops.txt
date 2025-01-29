@@ -6,7 +6,6 @@ common type categories for this document:
     Unsigned: any unsigned integer
     IntLike: any integer or pointer.
 
-
 note:
     for all operations accepting an IntLike, 
     pointers behave like native-size unsigned integers.
@@ -18,8 +17,7 @@ operations:
     <T> - <T>  -> <T>       where T: IntLike
     <T> * <T>  -> <T>       where T: IntLike
     <T> / <T>  -> <T>       where T: IntLike
-    <T> % <T>  -> <T>       where T: IntLike
-    <T> %% <T> -> <T>       where T: IntLike
+    <T> % <T>  -> <T>       where T: IntLike (truncated, like C)
 
     <T> + <T>  -> <T>       where T: Float
     <T> - <T>  -> <T>       where T: Float
@@ -38,8 +36,8 @@ operations:
     <T> >= <T> -> <bool>    where T: Base
     <T> <= <T> -> <bool>    where T: Base
     
-    <T> << <U> -> <T>       where T: IntLike, U: UnsignedInteger
-    <T> >> <U> -> <T>       where T: IntLike, U: UnsignedInteger
+    <T> << <U> -> <T>       where T: IntLike, U: Unsigned
+    <T> >> <U> -> <T>       where T: IntLike, U: Unsigned
 
     if two compatible types are combined in the above operations,
     a low priority type is converted to a higher priority type.
@@ -95,3 +93,16 @@ operations:
     <T>.field => <F>    where T: struct | union
     <T>.field => <F>    where T: ^let/mut struct | ^let/mut union
     T.variant => <T>    where T: enum
+
+NOTE on truncated vs floored modulo:
+
+    (truncated):
+         7 %  3 ==  1
+         7 % -3 ==  1
+        -7 %  3 == -1
+        -7 % -3 == -1
+    (floored):
+         7 %  3 == 1
+         7 % -3 == 1
+        -7 %  3 == 2
+        -7 % -3 == 2

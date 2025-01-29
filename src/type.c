@@ -254,7 +254,7 @@ void type_init() {
     tg.handles.names[TYPE_UNTYPED_FLOAT] = constr("untyped_float");
     tg.handles.names[TYPE_UNTYPED_STRING] = constr("untyped_string");
 
-    printf("typegraph init\n");
+    // printf("typegraph init\n");
     // type_condense();
 }
 
@@ -478,6 +478,8 @@ bool type_is_numeric(Type t) {
 }
 
 bool type_can_implicit_cast(Type from, Type to) {
+    if (from == to) return true;
+    
     Type to_indistinct = type_unwrap_distinct(to);
     
     // T -> dyn

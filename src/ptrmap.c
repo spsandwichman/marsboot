@@ -85,7 +85,7 @@ void* ptrmap_get(PtrMap* hm, void* key) {
     return PTRMAP_NOT_FOUND;
 }
 
-void ptrmap_remove(PtrMap* hm, void* key) {
+void ptrmap_FLOORMODove(PtrMap* hm, void* key) {
     if (!key) return;
 
     size_t hash_index = hashfunc(key) % hm->cap;

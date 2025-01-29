@@ -36,12 +36,12 @@ int main(int argc, char** argv) {
 
     TokenBuf tb = lex_string(str(buf), str(argv[1]));
     da_shrink(&tb);
-    printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
+    // printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
     
     PNode* top = parse_file(tb, NULL_STR);
 
     type_init();
-    Module mod = sema_check_module(top);
+    Module* mod = sema_check_module(top);
 
     // -----------------------------------
 
@@ -71,9 +71,15 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-    string header = c_header(&mod);
-    printf(str_fmt, str_arg(header));
+    c_prepare(mod);
 
+    printf("------------- HEADER -------------\n");
+    string header = c_header(mod);
+    printf(str_fmt, str_arg(header));
+    printf("-------------- BODY --------------\n");
+    string body = c_body(mod);
+    printf(str_fmt, str_arg(body));
+    printf("----------------------------------\n");
 }
 
 Context ctx;

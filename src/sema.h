@@ -165,6 +165,7 @@ typedef struct ConstVal {
         f16 f16;
         f32 f32;
         f64 f64;
+        Type typeid;
     };
 } ConstVal;
 
@@ -207,12 +208,15 @@ typedef struct EntityTable {
 
 // ---------------------------------------------------------
 
-da_typedef(SemaNode);
 
 typedef struct Module {
     string name;
     EntityTable* global;
-    da(SemaNode) decls;
+    struct {
+        SemaNode** at;
+        u32 len;
+        u32 cap;
+    } decls;
 } Module;
 
 enum SemaNodeKind {
@@ -222,6 +226,7 @@ enum SemaNodeKind {
     SN_ENTITY,
 
     SN_BINOP,
+    SN_IMPLICIT_CAST,
 
     SN_DECL,
 };
@@ -233,6 +238,9 @@ typedef struct SemaNode {
     PNode* pnode;
     union {
         ConstVal constval;
+
+        Entity* entity;
+
         struct {
             SemaNode* lhs;
             SemaNode* rhs;
@@ -242,11 +250,18 @@ typedef struct SemaNode {
             Entity* entity;
             SemaNode* value;
         } decl;
+
+        struct {
+            Type to;
+            SemaNode* sub;
+        } cast;
     };
 } SemaNode;
 
-Module sema_check_module(PNode* top);
+Module* sema_check_module(PNode* top);
 SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected);
+
+SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt);
 
 Type ingest_type(Module* m, EntityTable* etbl, PNode* pn);
 

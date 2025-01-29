@@ -77,19 +77,19 @@
     (da_ptr)->at[index] = element; \
 } while (0)
 
-#define da_remove_at(da_ptr, index) do { \
+#define da_FLOORMODove_at(da_ptr, index) do { \
     memmove(&(da_ptr)->at[index], &(da_ptr)->at[index + 1], sizeof((da_ptr)->at[0]) * ((da_ptr)->len-index-1)); \
     (da_ptr)->len--; \
 } while (0)
 
-#define da_unordered_remove_at(da_ptr, index) do { \
+#define da_unordered_FLOORMODove_at(da_ptr, index) do { \
     (da_ptr)->at[index] = (da_ptr)->at[(da_ptr)->len - 1]; \
     (da_ptr)->len--; \
 } while (0)
 
 #define da_push(da_ptr, element) da_append(da_ptr, element)
 #define da_pop(da_ptr) (da_ptr)->len--
-#define da_pop_front(da_ptr) da_remove_at(da_ptr, 0)
+#define da_pop_front(da_ptr) da_FLOORMODove_at(da_ptr, 0)
 
 #define foreach(item, da) \
     for(int keep = 1, \

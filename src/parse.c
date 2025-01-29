@@ -351,7 +351,6 @@ static u8 assign_kind[_TOK_COUNT] = {
     [TOK_MUL_EQUAL] = PN_STMT_ASSIGN_MUL,
     [TOK_DIV_EQUAL] = PN_STMT_ASSIGN_DIV,
     [TOK_MOD_EQUAL] = PN_STMT_ASSIGN_MOD,
-    [TOK_REM_EQUAL] = PN_STMT_ASSIGN_REM,
     [TOK_AND_EQUAL] = PN_STMT_ASSIGN_BIT_AND,
     [TOK_OR_EQUAL] = PN_STMT_ASSIGN_BIT_OR,
     [TOK_NOR_EQUAL] = PN_STMT_ASSIGN_NOR,
@@ -970,7 +969,6 @@ static isize bin_precedence(u8 kind) {
     case TOK_MUL:
     case TOK_DIV:
     case TOK_MOD:
-    case TOK_REM:
         return 7;
     case TOK_ADD:
     case TOK_SUB:
@@ -1000,7 +998,6 @@ static u8 bin_kind[_TOK_COUNT] = {
     [TOK_MUL] = PN_EXPR_MUL,
     [TOK_DIV] = PN_EXPR_DIV,
     [TOK_MOD] = PN_EXPR_MOD,
-    [TOK_REM] = PN_EXPR_REM,
     [TOK_AND] = PN_EXPR_BIT_AND,
     [TOK_OR] = PN_EXPR_BIT_OR,
     [TOK_NOR] = PN_EXPR_NOR,
@@ -1097,7 +1094,7 @@ PNode* parse_binary(isize precedence) {
         advance();
         span_copy(bin, lhs);
         bin->binop.lhs = lhs;
-        bin->binop.rhs = parse_binary(precedence);
+        bin->binop.rhs = parse_binary(prec);
         span_extend(bin, -1);
         lhs = bin;
     }
@@ -1138,7 +1135,7 @@ PNode* parse_file(TokenBuf tb, string expected_module_name) {
         da_append(&list, import);
     }
 
-    printf("parse %u nodes (%u B)\n", p.node_count, p.mem_allocated);
+    // printf("parse %u nodes (%u B)\n", p.node_count, p.mem_allocated);
 
     return list_solidify(list);
 }

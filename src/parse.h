@@ -42,7 +42,6 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_MUL,       "*") \
     TOKEN(TOK_DIV,       "/") \
     TOKEN(TOK_MOD,       "%") \
-    TOKEN(TOK_REM,   "%%") \
     TOKEN(TOK_TILDE,     "~") \
     TOKEN(TOK_AND,       "&") \
     TOKEN(TOK_OR,        "|") \
@@ -62,7 +61,6 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_MUL_EQUAL,     "*=") \
     TOKEN(TOK_DIV_EQUAL,     "/=") \
     TOKEN(TOK_MOD_EQUAL,     "%=") \
-    TOKEN(TOK_REM_EQUAL, "%%=") \
 \
     TOKEN(TOK_AND_EQUAL,     "&=") \
     TOKEN(TOK_OR_EQUAL,      "|=") \
@@ -179,7 +177,7 @@ enum PNodeKind {
     PN_STMT_ASSIGN_MUL,
     PN_STMT_ASSIGN_DIV,
     PN_STMT_ASSIGN_MOD,
-    PN_STMT_ASSIGN_REM,
+    PN_STMT_ASSIGN_FLOORMOD,
     PN_STMT_ASSIGN_BIT_AND,
     PN_STMT_ASSIGN_BIT_OR,
     PN_STMT_ASSIGN_NOR,
@@ -218,7 +216,6 @@ enum PNodeKind {
     PN_EXPR_MUL,
     PN_EXPR_DIV,
     PN_EXPR_MOD,
-    PN_EXPR_REM,
     PN_EXPR_BIT_AND,
     PN_EXPR_BIT_OR,
     PN_EXPR_NOR,

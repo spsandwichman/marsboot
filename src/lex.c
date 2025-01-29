@@ -353,10 +353,6 @@ static void tokenize(Lexer* l) {
                 push_token(TOK_DIV_EQUAL, 2);
             push_simple_token(TOK_DIV);
         case '%':
-            if (peek(l, 1) == '%' && peek(l, 2) == '=')
-                push_token(TOK_REM_EQUAL, 3);
-            if (peek(l, 1) == '%')
-                push_token(TOK_REM, 2);
             if (peek(l, 1) == '=')
                 push_token(TOK_MOD_EQUAL, 2);
             push_simple_token(TOK_MOD);
