@@ -100,7 +100,13 @@ SemaNode* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn, Type expec
 
     SemaNode* integer = new_node(m, pn, SN_CONSTVAL);
 
-    if (expected == TYPE_UNKNOWN) {
+    if (expected != TYPE_UNKNOWN) {
+        if (!type_can_implicit_cast(TYPE_UNTYPED_INT, expected) && !type_can_implicit_cast(TYPE_I64, expected)) {
+
+            string typename = type_gen_string(expected, true);
+            report_pnode(true, pn, "cannot implicitly cast 'untyped int' or 'int' to '"str_fmt"'", str_arg(typename));
+        }
+    } else {
         expected = TYPE_UNTYPED_INT;
     }
 
@@ -113,16 +119,84 @@ SemaNode* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn, Type expec
     return integer;
 }
 
+bool type_is_intlike(Type t) {
+    return type_is_integer(t) 
+        || type(t)->kind == TYPE_POINTER 
+        || type(t)->kind == TYPE_BOUNDLESS_SLICE;
+}
+
+// +, -, *, /, %, %%, 
+SemaNode* check_expr_arith_op(Module* m, u8 kind, EntityTable* etbl, PNode* pn, Type expected) {
+    
+    SemaNode* lhs = check_expr(m, etbl, pn->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(m, etbl, pn->binop.rhs, TYPE_UNKNOWN);
+    SemaNode* binop = new_node(m, pn, SN_BINOP);
+    binop->type = TYPE_UNKNOWN;
+
+    if (!type_is_numeric(lhs->type)) {
+        report_pnode(true, lhs->pnode, "expression type is not numeric");
+    }
+    if (!type_is_numeric(rhs->type)) {
+        report_pnode(true, rhs->pnode, "expression type is not numeric");
+    }
+
+    if (!type_compare(lhs->type, rhs->type, false, false)) {
+        if (type_can_implicit_cast(lhs->type, rhs->type)) {
+            binop->type = rhs->type;
+        } else if (type_can_implicit_cast(rhs->type, lhs->type)) {
+            binop->type = lhs->type;
+        }
+    } else {
+        binop->type = rhs->type;
+    }
+
+    if (binop->type == TYPE_UNKNOWN) {
+        report_pnode(true, rhs->pnode, "operation undefined for these types");
+    }
+
+    switch (kind) {
+    case PN_EXPR_ADD:
+    case PN_EXPR_SUB:
+    case PN_EXPR_MUL:
+    case PN_EXPR_DIV:
+    case PN_EXPR_REM:
+    }
+
+    return binop;
+}
+
 SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
+    if (expected == TYPE_DYN) {
+        TODO("insert dyn boxing");
+    }
+
+    SemaNode* expr = NULL;
     switch (pn->base.kind) {
     case PN_EXPR_INTEGER:
-        return check_expr_integer(m, etbl, pn, expected);
+        expr = check_expr_integer(m, etbl, pn, expected);
+        break;
+    case PN_TYPE_I8 ... PN_TYPE_TYPEID:
+    case PN_TYPE_STRUCT:
+    case PN_TYPE_UNION:
+    case PN_TYPE_ENUM:
+    case PN_TYPE_ARRAY:
+    case PN_TYPE_DISTINCT:
+    case PN_TYPE_POINTER:
+    case PN_TYPE_BOUNDLESS_SLICE:
+        Type t = ingest_type(m, etbl, pn);
+        TODO("");
     case PN_EXPR_ADD:
-        // return check_expr_binary_op(m, etbl, pn, expected);
+    case PN_EXPR_SUB:
+    case PN_EXPR_MUL:
+    case PN_EXPR_DIV:
+        expr = check_expr_arith_op(m, pn->base.kind, etbl, pn, expected);
+        break;
     default:
         report_pnode(true, pn, "expected valid expression");
     }
-    TODO("");
+    string typename = type_gen_string(expr->type, true);
+    report_pnode(false, pn, "type: "str_fmt, str_arg(typename));
+    return expr;
 }
 
 static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
@@ -168,7 +242,6 @@ static Type normalize_untyped(Module* m, Type t) {
 
 Type ingest_type(Module* m, EntityTable* etbl, PNode* pn) {
     Type t = ingest_type_internal(m, etbl, pn);
-    // type_condense();
     return t;
 }
 

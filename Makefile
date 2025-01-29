@@ -21,7 +21,7 @@ LD = gcc
 INCLUDEPATHS = -Isrc
 DEBUGFLAGS = -pg -g -rdynamic
 ASANFLAGS = -fsanitize=undefined -fsanitize=address
-CFLAGS = -march=native -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
+CFLAGS = -march=native -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv -rdynamic \
 		 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing \
 		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
 # OPT = -O3 -flto

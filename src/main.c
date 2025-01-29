@@ -55,12 +55,12 @@ int main(int argc, char** argv) {
     // type(vec3)->as_record.at[2].name = constr("z");
     // type(vec3)->as_record.at[2].type = TYPE_I64;
 
-    // Type llnode = type_new_record(TYPE_STRUCT, 2);
+    // Type llnode = type_new_record(&mod, TYPE_STRUCT, 2);
     // type_attach_name(llnode, constr("LLNode"));
     // type(llnode)->as_record.at[0].name = constr("data");
     // type(llnode)->as_record.at[0].type = TYPE_I64;
     // type(llnode)->as_record.at[1].name = constr("next");
-    // type(llnode)->as_record.at[1].type = type_new_ref(TYPE_POINTER, llnode, true);
+    // type(llnode)->as_record.at[1].type = type_new_ref(&mod, TYPE_POINTER, llnode, true);
 
     // Type foo = type_new_record(TYPE_STRUCT, 2);
     // type_attach_name(foo, constr("Foo"));
@@ -71,7 +71,8 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-    // string header = jkl_header(&mod);
+    string header = c_header(&mod);
+    printf(str_fmt, str_arg(header));
 
 }
 

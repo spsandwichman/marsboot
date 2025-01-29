@@ -37,6 +37,9 @@ operations:
     <T> < <T>  -> <bool>    where T: Numeric
     <T> >= <T> -> <bool>    where T: Base
     <T> <= <T> -> <bool>    where T: Base
+    
+    <T> << <U> -> <T>       where T: IntLike, U: UnsignedInteger
+    <T> >> <U> -> <T>       where T: IntLike, U: UnsignedInteger
 
     if two compatible types are combined in the above operations,
     a low priority type is converted to a higher priority type.
@@ -49,10 +52,7 @@ operations:
         3: i32, u32, f32
         2: i16, u16, f16
         1: i8, u8
-        
-    <T> << <U> -> <T>       where T: IntLike, U: UnsignedInteger
-    <T> >> <U> -> <T>       where T: IntLike, U: UnsignedInteger
-
+    
     <bool> && <bool> => <bool>
     <bool> || <bool> => <bool>
 

@@ -123,12 +123,24 @@ Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
 TNode* type(Type t);
 // void type_condense();
 
+bool type_is_numeric(Type t);
+bool type_is_signed_integer(Type t);
+bool type_is_solid_float(Type t);
+bool type_is_float(Type t);
+bool type_is_solid_integer(Type t);
+bool type_is_integer(Type t);
+
 bool type_has_name(Type t);
 string type_get_name(Type t);
 void type_attach_name(Type t, string name);
 
-string type_to_string(Type t, bool use_names);
+string type_gen_string(Type t, bool use_names);
 
+Type type_unwrap_distinct(Type t);
+bool type_compare(Type a, Type b, bool ignore_idents, bool ignore_distinct);
+isize type_binary_implicit_cast_priority(Type t);
+bool type_can_implicit_cast(Type from, Type to);
+bool type_can_explicit_cast(Type from, Type to);
 
 
 // ---------------------------------------------------------
@@ -203,8 +215,15 @@ typedef struct Module {
     da(SemaNode) decls;
 } Module;
 
-enum SemaExprKind {
-    SEXPR_INVALID = 0,
+enum SemaNodeKind {
+    SN_INVALID = 0,
+
+    SN_CONSTVAL,
+    SN_ENTITY,
+
+    SN_BINOP,
+
+    SN_DECL,
 };
 
 typedef struct SemaNode {
@@ -215,21 +234,20 @@ typedef struct SemaNode {
     union {
         ConstVal constval;
         struct {
+            SemaNode* lhs;
+            SemaNode* rhs;
+        } binop;
+
+        struct {
             Entity* entity;
             SemaNode* value;
         } decl;
     };
 } SemaNode;
 
-enum SemaNodeKind {
-    SN_INVALID = 0,
-
-    SN_CONSTVAL,
-    SN_ENTITY,
-
-    SN_DECL,
-};
-
 Module sema_check_module(PNode* top);
+SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected);
+
+Type ingest_type(Module* m, EntityTable* etbl, PNode* pn);
 
 #endif // SEMA_H

@@ -78,9 +78,9 @@ void type_print_graph() {
         case TYPE_F16: printf("f16"); break;
         case TYPE_F32: printf("f32"); break;
         case TYPE_F64: printf("f64"); break;
-        case TYPE_UNTYPED_INT: printf("untyped_int"); break;
-        case TYPE_UNTYPED_FLOAT: printf("untyped_float"); break;
-        case TYPE_UNTYPED_STRING: printf("untyped_string"); break;
+        case TYPE_UNTYPED_INT: printf("untyped int"); break;
+        case TYPE_UNTYPED_FLOAT: printf("untyped float"); break;
+        case TYPE_UNTYPED_STRING: printf("untyped string"); break;
         case TYPE_POINTER:
             printf("^%s %d", type(t)->as_ref.mutable ? "mut" : "let", type(t)->as_ref.pointee);
             break;
@@ -111,14 +111,38 @@ static void merge(Type a, Type b) {
     tg.handles.equiv[b] = a;
 }
 
+static void type_reset_num(Type a) {
+    if (type(a)->num_a == 0 && type(a)->num_b == 0) {
+        return;
+    }
+
+    type(a)->num_a = 0;
+    type(a)->num_b = 0;
+
+    switch (type(a)->kind) {
+    case TYPE_DISTINCT:
+    case TYPE_POINTER:
+    case TYPE_SLICE:
+    case TYPE_BOUNDLESS_SLICE:
+        type_reset_num(type(a)->as_ref.pointee);
+        break;
+    }
+}
+
+static  bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct);
 bool type_compare(Type a, Type b, bool ignore_idents, bool ignore_distinct) {
-    bool is_eq = _type_compare(a, b, 1, ignore_idents, ignore_distinct);
+    bool is_eq = type_compare_internal(a, b, 1, ignore_idents, ignore_distinct);
     type_reset_num(a);
     type_reset_num(b);
     return is_eq;
 }
 
-static bool _type_compare(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct) {
+static bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct) {
+    if (ignore_distinct) {
+        a = type_unwrap_distinct(a);
+        b = type_unwrap_distinct(b);
+    }
+    
     if (a == b) 
         return true;
     if (type(a) == type(b)) 
@@ -142,33 +166,17 @@ static bool _type_compare(Type a, Type b, usize n, bool ignore_idents, bool igno
             return false;
         }
         set(a, b, n);
-        bool eq = _type_compare(
-            type(a)->as_ref.pointee, type(b)->as_ref.pointee, 
-            inc(n), ignore_idents, ignore_distinct
+        bool eq = type_compare_internal(
+            type(a)->as_ref.pointee,
+            type(b)->as_ref.pointee, 
+            inc(n), 
+            ignore_idents, ignore_distinct
         );
         return eq;
     default:
         return false;
     }
     return false;
-}
-
-void type_reset_num(Type a) {
-    if (type(a)->num_a == 0 && type(a)->num_b == 0) {
-        return;
-    }
-
-    type(a)->num_a = 0;
-    type(a)->num_b = 0;
-
-    switch (type(a)->kind) {
-    case TYPE_DISTINCT:
-    case TYPE_POINTER:
-    case TYPE_SLICE:
-    case TYPE_BOUNDLESS_SLICE:
-        type_reset_num(type(a)->as_ref.pointee);
-        break;
-    }
 }
 
 
@@ -250,7 +258,7 @@ void type_init() {
     // type_condense();
 }
 
-static void type_to_string_internal(StringBuilder* sb, Type t, bool use_names, usize rec_num) {
+static void type_gen_string_internal(StringBuilder* sb, Type t, bool use_names, usize rec_num) {
     // if this type has a name to it, use that
     if ((use_names && type_has_name(t)) || t < _TYPE_SIMPLE_END) {
         sb_append(sb, type_get_name(t));
@@ -280,7 +288,7 @@ static void type_to_string_internal(StringBuilder* sb, Type t, bool use_names, u
             TypeRecordField* field = &type(t)->as_record.at[i];
             sb_append(sb, field->name);
             sb_append_c(sb, ": ");
-            type_to_string_internal(sb, field->type, use_names, rec_num);
+            type_gen_string_internal(sb, field->type, use_names, rec_num);
         }
         sb_append_c(sb, "}");
         break;
@@ -288,15 +296,15 @@ static void type_to_string_internal(StringBuilder* sb, Type t, bool use_names, u
         sb_append_c(sb, "[");
         sb_printf(sb, "%zu", type(t)->as_array.len);
         sb_append_c(sb, "]");
-        type_to_string_internal(sb, type(t)->as_array.sub, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_array.sub, use_names, rec_num);
         break;
     case TYPE_ARRAY_LEN_UNKNOWN:
         sb_append_c(sb, "[_]");
-        type_to_string_internal(sb, type(t)->as_array.sub, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_array.sub, use_names, rec_num);
         break;
     case TYPE_ENUM:
         sb_append_c(sb, "enum ");
-        type_to_string_internal(sb, type(t)->as_enum.underlying, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_enum.underlying, use_names, rec_num);
         sb_append_c(sb, " {");
 
         for_n(i, 0, type(t)->as_enum.len) {
@@ -309,20 +317,23 @@ static void type_to_string_internal(StringBuilder* sb, Type t, bool use_names, u
         sb_append_c(sb, "}");
         break;
     case TYPE_POINTER:
-        sb_append_c(sb, type(t)->as_ref.mutable ? "^mut " : "^let ");
-        type_to_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
+        sb_append_c(sb, type(t)->as_ref.mutable ? "^mut" : "^let");
+        if (type(t)->as_ref.pointee != TYPE_VOID) {
+            sb_append_char(sb, ' ');
+            type_gen_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
+        }
         break;
     case TYPE_BOUNDLESS_SLICE:
         sb_append_c(sb, type(t)->as_ref.mutable ? "[^]mut " : "[^]let ");
-        type_to_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
         break;
     case TYPE_SLICE:
         sb_append_c(sb, type(t)->as_ref.mutable ? "[]mut " : "[]let ");
-        type_to_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_ref.pointee, use_names, rec_num);
         break;
     case TYPE_DISTINCT:
         sb_append_c(sb, "distinct ");
-        type_to_string_internal(sb, type(t)->as_distinct, use_names, rec_num);
+        type_gen_string_internal(sb, type(t)->as_distinct, use_names, rec_num);
         break;
     default:
         UNREACHABLE;
@@ -332,10 +343,10 @@ static void type_to_string_internal(StringBuilder* sb, Type t, bool use_names, u
     type(t)->num_a = 0;
 }
 
-string type_to_string(Type t, bool use_names) {
+string type_gen_string(Type t, bool use_names) {
     StringBuilder sb;
     sb_init(&sb);
-    type_to_string_internal(&sb, t, use_names, 1);
+    type_gen_string_internal(&sb, t, use_names, 1);
 
     string s = string_alloc(sb.len);
     sb_write(&sb, s.raw);
@@ -359,6 +370,10 @@ bool type_is_solid_integer(Type t) {
     }
 }
 
+bool type_is_integer(Type t) {
+    return t == TYPE_UNTYPED_INT || type_is_solid_integer(t);
+}
+
 Type type_unwrap_distinct(Type t) {
     while (type(t)->kind == TYPE_DISTINCT) {
         t = type(t)->as_distinct;
@@ -375,6 +390,10 @@ bool type_is_solid_float(Type t) {
     default:
         return false;
     }
+}
+
+bool type_is_float(Type t) {
+    return t == TYPE_UNTYPED_FLOAT || type_is_solid_float(t);
 }
 
 bool type_is_signed_integer(Type t) {
@@ -437,7 +456,7 @@ static Type pointee(Type t) {
     return type(t)->as_ref.pointee;
 }
 
-static bool type_is_numeric(Type t) {
+bool type_is_numeric(Type t) {
     switch (t) {
     case TYPE_I8:
     case TYPE_U8:
@@ -590,14 +609,21 @@ bool type_can_implicit_cast(Type from, Type to) {
 }
 
 bool type_can_explicit_cast(Type from, Type to) {
+
+    to = type_unwrap_distinct(to);
+    from = type_unwrap_distinct(from);
+
     if (type_can_implicit_cast(from, to)) {
         return true;
     }
-
-    Type to = type_unwrap_distinct(to);
-    Type from = type_unwrap_distinct(from);
     
-    // T -> enum T
+    // enum unwrapping
+    if (is_kind(to, TYPE_ENUM)) {
+        return type_can_explicit_cast(from, type(to)->as_enum.underlying);
+    }
+    if (is_kind(from, TYPE_ENUM)) {
+        return type_can_explicit_cast(type(to)->as_enum.underlying, to);
+    }
 
     // dyn -> T
     if (from == TYPE_DYN) {
@@ -605,4 +631,17 @@ bool type_can_explicit_cast(Type from, Type to) {
     }
 
     // any float -> any int
+    if (type_is_numeric(from) && type_is_numeric(to)) {
+        return true;
+    }
+
+    // ^let/mut T -> uint
+    // ^let/mut T -> int
+    // [^]let/mut T -> uint
+    // [^]let/mut T -> int
+    if (is_kind(from, TYPE_POINTER) || is_kind(from, TYPE_BOUNDLESS_SLICE)) {
+        return to == TYPE_I64 || to == TYPE_U64;
+    }
+
+    return false;
 }

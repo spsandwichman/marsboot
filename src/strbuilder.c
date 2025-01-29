@@ -6,6 +6,23 @@ void sb_init(StringBuilder* sb) {
     sb->buffer = malloc(sb->cap);
 }
 
+string sb_export(StringBuilder* sb) {
+    string s = string_alloc(sb->len);
+    sb_write(sb, s.raw);
+    return s;
+}
+
+char* sb_export_c(StringBuilder* sb) {
+    char* s = malloc(sb->len + 1);
+    memcpy(s, sb->buffer, sb->len);
+    s[sb->len] = '\0';
+    return s;
+}
+
+void sb_clear(StringBuilder* sb) {
+    sb->len = 0;
+}
+
 void sb_destroy(StringBuilder* sb) {
     free(sb->buffer);
     *sb = (StringBuilder){0};

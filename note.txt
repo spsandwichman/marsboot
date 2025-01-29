@@ -1,4 +1,18 @@
-im shifting this to be a small, bootstrap version of the mars compiler.
-this version of mars will NOT be efficient, but it will be easily modifiable,
-allowing for fast iteration and testing of language features.
-it will also only generate C code.
+notes on structs and unions:
+
+When accessing a struct, union, or array through a reference, 
+only the memory containing the data needed by the expression is accessed.
+The language guarantees this.
+
+if you have
+    def Foo = union {
+        a: int,
+        b: u8,
+    };
+and
+    let f: ^let Foo = ...;
+the expression
+    f.b 
+will only access the memory that holds the field b. 
+if f points to a region of memory only one byte long, 
+this access will still be valid.

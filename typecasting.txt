@@ -53,6 +53,8 @@ explicit:
     (everything from implicit)
 
     T -> enum T
+    enum T -> i<N>
+    enum T -> u<N>
 
     dyn -> T
 

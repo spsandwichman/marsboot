@@ -17,37 +17,72 @@
         };
         typedef u8 foo_Bar;
 
-    anonymous entities get mangled as _{module}_anon_{rand}
+    anonymous entities get mangled as _{module}_{kind}_{rand}
         where {rand} is some sort of random but unique value,
-        often a pointer or internal handle of some kind
+        often a pointer or internal handle of some kind,
+        and {kind} is 'var', 'fn', 'type'
 
 */
 
 static StringBuilder* sb;
 
-static string mangled(Module* m, string name) {
+static StringBuilder _mangled_sb;
+
+static string gen_mangled(Module* m, string name) {
+    if (_mangled_sb.buffer == 0) sb_init(&_mangled_sb);
+    sb_clear(&_mangled_sb);
+    sb_append(&_mangled_sb, m->name);
+    sb_append_char(&_mangled_sb, '_');
+    sb_append(&_mangled_sb, name);
+    return sb_export(&_mangled_sb);
+}
+
+static string gen_mangled_variant(Module* m, Type t, string name) {
+    if (_mangled_sb.buffer == 0) sb_init(&_mangled_sb);
+    sb_clear(&_mangled_sb);
+    sb_append(&_mangled_sb, m->name);
+    sb_append_char(&_mangled_sb, '_');
+    sb_append(&_mangled_sb, name);
+    return sb_export(&_mangled_sb);
+}
+
+static string gen_mangled_anon(Module* m, char* kind, void* rand) {
+    if (_mangled_sb.buffer == 0) sb_init(&_mangled_sb);
+    sb_clear(&_mangled_sb);
+    sb_append_char(&_mangled_sb, '_');
+    sb_append(&_mangled_sb, m->name);
+    sb_append_char(&_mangled_sb, '_');
+    sb_append_c(&_mangled_sb, kind);
+    sb_append_char(&_mangled_sb, '_');
+    sb_printf(&_mangled_sb, "%zu", rand);
+    return sb_export(&_mangled_sb);
+}
+
+static void emit_mangled(Module* m, string name) {
     sb_append(sb, m->name);
     sb_append_char(sb, '_');
     sb_append(sb, name);
 }
 
-static string mangled_variant(Module* m, Type t, string name) {
+static void emit_mangled_variant(Module* m, Type t, string name) {
     sb_append(sb, m->name);
     sb_append_char(sb, '_');
     sb_append(sb, name);
 }
 
-static string mangled_anon(Module* m, void* rand) {
+static void emit_mangled_anon(Module* m, char* kind, void* rand) {
     sb_append_char(sb, '_');
     sb_append(sb, m->name);
-    sb_append_c(sb, "_anon_");
+    sb_append_char(sb, '_');
+    sb_append_c(sb, kind);
+    sb_append_char(sb, '_');
     sb_printf(sb, "%zu", rand);
 }
 
 // included in every module's header file.
 static const char* const builtin_prelude = 
-    "#ifndef MARS_BUILTINS\n"
-    "    #define MARS_BUILTINS\n"
+    "#ifndef NO_MARS_BUILTINS\n"
+    "    #define NO_MARS_BUILTINS\n"
     "    #include <stdint.h>\n"
     "    typedef int8_t   i8;\n"
     "    typedef int16_t  i16;\n"
@@ -57,18 +92,20 @@ static const char* const builtin_prelude =
     "    typedef uint16_t u16;\n"
     "    typedef uint32_t u32;\n"
     "    typedef uint64_t u64;\n"
-    "    typedef _Float16 f16; // TODO f16 causes problems on some platforms/compilers, should only emit if needed\n" 
+    "    typedef _Float16 f16;\n" 
+    "    // TODO f16 causes problems on some platforms/compilers,\n"
+    "    //      we should only emit it if it's used\n"
     "    typedef float    f32;\n"
     "    typedef double   f64;\n"
-    "    typedef _Bool  bool;\n"
+    "    typedef _Bool    bool;\n"
     "    typedef uint64_t typeid;\n"
-    "    typedef struct {\n"
-    "        void* data;\n"
-    "        typeid id;\n"
+    "    typedef struct dyn {\n"
+    "        void* _raw;\n"
+    "        typeid _id;\n"
     "    } dyn;\n"
     "    #define false (bool)0\n"
     "    #define true  (bool)1\n"
-    "#endif // MARS_BUILTINS\n\n"
+    "#endif // NO_MARS_BUILTINS\n\n"
 ;
 
 static void c_emit_type(Type t, bool force_full_type) {
@@ -82,12 +119,13 @@ static void c_emit_type(Type t, bool force_full_type) {
         sb_append_c(sb, "struct ");
         if (force_full_type && type_has_name(t)) {
             sb_append(sb, type_get_name(t));
+            sb_append_c(sb, " ");
         }
         sb_append_c(sb, "{\n");
         for_n(i, 0, type(t)->as_record.len) {
             TypeRecordField* field = &type(t)->as_record.at[i];
             sb_append_c(sb, "    ");
-            c_emit_declaration(false, field->name, field->type, false);
+            c_emit_declaration(true, field->name, field->type, false);
             sb_append_c(sb, ";\n");
         }
         sb_append_c(sb, "}");
@@ -183,13 +221,13 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
     }
 
     // emit base type
-    c_emit_type(base, false);
+    c_emit_type(base, force_full_type);
     sb_append_c(sb, " ");
 
     // emit declarators
     c_emit_declarator(mutable, ident, base, &declarators);
 
-    da_destroy(&declarators);
+    da_clear(&declarators);
 }
 
 static char to_upper(char c) {
@@ -215,14 +253,29 @@ static void c_header_internal(Module* m) {
     // builtin types
     sb_append_c(sb, builtin_prelude);
 
+    // mangle type names
+    for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
+        if (type_has_name(t)) {
+            string mangled = gen_mangled(m, type_get_name(t));
+            type_attach_name(t, mangled);
+        } else {
+            string mangled = gen_mangled_anon(m, "type", type(t));
+            type_attach_name(t, mangled);
+        }
+    }
+
     // emit predecl typedefs
     
+    for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
+        string typename = type_get_name(t);
+        sb_append_c(sb, "typedef ");
+        c_emit_declaration(true, typename, t, true);
+        sb_append_c(sb, ";\n\n");
+    }
+
     sb_append_c(sb, "#endif // ");
     c_emit_header_define_symbol(m->name);
     sb_append_c(sb, "\n");
-
-    // yeah i think that would be based
-    // did u see the 'vec' type i started trying to work on
 }
 
 string c_header(Module* mod) {
