@@ -30,7 +30,7 @@ void _vec_destroy(_VecGeneric* v);
 
 #define vec_append(v, element) do { \
     _vec_reserve((_VecGeneric*)(v), vec_stride((v)), 1);\
-    (v)->at[(v)->len - 1] = (element); \
+    (v)->at[(v)->len++] = (element); \
 } while (0)
 #define vec_reserve(v, num_slots) _vec_reserve((_VecGeneric*)(v), vec_stride((v)), num_slots)
 
@@ -42,6 +42,6 @@ void _vec_destroy(_VecGeneric* v);
 
 #define for_vec(decl, vec) \
     for (size_t _index = 0, _keep = 1; _index < (vec)->len; ++_index, _keep = !_keep) \
-    for (decl = (vec)->at[_index]; _keep; _keep = !_keep)
+    for (decl = &(vec)->at[_index]; _keep; _keep = !_keep)
 
 #endif // VEC_H

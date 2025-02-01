@@ -26,9 +26,9 @@ Type type_new(Module* m, u8 kind) {
         tg.handles.cap *= 2;
         tg.handles.at = realloc(tg.handles.at, tg.handles.cap * sizeof(tg.handles.at[0]));
         tg.handles.mods = realloc(tg.handles.mods, tg.handles.cap * sizeof(tg.handles.mods[0]));
-        tg.handles.equiv = realloc(tg.handles.equiv, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+        // tg.handles.equiv = realloc(tg.handles.equiv, tg.handles.cap * sizeof(tg.handles.equiv[0]));
         tg.handles.names = realloc(tg.handles.names, tg.handles.cap * sizeof(tg.handles.names[0]));
-        memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+        // memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
     }
     tg.handles.at[tg.handles.len - 1] = t;
     tg.handles.mods[tg.handles.len - 1] = m;
@@ -48,6 +48,12 @@ Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable) {
     type(t)->as_ref.pointee = pointee;
     type(t)->as_ref.mutable = mutable;
     return t;
+}
+
+Type type_create_alias(Module* m, Type t) {
+    Type alias = type_new(m, TYPE_UNKNOWN);
+    tg.handles.at[alias] = type(t); // make the handle point to the same type node
+    return alias;
 }
 
 void type_print_graph() {
@@ -108,9 +114,9 @@ static void set(Type a, Type b, usize num) {
 }
 
 // set up B to be merged into A on the next pass
-static void merge(Type a, Type b) {
-    tg.handles.equiv[b] = a;
-}
+// static void merge(Type a, Type b) {
+//     tg.handles.equiv[b] = a;
+// }
 
 static void type_reset_num(Type a) {
     if (type(a)->num_a == 0 && type(a)->num_b == 0) {
@@ -224,9 +230,9 @@ void type_init() {
     tg.handles.cap = 128;
     tg.handles.at = malloc(tg.handles.cap * sizeof(tg.handles.at[0]));
     tg.handles.mods = malloc(tg.handles.cap * sizeof(tg.handles.mods[0]));
-    tg.handles.equiv = malloc(tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    // tg.handles.equiv = malloc(tg.handles.cap * sizeof(tg.handles.equiv[0]));
     tg.handles.names = malloc(tg.handles.cap * sizeof(tg.handles.names[0]));
-    memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
+    // memset(tg.handles.equiv, 0, tg.handles.cap * sizeof(tg.handles.equiv[0]));
     memset(tg.handles.names, 0, tg.handles.cap * sizeof(tg.handles.names[0]));
 
     for_n(i, TYPE_UNKNOWN, _TYPE_SIMPLE_END) {
@@ -356,7 +362,7 @@ string type_gen_string(Type t, bool use_names) {
 }
 
 bool type_is_solid_integer(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_I8:
     case TYPE_I16:
     case TYPE_I32:
@@ -383,7 +389,7 @@ Type type_unwrap_distinct(Type t) {
 }
 
 bool type_is_solid_float(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_F16:
     case TYPE_F32:
     case TYPE_F64:
@@ -398,7 +404,7 @@ bool type_is_float(Type t) {
 }
 
 bool type_is_signed_integer(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_I8:
     case TYPE_I16:
     case TYPE_I32:
@@ -410,7 +416,7 @@ bool type_is_signed_integer(Type t) {
 }
 
 isize type_binary_implicit_cast_priority(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_BOUNDLESS_SLICE:
         return 6;
     case TYPE_POINTER:
@@ -458,7 +464,7 @@ static Type pointee(Type t) {
 }
 
 bool type_is_numeric(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_I8:
     case TYPE_U8:
     case TYPE_I16:
@@ -479,7 +485,7 @@ bool type_is_numeric(Type t) {
 }
 
 bool type_is_untyped(Type t) {
-    switch (t) {
+    switch (type(t)->kind) {
     case TYPE_UNTYPED_INT:
     case TYPE_UNTYPED_FLOAT:
     case TYPE_UNTYPED_STRING:

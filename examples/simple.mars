@@ -1,8 +1,5 @@
 module simple;
 
-let a = ^let int;
-// let b = a + 1;
-
-// fn identity(x: int) -> int {
-//     return x;
-// }
+fn bruh(x, y: int) -> int {
+    
+}

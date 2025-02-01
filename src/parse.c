@@ -211,6 +211,7 @@ PNode* parse_item_list(u8 terminator) {
         PNodeList identifiers = list_new(1);
         if (!match(TOK_IDENTIFIER) && !match(TOK_IDENTIFIER_DISCARD)) {
             expect(TOK_IDENTIFIER);
+            expect(TOK_IDENTIFIER_DISCARD);
         }
         while (match(TOK_IDENTIFIER) || match(TOK_IDENTIFIER_DISCARD)) {
             PNode* ident = parse_ident();

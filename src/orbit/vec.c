@@ -29,18 +29,3 @@ void _vec_destroy(_VecGeneric* v) {
     free(v->at);
     *v = (_VecGeneric){0};
 }
-
-Vec_typedef(int);
-
-static void test() {
-
-    Vec(int) v = vec_new(int, 10);
-    vec_append(&v, 1);
-    vec_append(&v, 2);
-    vec_append(&v, 3);
-    vec_append(&v, 4);
-
-    for_vec(int x, &v) {
-        printf("%d\n", x);
-    }
-}

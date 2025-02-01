@@ -113,6 +113,10 @@ static void c_emit_type(Type t, bool force_full_type) {
         return;
     }
 
+    if (force_full_type && type(t)->kind < _TYPE_SIMPLE_END) {
+        t = type(t)->kind;
+    }
+
     switch(type(t)->kind) {
     case TYPE_STRUCT:
         sb_append_c(sb, "struct ");
@@ -151,8 +155,8 @@ static void c_emit_type(Type t, bool force_full_type) {
 
 }
 
-static bool is_standalone_type(Type t) {
-    if (t < _TYPE_SIMPLE_END || type_has_name(t)) {
+static bool is_standalone_type(Type t, bool force_full_type) {
+    if (type(t)->kind < _TYPE_SIMPLE_END || (!force_full_type && type_has_name(t))) {
         return true;
     }
 
@@ -209,7 +213,7 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
     
     // find base type
     Type base = t;
-    while (!is_standalone_type(base)) {
+    while (!is_standalone_type(base, force_full_type)) {
         da_append(&declarators, base);
         switch (type(base)->kind) {
         case TYPE_POINTER:
@@ -247,10 +251,13 @@ void c_emit_constval(SemaNode* n) {
 }
 
 void c_emit_simple_expr_zero(Type t) {
+    t = type_unwrap_distinct(t);
+
     if (type_is_numeric(t)) {
         sb_append_c(sb, "0");
         return;
     }
+
     switch (type(t)->kind) {
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE:
@@ -259,7 +266,9 @@ void c_emit_simple_expr_zero(Type t) {
     case TYPE_UNION:
     case TYPE_STRUCT:
     case TYPE_ARRAY:
-        sb_append_c(sb, "{0}");
+    case TYPE_SLICE:
+    case TYPE_DYN:
+        sb_append_c(sb, "{}");
         break;
     default:
         UNREACHABLE;
@@ -325,6 +334,23 @@ static void c_header_internal(Module* m) {
     // builtin types
     sb_append_c(sb, builtin_prelude);
 
+    // emit def defines
+    for_n(i, 0, m->decls.len) {
+        SemaNode* decl = m->decls.at[i];
+        Entity* ent = decl->decl.entity; 
+
+        if (ent->storage != STORAGE_COMPTIME) continue;
+        if (ent->type == TYPE_TYPEID) continue;
+
+        sb_append_c(sb, "#define ");
+        sb_append(sb, ent->name);
+        sb_append_c(sb, " ((");
+        c_emit_declaration(true, constr(""), ent->type, false);
+        sb_append_c(sb, ")(");
+        c_emit_simple_expr(decl->decl.value);
+        sb_append_c(sb, "))\n");
+    }
+
     // emit predecl typedefs
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
         if (!type_has_name(t)) continue;
@@ -347,26 +373,6 @@ static void c_header_internal(Module* m) {
     }
 
     sb_append_c(sb, "\n");
-
-    // emit def defines
-    for_n(i, 0, m->decls.len) {
-        SemaNode* decl = m->decls.at[i];
-        Entity* ent = decl->decl.entity; 
-
-        if (ent->storage != STORAGE_COMPTIME) continue;
-        if (ent->type == TYPE_TYPEID) continue;
-
-        sb_append_c(sb, "#define ");
-        sb_append(sb, ent->name);
-        if (!type_is_untyped(ent->type)) {
-            sb_append_c(sb, " (");
-            c_emit_declaration(true, constr(""), ent->type, false);
-            sb_append_c(sb, ")");
-        }
-        sb_append_c(sb, " (");
-        c_emit_simple_expr(decl->decl.value);
-        sb_append_c(sb, ")\n");
-    }
     
     sb_append_c(sb, "\n");
 

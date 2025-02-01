@@ -54,11 +54,10 @@ typedef struct TypeRecordField {
     usize offset;
 } TypeRecordField;
 
-typedef struct TypeFnParameter {
+typedef struct TypeFnParam {
     string name;
     Type type;
-    usize offset;
-} TypeFnParameter;
+} TypeFnParam;
 
 typedef struct TypeEnumVariant {
     string name;
@@ -84,23 +83,25 @@ typedef struct TNode {
         struct {
             TypeRecordField* at;
             usize len;
+            
             usize size;
             usize align;
         } as_record;
         struct {
-            TypeFnParameter* at;
-            usize len;
-            Type return_type;
+            struct {
+                TypeFnParam* at;
+                usize len;
+            } params;
+            struct {
+                TypeFnParam* at;
+                usize len;
+            } returns;
         } as_function;
         struct {
             TypeEnumVariant* at;
             usize len;
             Type underlying;
         } as_enum;
-        struct {
-            Type* at;
-            usize len;
-        } as_tuple;
     };
 } TNode;
 
@@ -109,7 +110,7 @@ typedef struct TypeGraph {
         string* names; // attach a type handle to a name for better error printing
         Module** mods; // every type has a module attached to it, where it was declared
         TNode** at;
-        Type* equiv;
+        // Type* equiv;
         u32 len;
         u32 cap;
     } handles;
@@ -120,6 +121,7 @@ void type_init();
 Type type_new(Module* m, u8 kind);
 Type type_new_record(Module* m, u8 kind, usize len);
 Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
+Type type_create_alias(Module* m, Type t);
 TNode* type(Type t);
 // void type_condense();
 
@@ -129,8 +131,8 @@ bool type_is_solid_float(Type t);
 bool type_is_float(Type t);
 bool type_is_solid_integer(Type t);
 bool type_is_integer(Type t);
-
 bool type_is_untyped(Type t);
+
 
 bool type_has_name(Type t);
 string type_get_name(Type t);
@@ -172,9 +174,12 @@ typedef struct ConstVal {
 } ConstVal;
 
 enum EntityStorageKind {
+    STORAGE_LOCAL,
+    STORAGE_LOCAL_PARAM,
+    STORAGE_LOCAL_RETURN,
+
     STORAGE_EXTERN,
     STORAGE_GLOBAL,
-    STORAGE_LOCAL,
     STORAGE_COMPTIME, // 'def' decl
 };
 
@@ -231,7 +236,11 @@ enum SemaNodeKind {
     SN_BINOP,
     SN_IMPLICIT_CAST,
 
+    SN_STMT_BLOCK,
+
     SN_DECL,
+
+    SN_FN_DECL,
 };
 
 typedef struct SemaNode {
@@ -258,6 +267,17 @@ typedef struct SemaNode {
             Type to;
             SemaNode* sub;
         } cast;
+
+        struct {
+            SemaNode* at;
+            u32 len;
+            u32 cap;
+        } list;
+
+        struct {
+            
+            SemaNode* body;
+        } fn_decl;
     };
 } SemaNode;
 

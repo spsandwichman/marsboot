@@ -1,4 +1,5 @@
 #include "sema.h"
+#include "orbit/vec.h"
 
 static void report_pnode(bool error, PNode* pn, char* message, ...) {
     va_list args;
@@ -347,6 +348,13 @@ static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
         pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
         ptr = type_new_ref(m, TYPE_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
+
+    case PN_IDENT:
+        SemaNode* type = check_expr_ident(m, etbl, pn);
+        if (type->type != TYPE_TYPEID || type->kind != SN_CONSTVAL) {
+            report_pnode(true, pn, "symbol is not a compile-time constant typeid");
+        }
+        return type->constval.typeid;
     default:
         UNREACHABLE;
     }
@@ -376,14 +384,15 @@ static bool can_global_decl_value(SemaNode* n) {
 }
 
 SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+        
     assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
     string name = pnode_span(pstmt->decl.ident);
 
     bool is_global_decl = etbl == m->global;
 
+    Entity* ent = etbl_search(etbl, name);
     if (is_global_decl) {
-        // this is guaranteed to exist
-        Entity* ent = etbl_search(etbl, name);
+        // this is guaranteed to exist    
         assert(ent);
 
         if (ent->check_status == CHK_DONE && ent->decl_pnode == pstmt) {
@@ -391,7 +400,6 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
         }
     }
 
-    Entity* ent = etbl_search(etbl, name);
     if ((is_global_decl && ent->decl_pnode != pstmt) || (etbl != m->global && ent != NULL)) {
         report_pnode(true, pstmt->decl.ident, "name already declared");
     } else if (!is_global_decl) {
@@ -437,6 +445,15 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
         SemaNode* value = check_expr(m, etbl, pstmt->decl.value, ent->type);
         decl->decl.value = value;
 
+        if (ent->storage == STORAGE_COMPTIME && value->kind == SN_CONSTVAL && value->type == TYPE_TYPEID) {
+            
+            // this is actually a type declaration!!
+            ent->type = TYPE_TYPEID;
+            Type alias = type_create_alias(m, value->constval.typeid);
+            type_attach_name(alias, name);
+            value->constval.typeid = alias;
+        }
+
         if (ent->type == TYPE_UNKNOWN) {
             ent->type = normalize_untyped(m, value->type);
         } else if (type_can_implicit_cast(value->type, ent->type)) {
@@ -470,7 +487,83 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     return decl;
 }
 
+Vec_typedef(TypeFnParam);
+static bool param_name_already_exists(Module* m, Vec(TypeFnParam)* params, string name ) {
+    for_vec (TypeFnParam* p, params) {
+        if (string_eq(p->name, name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 SemaNode* check_fn_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+    PNode* proto = pstmt->fn_decl.proto;
+    PNode* body = pstmt->fn_decl.stmts;
+
+    PNode* ident = proto->fnproto.ident;
+    string name = pnode_span(ident);
+
+    bool is_global_decl = etbl == m->global;
+
+    Entity* ent = etbl_search(etbl, name);
+    if (is_global_decl) {
+        // this is guaranteed to exist    
+        assert(ent);
+        if (ent->check_status == CHK_DONE && ent->decl_pnode == pstmt) {
+            return ent->decl;
+        }
+    }
+
+    // scan prototype and create a function type
+    Vec(TypeFnParam) params = vec_new(TypeFnParam, 8);
+    PNode* param_list = proto->fnproto.param_list;
+
+    for_n (i, 0, param_list->list.len) {
+        PNode* items = param_list->list.at[i];
+        
+        Type t = ingest_type(m, etbl, items->item.type);
+
+        if (items->item.ident->base.kind == PN_IDENT) {
+            string name = pnode_span(items->item.ident);
+            if (param_name_already_exists(m, &params, name) || etbl_search(etbl, name)) {
+                report_pnode(true, items->item.ident, "parameter name already declared");
+            }
+            TypeFnParam p = { .name = name, .type = t };
+            vec_append(&params, p);
+        } else {
+            for_n(i, 0, items->item.ident->list.len) {
+                string name = pnode_span(items->item.ident->list.at[i]);
+                if (param_name_already_exists(m, &params, name) || etbl_search(etbl, name)) {
+                    report_pnode(true, items->item.ident->list.at[i], "parameter name already declared");
+                }
+                TypeFnParam p = { .name = name, .type = t };
+                vec_append(&params, p);
+            }
+        }
+    }
+
+
+    Vec(TypeFnParam) returns = vec_new(TypeFnParam, 8);
+    PNode* return_list = proto->fnproto.returns;
+
+    if (return_list->base.kind == PN_LIST) {
+        report_pnode(true, return_list, "multiple returns not supported yet");
+    }
+
+    TypeFnParam r;
+    r.name = NULL_STR,
+    r.type = ingest_type(m, etbl, return_list);
+    vec_append(&returns, r);
+
+    Type t = type_new(m, TYPE_FUNCTION);
+    type(t)->as_function.params.at   = params.at;
+    type(t)->as_function.params.len  = params.len;
+    type(t)->as_function.returns.at  = returns.at;
+    type(t)->as_function.returns.len = returns.len;
+
+
+    UNREACHABLE;
     return NULL;
 }
 
@@ -479,7 +572,7 @@ SemaNode* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
     case PN_STMT_DECL:
         return check_var_decl(m, etbl, pstmt);
     case PN_STMT_FN_DECL:
-        // return check_fn_decl(m, etbl, pstmt);
+        return check_fn_decl(m, etbl, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement");
         return NULL;
@@ -513,6 +606,10 @@ Module* sema_check_module(PNode* top) {
             PNode* body = tls->fn_decl.stmts;
             PNode* ident = prototype->fnproto.ident;
             string ident_name = pnode_span(ident);
+            Entity* ent = etbl_put(mod->global, ident_name);
+            ent->check_status = CHK_NONE;
+            ent->decl_pnode = tls;
+            ent->tbl = mod->global;
             } break;
         default:
             UNREACHABLE;
