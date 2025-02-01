@@ -1,6 +1,8 @@
 module simple;
 
-def foo = 1;
-def bar = 1;
+let a = ^let int;
+// let b = a + 1;
 
-mut baz: int = foo + bar;
+// fn identity(x: int) -> int {
+//     return x;
+// }

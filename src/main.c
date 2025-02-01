@@ -6,6 +6,14 @@
 #include "emitjkl.h"
 #include "emitc.h"
 
+char* strconcat(const char* a, const char* b) {
+    char* out = malloc(strlen(a) + strlen(b) + 1);
+    memcpy(out, a, strlen(a));
+    memcpy(out + strlen(a), b, strlen(b));
+    out[strlen(a) + strlen(b)] = '\0';
+    return out;
+}
+
 int main(int argc, char** argv) {
 #ifndef _WIN32
     init_signal_handler();
@@ -72,14 +80,29 @@ int main(int argc, char** argv) {
     // -----------------------------------
 
     c_prepare(mod);
+    string header = c_header(mod);
+    string body = c_body(mod);
 
     printf("------------- HEADER -------------\n");
-    string header = c_header(mod);
     printf(str_fmt, str_arg(header));
     printf("-------------- BODY --------------\n");
-    string body = c_body(mod);
     printf(str_fmt, str_arg(body));
     printf("----------------------------------\n");
+
+    // char* h_path = argv[1];
+    // size_t path_len = strlen(argv[1]);
+
+    // h_path[path_len - 4] = 'h';
+    // h_path[path_len - 3] = '\0';
+    // FILE* h_file = fopen(h_path, "w+");
+    // fwrite(header.raw, header.len, 1, h_file);
+    // fclose(h_file);
+
+    // char* c_path = argv[1];
+    // c_path[path_len - 4] = 'c';
+    // FILE* c_file = fopen(c_path, "w+");
+    // fwrite(body.raw, body.len, 1, c_file);
+    // fclose(c_file);
 }
 
 Context ctx;

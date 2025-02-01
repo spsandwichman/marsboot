@@ -186,7 +186,7 @@ enum PNodeKind {
     PN_STMT_ASSIGN_RSHIFT,
 
     PN_STMT_FOR_CSTYLE,
-    PN_STMT_for_nD,
+    PN_STMT_FOR_RANGED,
     PN_STMT_WHILE,
     PN_STMT_IF,
     PN_STMT_WHEN,
@@ -200,7 +200,9 @@ enum PNodeKind {
     PN_STMT_LABEL,
 
     PN_IDENT,
-    PN_DISCARD,
+    PN_DISCARD, // _
+    PN_UNINIT,  // ---
+
     PN_EXPR_STRING,
     PN_EXPR_CHAR,
     PN_EXPR_INTEGER,

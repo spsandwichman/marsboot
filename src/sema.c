@@ -199,6 +199,13 @@ SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* etbl, PNode* p
         report_pnode(true, rhs->pnode, "expression type is not numeric");
     }
 
+    if (kind == PN_EXPR_MOD && (type_is_float(lhs->type) || type_is_float(rhs->type))) {
+        string lhs_typestr = type_gen_string(lhs->type, true);
+        string rhs_typestr = type_gen_string(rhs->type, true);
+        report_pnode(true, pn, "% undefined for '"str_fmt"' and '"str_fmt"'", 
+            str_arg(lhs_typestr), str_arg(rhs_typestr));
+    }
+
     if (!type_compare(lhs->type, rhs->type, false, false)) {
         if (type_can_implicit_cast(lhs->type, rhs->type)) {
             lhs = insert_implicit_cast(m, lhs, rhs->type);
@@ -277,7 +284,10 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     case PN_TYPE_POINTER:
     case PN_TYPE_BOUNDLESS_SLICE:
         Type t = ingest_type(m, etbl, pn);
-        TODO("");
+        expr = new_node(m, pn, SN_CONSTVAL);
+        expr->type = TYPE_TYPEID;
+        expr->constval.typeid = t;
+        break;
     case PN_EXPR_ADD:
     case PN_EXPR_SUB:
     case PN_EXPR_MUL:
@@ -314,8 +324,33 @@ static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
     case PN_TYPE_BOOL:   return TYPE_BOOL;
     case PN_TYPE_DYN:    return TYPE_DYN;
     case PN_TYPE_TYPEID: return TYPE_TYPEID;
+
+    case PN_TYPE_ARRAY:
+        SemaNode* length = check_expr(m, etbl, pn->array_type.len, TYPE_UNKNOWN);
+        if (length->kind != SN_CONSTVAL || !type_is_integer(length->type)) {
+            report_pnode(true, pn->array_type.len, "array length must be a constant integer");
+        }
+        Type sub = ingest_type_internal(m, etbl, pn->array_type.sub);
+        Type arr = type_new(m, TYPE_ARRAY);
+        type(arr)->as_array.len = length->constval.i64;
+        type(arr)->as_array.sub = sub;
+        return arr;
+    case PN_TYPE_POINTER:
+        Type pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
+        Type ptr = type_new_ref(m, TYPE_POINTER, pointee, pn->ref_type.mutable);
+        return ptr;
+    case PN_TYPE_BOUNDLESS_SLICE:
+        pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
+        ptr = type_new_ref(m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
+        return ptr;
+    case PN_TYPE_SLICE:
+        pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
+        ptr = type_new_ref(m, TYPE_SLICE, pointee, pn->ref_type.mutable);
+        return ptr;
+    default:
+        UNREACHABLE;
     }
-    TODO("ingest complex type");
+    // TODO("ingest complex type");
     return TYPE_UNKNOWN;
 }
 
@@ -389,46 +424,62 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     decl->decl.entity = ent;
     ent->decl = decl;
 
-    SemaNode* value = check_expr(m, etbl, pstmt->decl.value, ent->type);
-    decl->decl.value = value;
-
-    if (ent->type == TYPE_UNKNOWN) {
-        ent->type = value->type;
-        if (ent->storage != STORAGE_COMPTIME) {
-            ent->type = normalize_untyped(m, ent->type);
+    // uninitalized value
+    if (pstmt->decl.value == NULL || pstmt->decl.value->base.kind == PN_UNINIT) {
+        if (ent->type == TYPE_UNKNOWN) {
+            report_pnode(true, decl->pnode, "uninitialized variable must have a type");
         }
-    } else if (type_can_implicit_cast(value->type, ent->type)) {
-        value = insert_implicit_cast(m, value, ent->type);
-    } else {
-        string valuetype_str = type_gen_string(value->type, true);
-        string decltype_str = type_gen_string(ent->type, true);
-        report_pnode(true, value->pnode, "cannot implicitly cast from '"str_fmt"' to '"str_fmt"'", 
-            str_arg(valuetype_str),
-            str_arg(decltype_str)
-        );
+        if (pstmt->decl.kind != DECLKIND_MUT) {
+            report_pnode(true, pstmt, "immutable variable must be initialized");
+        }
+        ent->uninit = pstmt->decl.value != NULL && pstmt->decl.value->base.kind == PN_UNINIT;
+    } else if (pstmt->decl.value != NULL) {
+        SemaNode* value = check_expr(m, etbl, pstmt->decl.value, ent->type);
+        decl->decl.value = value;
+
+        if (ent->type == TYPE_UNKNOWN) {
+            ent->type = normalize_untyped(m, value->type);
+        } else if (type_can_implicit_cast(value->type, ent->type)) {
+            value = insert_implicit_cast(m, value, ent->type);
+        } else {
+            string valuetype_str = type_gen_string(value->type, true);
+            string decltype_str = type_gen_string(ent->type, true);
+            report_pnode(true, value->pnode, "cannot coerce from '"str_fmt"' to '"str_fmt"'", 
+                str_arg(valuetype_str),
+                str_arg(decltype_str)
+            );
+        }
+
+        // only certain things are allowed in global decls
+        if (is_global_decl && !can_global_decl_value(value)) {
+            report_pnode(true, value->pnode, "expression is not constant at load-time");
+        }
+        // if it is constant, we need to store the constant in the entity as well
+        if (value->kind == SN_CONSTVAL) {
+            ent->constval = value->constval;
+        }
+        if (ent->storage == STORAGE_COMPTIME && value->kind != SN_CONSTVAL) {
+            report_pnode(true, value->pnode, "def expression must be a compile-time constant");
+        }
+    } else if (ent->type == TYPE_UNKNOWN) {
+        report_pnode(true, decl->pnode, "declaration must have a type, a value, or both");
     }
 
-    // only certain things are allowed in global decls
-    if (is_global_decl && !can_global_decl_value(value)) {
-        report_pnode(true, value->pnode, "expression is not constant at load-time");
-    }
-    // if it is constant, we need to store the constant in the entity as well
-    if (value->kind == SN_CONSTVAL) {
-        ent->constval = value->constval;
-    }
-    if (ent->storage == STORAGE_COMPTIME && value->kind != SN_CONSTVAL) {
-        report_pnode(true, value->pnode, "def expression must be a compile-time constant");
-    }
-    
     ent->check_status = CHK_DONE;
     decl->type = TYPE_VOID;
     return decl;
+}
+
+SemaNode* check_fn_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+    return NULL;
 }
 
 SemaNode* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_STMT_DECL:
         return check_var_decl(m, etbl, pstmt);
+    case PN_STMT_FN_DECL:
+        // return check_fn_decl(m, etbl, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement");
         return NULL;
@@ -444,20 +495,25 @@ Module* sema_check_module(PNode* top) {
 
     PNode* mod_decl = top->list.at[0];
     mod->name = pnode_span(mod_decl->module_decl.ident);
-    // printf("starting check at head module '"str_fmt"'\n", str_arg(mod->name));
 
     // pre-collect entitites
     for_n (i, 1, top->list.len) {
         PNode* tls = top->list.at[i];
         switch (tls->base.kind) {
-        case PN_STMT_DECL:
+        case PN_STMT_DECL: {
             PNode* ident = tls->decl.ident;
             string ident_name = pnode_span(ident);
             Entity* ent = etbl_put(mod->global, ident_name);
             ent->check_status = CHK_NONE;
             ent->decl_pnode = tls;
             ent->tbl = mod->global;
-            break;
+            } break;
+        case PN_STMT_FN_DECL: {
+            PNode* prototype = tls->fn_decl.proto;
+            PNode* body = tls->fn_decl.stmts;
+            PNode* ident = prototype->fnproto.ident;
+            string ident_name = pnode_span(ident);
+            } break;
         default:
             UNREACHABLE;
         }

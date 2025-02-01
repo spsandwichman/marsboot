@@ -1,6 +1,7 @@
 #include "sema.h"
 #include "ptrmap.h"
 #include "strbuilder.h"
+#include "orbit/hash.h"
 
 TypeGraph tg;
 
@@ -477,6 +478,17 @@ bool type_is_numeric(Type t) {
     }
 }
 
+bool type_is_untyped(Type t) {
+    switch (t) {
+    case TYPE_UNTYPED_INT:
+    case TYPE_UNTYPED_FLOAT:
+    case TYPE_UNTYPED_STRING:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool type_can_implicit_cast(Type from, Type to) {
     if (from == to) return true;
     
@@ -646,4 +658,43 @@ bool type_can_explicit_cast(Type from, Type to) {
     }
 
     return false;
+}
+
+static void type_gen_typeid_internal(Hash* h, Type t) {
+    switch (type(t)->kind) {
+    case TYPE_I8:
+    case TYPE_I16:
+    case TYPE_I32:
+    case TYPE_I64:
+    case TYPE_U8:
+    case TYPE_U16:
+    case TYPE_U32:
+    case TYPE_U64:
+    case TYPE_F16:
+    case TYPE_F32:
+    case TYPE_F64:
+        string typename = type_get_name(t);
+        hash_fnv1a(h, typename.raw, typename.len);
+        break;
+    case TYPE_DISTINCT:
+        // this will probably break as soon as 
+        // mutliple module compilation gets working
+        //
+        // `distinct` types need to have a unique 
+        // type hash, but that hash needs to be unique
+        // and consistent across multiple compilations.
+        // it shouldn't change based on import or analysis order.
+        // but somehow needs to be unique from everything else.
+        hash_fnv1a(h, "distinct", strlen("distinct"));
+        hash_fnv1a_u64(h, (u64)t);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+u64 type_gen_typeid(Type t) {
+    Hash h = hash_new();
+    type_gen_typeid_internal(&h, t);
+    return (u64) h;
 }

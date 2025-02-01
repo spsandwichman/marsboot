@@ -25,7 +25,6 @@ void _vec_reserve(_VecGeneric* v, size_t stride, size_t slots) {
     }
 }
 
-
 void _vec_destroy(_VecGeneric* v) {
     free(v->at);
     *v = (_VecGeneric){0};

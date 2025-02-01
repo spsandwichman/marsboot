@@ -103,6 +103,7 @@ static const char* const builtin_prelude =
     "        void* _raw;\n"
     "        typeid _id;\n"
     "    } dyn;\n"
+    "    #define null (void*)0\n"
     "#endif // NO_MARS_BUILTINS\n\n"
 ;
 
@@ -138,11 +139,13 @@ static void c_emit_type(Type t, bool force_full_type) {
         }
         sb_append_c(sb, "}");
         break;
-    case TYPE_SLICE:
-    case TYPE_ENUM:
     default:
+        if (type_has_name(t)) {
+            sb_append(sb, type_get_name(t));
+            return;
+        }
         string typestr = type_gen_string(t, false);
-        printf("cannot emit type "str_fmt"\n", str_arg(typestr));
+        printf("cannot emit type "str_fmt" (%d)\n", str_arg(typestr), t);
         UNREACHABLE;
     }
 
@@ -178,7 +181,8 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
 
     switch (type(declarator)->kind) {
     case TYPE_POINTER:
-        
+    case TYPE_BOUNDLESS_SLICE:
+
         if (!type(declarator)->as_ref.mutable) {
             sb_append_c(sb, "const ");
         }
@@ -193,7 +197,6 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
     default:
         UNREACHABLE;
     }
-    
 }
 
 
@@ -210,6 +213,7 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
         da_append(&declarators, base);
         switch (type(base)->kind) {
         case TYPE_POINTER:
+        case TYPE_BOUNDLESS_SLICE:
             base = type(base)->as_ref.pointee;
             break;
         case TYPE_ARRAY:
@@ -242,6 +246,26 @@ void c_emit_constval(SemaNode* n) {
     }
 }
 
+void c_emit_simple_expr_zero(Type t) {
+    if (type_is_numeric(t)) {
+        sb_append_c(sb, "0");
+        return;
+    }
+    switch (type(t)->kind) {
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
+        sb_append_c(sb, "null");
+        break;
+    case TYPE_UNION:
+    case TYPE_STRUCT:
+    case TYPE_ARRAY:
+        sb_append_c(sb, "{0}");
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
 void c_emit_simple_expr(SemaNode* n) {
     switch (n->kind) {
     case SN_CONSTVAL:
@@ -260,6 +284,11 @@ void c_prepare(Module* m) {
             string mangled = gen_mangled(m, type_get_name(t));
             type_attach_name(t, mangled);
         } else {
+            switch (type(t)->kind) {
+            case TYPE_ARRAY:
+            case TYPE_POINTER:
+                continue;
+            }
             string mangled = gen_mangled_anon(m, "type", type(t));
             type_attach_name(t, mangled);
         }
@@ -298,6 +327,7 @@ static void c_header_internal(Module* m) {
 
     // emit predecl typedefs
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
+        if (!type_has_name(t)) continue;
         string typename = type_get_name(t);
         sb_append_c(sb, "typedef ");
         c_emit_declaration(true, typename, t, true);
@@ -324,12 +354,16 @@ static void c_header_internal(Module* m) {
         Entity* ent = decl->decl.entity; 
 
         if (ent->storage != STORAGE_COMPTIME) continue;
+        if (ent->type == TYPE_TYPEID) continue;
 
         sb_append_c(sb, "#define ");
         sb_append(sb, ent->name);
+        if (!type_is_untyped(ent->type)) {
+            sb_append_c(sb, " (");
+            c_emit_declaration(true, constr(""), ent->type, false);
+            sb_append_c(sb, ")");
+        }
         sb_append_c(sb, " (");
-        c_emit_declaration(true, constr(""), ent->type, false);
-        sb_append_c(sb, ")(");
         c_emit_simple_expr(decl->decl.value);
         sb_append_c(sb, ")\n");
     }
@@ -360,15 +394,21 @@ static void c_body_internal(Module* m) {
     sb_append(sb, m->name);
     sb_append_c(sb, ".h\"\n\n");
 
-    // emit variable extern decls
+    // emit global var decls
     for_n(i, 0, m->decls.len) {
         SemaNode* decl = m->decls.at[i];
         Entity* ent = decl->decl.entity; 
         if (ent->storage == STORAGE_COMPTIME) continue;
 
         c_emit_declaration(ent->mutable, ent->name, ent->type, false);
-        sb_append_c(sb, " = ");
-        c_emit_simple_expr(decl->decl.value);
+        if (!ent->uninit) {
+            sb_append_c(sb, " = ");
+            if (decl->decl.value != NULL) {
+                c_emit_simple_expr(decl->decl.value);
+            } else {
+                c_emit_simple_expr_zero(ent->type);
+            }
+        }
         sb_append_c(sb, ";\n");
 
     }

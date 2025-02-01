@@ -130,6 +130,8 @@ bool type_is_float(Type t);
 bool type_is_solid_integer(Type t);
 bool type_is_integer(Type t);
 
+bool type_is_untyped(Type t);
+
 bool type_has_name(Type t);
 string type_get_name(Type t);
 void type_attach_name(Type t, string name);
@@ -188,6 +190,7 @@ typedef struct Entity {
     u8 storage;
     u8 check_status;
     bool mutable;
+    bool uninit;
 
     string name;
     EntityTable* tbl;

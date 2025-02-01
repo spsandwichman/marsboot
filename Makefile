@@ -1,6 +1,6 @@
 SRCPATHS = \
 	src/*.c \
-	src/parse/*.c \
+	src/orbit/*.c \
 
 SRC = $(wildcard $(SRCPATHS))
 OBJECTS = $(SRC:src/%.c=build/%.o)
@@ -26,6 +26,10 @@ CFLAGS = -march=native -std=c17 -MD -D_XOPEN_SOURCE=700 -fwrapv \
 		 -Wall -Wno-format -Wno-unused -Werror=incompatible-pointer-types -Wno-discarded-qualifiers
 # OPT = -O3 -flto
 OPT = -O0 -g
+
+ifneq ($(OS),Windows_NT)
+	CFLAGS += -rdynamic
+endif
 
 FILE_NUM = 0
 

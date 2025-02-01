@@ -11,8 +11,8 @@ if you have
     };
 and
     let f: ^let Foo = ...;
-the expression
-    f.b 
+the expressions
+    f^.b or f.b 
 will only access the memory that holds the field b. 
 if f points to a region of memory only one byte long, 
 this access will still be valid.

@@ -188,11 +188,18 @@ PNode* parse_var_decl(bool is_extern) {
             report_token(true, "extern declaration cannot have a value");
         }
         advance();
-        decl->decl.value = parse_expr();
-    } else if (decl->decl.kind == DECLKIND_DEF) {
-        report_token(true, "def declaration must have a value");
-    }
-    
+        if (match(TOK_UNINIT)) {
+            decl->decl.value = new_node(_, PN_UNINIT);
+            advance();
+        } else {
+            decl->decl.value = parse_expr();
+        }
+    } 
+    // else if (decl->decl.kind == DECLKIND_DEF) {
+    //     report_token(true, "def declaration must have a value");
+    // }
+
+    span_extend(decl, -1);
     return decl;
 }
 
@@ -392,7 +399,7 @@ PNode* parse_for_stmt() {
     PNode* left = parse_simple_stmt();
     if (current()->kind == TOK_KEYWORD_IN) {
         // parse ranged for loop
-        PNode* fl = new_node(for_nd, PN_STMT_for_nD);
+        PNode* fl = new_node(for_nd, PN_STMT_FOR_RANGED);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
@@ -750,7 +757,7 @@ PNode* parse_atom_terminal(bool allow_none) {
             term->array_type.len = parse_expr();
             expect(TOK_CLOSE_BRACKET);
             advance();
-            term->ref_type.sub = parse_atom_terminal(false);
+            term->array_type.sub = parse_atom_terminal(false);
         }
         break;
     case TOK_CARET:
