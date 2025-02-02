@@ -1,5 +1,5 @@
-module simple;
+module mod;
 
-fn bruh(x, y: int) -> int {
-    
+fn some_function(x: int) -> int {
+    return x;
 }

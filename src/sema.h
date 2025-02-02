@@ -2,6 +2,7 @@
 #define SEMA_H
 
 #include "parse.h"
+#include "orbit/vec.h"
 
 typedef struct Module Module;
 
@@ -92,10 +93,7 @@ typedef struct TNode {
                 TypeFnParam* at;
                 usize len;
             } params;
-            struct {
-                TypeFnParam* at;
-                usize len;
-            } returns;
+            Type ret_type;
         } as_function;
         struct {
             TypeEnumVariant* at;
@@ -175,19 +173,20 @@ typedef struct ConstVal {
 
 enum EntityStorageKind {
     STORAGE_LOCAL,
-    STORAGE_LOCAL_PARAM,
-    STORAGE_LOCAL_RETURN,
+    STORAGE_PARAMETER,
 
     STORAGE_EXTERN,
     STORAGE_GLOBAL,
     STORAGE_COMPTIME, // 'def' decl
+
+    STORAGE_FUNCTION,
 };
 
 enum EntityCheckStatus {
-    CHK_NONE, // has not been checked yet
-    CHK_IN_PROGRESS, // currently being checked. value references to this entity are invalid
-    CHK_IN_PROGRESS_TYPE_AVAILABLE,
-    CHK_DONE,
+    ENT_CHECK_NONE, // has not been checked yet
+    ENT_CHECK_IN_PROGRESS, // currently being checked. value references to this entity are invalid
+    ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE,
+    ENT_CHECK_DONE,
 };
 
 typedef struct Entity {
@@ -238,7 +237,7 @@ enum SemaNodeKind {
 
     SN_STMT_BLOCK,
 
-    SN_DECL,
+    SN_VAR_DECL,
 
     SN_FN_DECL,
 };
@@ -274,18 +273,30 @@ typedef struct SemaNode {
             u32 cap;
         } list;
 
+        // better to abstract this more
+        // when anonymous functions come into play
+        // but whatever
         struct {
-            
+            Entity* entity;
+            EntityTable* scope;
             SemaNode* body;
         } fn_decl;
     };
 } SemaNode;
 
+
+VecPtr_typedef(SemaNode);
+
+typedef struct Analyzer {
+    Module* m;
+    Entity* current_fn;
+    VecPtr(SemaNode) defer_stack;
+} Analyzer;
+
 Module* sema_check_module(PNode* top);
-SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected);
-
-SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt);
-
-Type ingest_type(Module* m, EntityTable* etbl, PNode* pn);
+SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected);
+SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt);
+SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt);
+Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn);
 
 #endif // SEMA_H

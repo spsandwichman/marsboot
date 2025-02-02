@@ -14,13 +14,16 @@ assignop =
     ;
 
 simple_stmt =
-    | ('let' | 'mut' | 'def') list<ident> [':' expr] ['=' expr]
+    | ('let' | 'mut' | 'def') ident [':' expr] ['=' expr]
+    (* | ('let' | 'mut' | 'def') expr [':' expr] ['=' expr] *)
+    (* ^^^ PROPOSED *)
     | expr assignop expr
     | expr
     ;
 
 extern_decl =
     | fnproto ';'
+    | ('let' | 'mut') list<ident> ':' expr ';'
     | ('let' | 'mut') list<ident> ':' expr ';'
     ;
 
@@ -72,14 +75,14 @@ binop =
     | '+' | '-'
     | '==' | '!=' | '<' | '>' | '<=' | '>=' | '..<' | '..='
     | 'in'
-    | '&&' 
+    | '&&'
     | '||'
     ;
 
 fnproto = 
     | 'fn' [ident] '(' list<item> ')' ['->' (expr | '(' list<item> ')'))]
-    (* | 'fn' [ident] '(' list<expr> ')' ['->' (expr | '(' list<expr> ')'))] *)
-    (* ^^^ TODO *)
+    (* | 'fn' [ident] '(' list<item> ')' [expr] *)
+    (* ^^^ PROPOSED *)
     ;
 
 case_expr = 'case' list<expr> ':' expr;

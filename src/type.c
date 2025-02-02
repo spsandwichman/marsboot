@@ -239,6 +239,8 @@ void type_init() {
         assert(i == type_new(NULL, i));
     }
 
+    tg.handles.names[TYPE_UNKNOWN] = constr("!UNKNOWN!");
+
     tg.handles.names[TYPE_VOID]   = constr("void");
     tg.handles.names[TYPE_NEVER]  = constr("never");
     tg.handles.names[TYPE_BOOL]   = constr("bool");

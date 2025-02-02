@@ -380,7 +380,7 @@ typedef struct PNode {
         struct {
             PNode* ident;
             PNode* param_list;
-            PNode* returns; // may be a single type, may be a item_set list
+            PNode* ret_type;
         } fnproto;
         struct {
             PNode* ident; // may be list
@@ -420,7 +420,7 @@ typedef struct PNode {
             PNode* decl;
             PNode* range;
             PNode* block;
-        } for_nd;
+        } for_ranged;
         struct {
             PNode* fields;
         } record_type;

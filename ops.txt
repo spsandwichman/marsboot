@@ -33,9 +33,9 @@ operations:
     <T> != <T> -> <bool>    where T: Base
     <T> > <T>  -> <bool>    where T: Numeric
     <T> < <T>  -> <bool>    where T: Numeric
-    <T> >= <T> -> <bool>    where T: Base
-    <T> <= <T> -> <bool>    where T: Base
-    
+    <T> >= <T> -> <bool>    where T: Numeric
+    <T> <= <T> -> <bool>    where T: Numeric
+
     <T> << <U> -> <T>       where T: IntLike, U: Unsigned
     <T> >> <U> -> <T>       where T: IntLike, U: Unsigned
 

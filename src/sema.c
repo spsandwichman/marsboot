@@ -1,5 +1,4 @@
 #include "sema.h"
-#include "orbit/vec.h"
 
 static void report_pnode(bool error, PNode* pn, char* message, ...) {
     va_list args;
@@ -15,32 +14,32 @@ static void report_pnode(bool error, PNode* pn, char* message, ...) {
 }
 
 EntityTable* etbl_new(EntityTable* parent) {
-    EntityTable* etbl = malloc(sizeof(*etbl));
-    memset(etbl, 0, sizeof(*etbl));
-    etbl->parent = parent;
-    da_init(etbl, 32);
-    return etbl;
+    EntityTable* scope = malloc(sizeof(*scope));
+    memset(scope, 0, sizeof(*scope));
+    scope->parent = parent;
+    da_init(scope, 32);
+    return scope;
 }
 
-Entity* etbl_search(EntityTable* etbl, string name) {
-    if (etbl == NULL) return NULL;
-    foreach (Entity* e, *etbl) {
+Entity* etbl_search(EntityTable* scope, string name) {
+    if (scope == NULL) return NULL;
+    foreach (Entity* e, *scope) {
         if (string_eq(e->name, name)) {
             return e;
         }
     }
-    return etbl_search(etbl->parent, name);
+    return etbl_search(scope->parent, name);
 }
 
-Entity* etbl_put(EntityTable* etbl, string name) {
+Entity* etbl_put(EntityTable* scope, string name) {
     Entity* ent = malloc(sizeof(*ent));
     memset(ent, 0, sizeof(*ent));
     ent->name = name;
-    da_append(etbl, ent);
+    da_append(scope, ent);
     return ent;
 }
 
-SemaNode* new_node(Module* m, PNode* pn, u8 kind) {
+SemaNode* new_node(Analyzer* an, PNode* pn, u8 kind) {
     SemaNode* node = malloc(sizeof(*node));
     memset(node, 0, sizeof(*node));
     node->kind = kind;
@@ -95,10 +94,10 @@ static u64 eval_integer(PNode* pn, char* raw, usize len) {
     return value;
 }
 
-SemaNode* check_expr_integer(Module* m, EntityTable* etbl, PNode* pn) {
+SemaNode* check_expr_integer(Analyzer* an, EntityTable* scope, PNode* pn) {
     // get integer value
     i64 value = eval_integer(pn, pn->base.raw, pn->base.len);
-    SemaNode* integer = new_node(m, pn, SN_CONSTVAL);
+    SemaNode* integer = new_node(an->m, pn, SN_CONSTVAL);
     integer->constval = (ConstVal){
         .i64 = value,
         .type = TYPE_UNTYPED_INT,
@@ -167,7 +166,7 @@ void const_eval_expr_arith_binop(Module* m, SemaNode* n, u8 kind) {
     }
 }
 
-SemaNode* insert_implicit_cast(Module* m, SemaNode* n, Type to) {
+SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     // if its a constant val, we can just change reassign the type
     // TODO there might be more conversion to do here,
     // probably separate that out into a different function
@@ -177,17 +176,17 @@ SemaNode* insert_implicit_cast(Module* m, SemaNode* n, Type to) {
         return n;
     }
 
-    SemaNode* impl_cast = new_node(m, NULL, SN_IMPLICIT_CAST);
+    SemaNode* impl_cast = new_node(an, NULL, SN_IMPLICIT_CAST);
     impl_cast->cast.sub = n;
     impl_cast->cast.to = to;
     return impl_cast;
 }
 
 // +, -, *, /, %
-SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* etbl, PNode* pn, Type expected) {
+SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
-    SemaNode* lhs = check_expr(m, etbl, pn->binop.lhs, TYPE_UNKNOWN);
-    SemaNode* rhs = check_expr(m, etbl, pn->binop.rhs, TYPE_UNKNOWN);
+    SemaNode* lhs = check_expr(m, scope, pn->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(m, scope, pn->binop.rhs, TYPE_UNKNOWN);
     SemaNode* binop = new_node(m, pn, SN_BINOP);
     binop->type = TYPE_UNKNOWN;
     binop->binop.lhs = lhs;
@@ -233,17 +232,17 @@ SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* etbl, PNode* p
     return binop;
 }
 
-SemaNode* check_expr_ident(Module* m, EntityTable* etbl, PNode* pn) {
+SemaNode* check_expr_ident(Module* m, EntityTable* scope, PNode* pn) {
     string ident = pnode_span(pn);
-    Entity* ent = etbl_search(etbl, ident);
+    Entity* ent = etbl_search(scope, ident);
     if (ent == NULL) {
         report_pnode(true, pn, "undefined symbol '"str_fmt"'", str_arg(ident));
     }
     // this entitiy is global, but hasnt been checked yet. lets go do that
-    if (ent->check_status == CHK_NONE) {
+    if (ent->check_status == ENT_CHECK_NONE) {
         SemaNode* decl = check_var_decl(m, ent->tbl, ent->decl_pnode);
-    } else if (ent->check_status == CHK_IN_PROGRESS || 
-               ent->check_status == CHK_IN_PROGRESS_TYPE_AVAILABLE) {
+    } else if (ent->check_status == ENT_CHECK_IN_PROGRESS || 
+               ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
         report_pnode(true, pn, "cannot define '"str_fmt"' in terms of itself", str_arg(ident));
     }
 
@@ -263,7 +262,7 @@ SemaNode* check_expr_ident(Module* m, EntityTable* etbl, PNode* pn) {
     UNREACHABLE;
 }
 
-SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
+SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     if (expected == TYPE_DYN) {
         TODO("insert dyn boxing");
     }
@@ -271,10 +270,10 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     SemaNode* expr = NULL;
     switch (pn->base.kind) {
     case PN_IDENT:
-        expr = check_expr_ident(m, etbl, pn);
+        expr = check_expr_ident(an, scope, pn);
         break;
     case PN_EXPR_INTEGER:
-        expr = check_expr_integer(m, etbl, pn);
+        expr = check_expr_integer(an, scope, pn);
         break;
     case PN_TYPE_I8 ... PN_TYPE_TYPEID:
     case PN_TYPE_STRUCT:
@@ -284,8 +283,8 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     case PN_TYPE_DISTINCT:
     case PN_TYPE_POINTER:
     case PN_TYPE_BOUNDLESS_SLICE:
-        Type t = ingest_type(m, etbl, pn);
-        expr = new_node(m, pn, SN_CONSTVAL);
+        Type t = ingest_type(an, scope, pn);
+        expr = new_node(an, pn, SN_CONSTVAL);
         expr->type = TYPE_TYPEID;
         expr->constval.typeid = t;
         break;
@@ -293,7 +292,7 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     case PN_EXPR_SUB:
     case PN_EXPR_MUL:
     case PN_EXPR_DIV:
-        expr = check_expr_arith_binop(m, pn->base.kind, etbl, pn, expected);
+        expr = check_expr_arith_binop(an, pn->base.kind, scope, pn, expected);
         break;
     default:
         report_pnode(true, pn, "expected valid expression");
@@ -303,7 +302,7 @@ SemaNode* check_expr(Module* m, EntityTable* etbl, PNode* pn, Type expected) {
     return expr;
 }
 
-static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
+static Type ingest_type_internal(Analyzer* an, EntityTable* scope, PNode* pn) {
     switch (pn->base.kind) {
     case PN_TYPE_I8:  return TYPE_I8;
     case PN_TYPE_I16: return TYPE_I16;
@@ -327,30 +326,30 @@ static Type ingest_type_internal(Module* m, EntityTable* etbl, PNode* pn) {
     case PN_TYPE_TYPEID: return TYPE_TYPEID;
 
     case PN_TYPE_ARRAY:
-        SemaNode* length = check_expr(m, etbl, pn->array_type.len, TYPE_UNKNOWN);
+        SemaNode* length = check_expr(an, scope, pn->array_type.len, TYPE_UNKNOWN);
         if (length->kind != SN_CONSTVAL || !type_is_integer(length->type)) {
             report_pnode(true, pn->array_type.len, "array length must be a constant integer");
         }
-        Type sub = ingest_type_internal(m, etbl, pn->array_type.sub);
-        Type arr = type_new(m, TYPE_ARRAY);
+        Type sub = ingest_type_internal(an, scope, pn->array_type.sub);
+        Type arr = type_new(an->m, TYPE_ARRAY);
         type(arr)->as_array.len = length->constval.i64;
         type(arr)->as_array.sub = sub;
         return arr;
     case PN_TYPE_POINTER:
-        Type pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
-        Type ptr = type_new_ref(m, TYPE_POINTER, pointee, pn->ref_type.mutable);
+        Type pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        Type ptr = type_new_ref(an->m, TYPE_POINTER, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_BOUNDLESS_SLICE:
-        pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
-        ptr = type_new_ref(m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
+        pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        ptr = type_new_ref(an->m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_SLICE:
-        pointee = ingest_type_internal(m, etbl, pn->ref_type.sub);
-        ptr = type_new_ref(m, TYPE_SLICE, pointee, pn->ref_type.mutable);
+        pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        ptr = type_new_ref(an->m, TYPE_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
 
     case PN_IDENT:
-        SemaNode* type = check_expr_ident(m, etbl, pn);
+        SemaNode* type = check_expr_ident(an, scope, pn);
         if (type->type != TYPE_TYPEID || type->kind != SN_CONSTVAL) {
             report_pnode(true, pn, "symbol is not a compile-time constant typeid");
         }
@@ -373,8 +372,8 @@ static Type normalize_untyped(Module* m, Type t) {
     return t;
 }
 
-Type ingest_type(Module* m, EntityTable* etbl, PNode* pn) {
-    Type t = ingest_type_internal(m, etbl, pn);
+Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
+    Type t = ingest_type_internal(an, scope, pn);
     return t;
 }
 
@@ -383,30 +382,30 @@ static bool can_global_decl_value(SemaNode* n) {
     return false;
 }
 
-SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         
     assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
     string name = pnode_span(pstmt->decl.ident);
 
-    bool is_global_decl = etbl == m->global;
+    bool is_global_decl = scope == an->m->global;
 
-    Entity* ent = etbl_search(etbl, name);
+    Entity* ent = etbl_search(scope, name);
     if (is_global_decl) {
         // this is guaranteed to exist    
         assert(ent);
 
-        if (ent->check_status == CHK_DONE && ent->decl_pnode == pstmt) {
+        if (ent->check_status == ENT_CHECK_DONE && ent->decl_pnode == pstmt) {
             return ent->decl;
         }
     }
 
-    if ((is_global_decl && ent->decl_pnode != pstmt) || (etbl != m->global && ent != NULL)) {
+    if ((is_global_decl && ent->decl_pnode != pstmt) || (scope != an->m->global && ent != NULL)) {
         report_pnode(true, pstmt->decl.ident, "name already declared");
     } else if (!is_global_decl) {
-        ent = etbl_put(etbl, name);
+        ent = etbl_put(scope, name);
     }
 
-    ent->check_status = CHK_IN_PROGRESS;
+    ent->check_status = ENT_CHECK_IN_PROGRESS;
     ent->mutable = pstmt->decl.kind == DECLKIND_MUT;
     ent->decl_pnode = pstmt;
     ent->type = TYPE_UNKNOWN;
@@ -423,12 +422,12 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
     }
 
     if (pstmt->decl.type) {
-        ent->type = ingest_type(m, etbl, pstmt->decl.type);
-        ent->check_status = CHK_IN_PROGRESS_TYPE_AVAILABLE;
+        ent->type = ingest_type(an, scope, pstmt->decl.type);
+        ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
     }
 
     u8 decl_kind = pstmt->decl.kind;
-    SemaNode* decl = new_node(m, pstmt, SN_DECL);
+    SemaNode* decl = new_node(an, pstmt, SN_VAR_DECL);
     decl->decl.entity = ent;
     ent->decl = decl;
 
@@ -442,22 +441,22 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
         }
         ent->uninit = pstmt->decl.value != NULL && pstmt->decl.value->base.kind == PN_UNINIT;
     } else if (pstmt->decl.value != NULL) {
-        SemaNode* value = check_expr(m, etbl, pstmt->decl.value, ent->type);
+        SemaNode* value = check_expr(an, scope, pstmt->decl.value, ent->type);
         decl->decl.value = value;
 
         if (ent->storage == STORAGE_COMPTIME && value->kind == SN_CONSTVAL && value->type == TYPE_TYPEID) {
             
             // this is actually a type declaration!!
             ent->type = TYPE_TYPEID;
-            Type alias = type_create_alias(m, value->constval.typeid);
+            Type alias = type_create_alias(an->m, value->constval.typeid);
             type_attach_name(alias, name);
             value->constval.typeid = alias;
         }
 
         if (ent->type == TYPE_UNKNOWN) {
-            ent->type = normalize_untyped(m, value->type);
+            ent->type = normalize_untyped(an->m, value->type);
         } else if (type_can_implicit_cast(value->type, ent->type)) {
-            value = insert_implicit_cast(m, value, ent->type);
+            value = insert_implicit_cast(an, value, ent->type);
         } else {
             string valuetype_str = type_gen_string(value->type, true);
             string decltype_str = type_gen_string(ent->type, true);
@@ -482,97 +481,146 @@ SemaNode* check_var_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
         report_pnode(true, decl->pnode, "declaration must have a type, a value, or both");
     }
 
-    ent->check_status = CHK_DONE;
+    ent->check_status = ENT_CHECK_DONE;
     decl->type = TYPE_VOID;
     return decl;
 }
 
-Vec_typedef(TypeFnParam);
-static bool param_name_already_exists(Module* m, Vec(TypeFnParam)* params, string name ) {
-    for_vec (TypeFnParam* p, params) {
-        if (string_eq(p->name, name)) {
-            return true;
+SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return) {
+    VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
+
+    bool seen_return = false;
+    for_n (i, 0, pbody->list.len) {
+        PNode* pstmt = pbody->list.at[i];
+        SemaNode* stmt = check_stmt(an, scope, pstmt);
+        if (pstmt->base.kind == PN_STMT_RETURN) {
+            seen_return = true;
         }
+        vec_append(&stmts, stmt);
     }
-    return false;
 }
 
-SemaNode* check_fn_decl(Module* m, EntityTable* etbl, PNode* pstmt) {
+SemaNode* check_fn_body(Analyzer* an, EntityTable* scope, PNode* pbody, Type ret_type) {
+    return check_block(an, scope, pbody, true);
+}
+
+Vec_typedef(TypeFnParam);
+
+SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     PNode* proto = pstmt->fn_decl.proto;
     PNode* body = pstmt->fn_decl.stmts;
 
     PNode* ident = proto->fnproto.ident;
     string name = pnode_span(ident);
 
-    bool is_global_decl = etbl == m->global;
+    bool is_global_decl = scope == an->m->global;
 
-    Entity* ent = etbl_search(etbl, name);
+
+    SemaNode* decl = new_node(an->m, pstmt, SN_FN_DECL);
+    Entity* ent = etbl_search(scope, name);
     if (is_global_decl) {
         // this is guaranteed to exist    
         assert(ent);
-        if (ent->check_status == CHK_DONE && ent->decl_pnode == pstmt) {
-            return ent->decl;
+        if (ent->decl_pnode == pstmt) {
+            if (ent->check_status == ENT_CHECK_DONE) {
+                return ent->decl;
+            }
+        } else {
+            report_pnode(true, ident, "symbol already declared");
         }
+    } else if (ent) {
+        report_pnode(true, ident, "symbol already declared");
     }
+
+    if (!ent) {
+        ent = etbl_put(scope, name);
+    }
+
+    ent->check_status = ENT_CHECK_IN_PROGRESS;
+    ent->storage = STORAGE_FUNCTION;
+
+    // new scope for the function scope
+    EntityTable* fn_scope = etbl_new(an->m->global); // because you cant capture local variables 
 
     // scan prototype and create a function type
     Vec(TypeFnParam) params = vec_new(TypeFnParam, 8);
     PNode* param_list = proto->fnproto.param_list;
 
+    // TODO extract into general param_list ingest
     for_n (i, 0, param_list->list.len) {
         PNode* items = param_list->list.at[i];
         
-        Type t = ingest_type(m, etbl, items->item.type);
+        Type t = ingest_type(an->m, fn_scope, items->item.type);
 
         if (items->item.ident->base.kind == PN_IDENT) {
             string name = pnode_span(items->item.ident);
-            if (param_name_already_exists(m, &params, name) || etbl_search(etbl, name)) {
-                report_pnode(true, items->item.ident, "parameter name already declared");
+            if (etbl_search(fn_scope, name)) {
+                report_pnode(true, items->item.ident, "symbol already declared");
+            }
+            // warn if the parameter name is the same as a local name
+            if (etbl_search(scope, name)) {
+                report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
             }
             TypeFnParam p = { .name = name, .type = t };
             vec_append(&params, p);
+            
+            Entity* p_ent = etbl_put(fn_scope, name);
+            p_ent->storage = STORAGE_PARAMETER;
+            p_ent->type = t;
+            p_ent->check_status = ENT_CHECK_DONE;
         } else {
             for_n(i, 0, items->item.ident->list.len) {
                 string name = pnode_span(items->item.ident->list.at[i]);
-                if (param_name_already_exists(m, &params, name) || etbl_search(etbl, name)) {
-                    report_pnode(true, items->item.ident->list.at[i], "parameter name already declared");
+                if (etbl_search(fn_scope, name)) {
+                    report_pnode(true, items->item.ident->list.at[i], "symbol already declared");
+                }
+                // warn if the parameter name is the same as a local name
+                if (etbl_search(scope, name)) {
+                    report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
                 }
                 TypeFnParam p = { .name = name, .type = t };
                 vec_append(&params, p);
+
+                Entity* p_ent = etbl_put(fn_scope, name);
+                p_ent->storage = STORAGE_PARAMETER;
+                p_ent->type = t;
+                p_ent->check_status = ENT_CHECK_DONE;
             }
         }
     }
 
-
-    Vec(TypeFnParam) returns = vec_new(TypeFnParam, 8);
-    PNode* return_list = proto->fnproto.returns;
-
-    if (return_list->base.kind == PN_LIST) {
-        report_pnode(true, return_list, "multiple returns not supported yet");
+    Type ret_type;
+    if (proto->fnproto.ret_type) {
+        ret_type = ingest_type(an->m, fn_scope, proto->fnproto.ret_type);
+    } else {
+        ret_type = TYPE_VOID;
     }
 
-    TypeFnParam r;
-    r.name = NULL_STR,
-    r.type = ingest_type(m, etbl, return_list);
-    vec_append(&returns, r);
+    Type t = type_new(an->m, TYPE_FUNCTION);
+    type(t)->as_function.params.at = params.at;
+    type(t)->as_function.params.len = params.len;
+    type(t)->as_function.ret_type = ret_type;
 
-    Type t = type_new(m, TYPE_FUNCTION);
-    type(t)->as_function.params.at   = params.at;
-    type(t)->as_function.params.len  = params.len;
-    type(t)->as_function.returns.at  = returns.at;
-    type(t)->as_function.returns.len = returns.len;
+    decl->fn_decl.entity = ent;
+    decl->fn_decl.scope = fn_scope;
 
+    ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
+    ent->decl = decl;
+    ent->type = t;
 
-    UNREACHABLE;
-    return NULL;
+    decl->fn_decl.body = check_fn_body(an->m, fn_scope, pstmt->fn_decl.stmts, ret_type);
+    
+    ent->check_status = ENT_CHECK_DONE;
+    
+    return decl;
 }
 
-SemaNode* check_stmt(Module* m, EntityTable* etbl, PNode* pstmt) {
+SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_STMT_DECL:
-        return check_var_decl(m, etbl, pstmt);
+        return check_var_decl(an, scope, pstmt);
     case PN_STMT_FN_DECL:
-        return check_fn_decl(m, etbl, pstmt);
+        return check_fn_decl(an, scope, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement");
         return NULL;
@@ -589,6 +637,11 @@ Module* sema_check_module(PNode* top) {
     PNode* mod_decl = top->list.at[0];
     mod->name = pnode_span(mod_decl->module_decl.ident);
 
+    Analyzer an;
+    an.m = mod;
+    an.current_fn = NULL;
+    an.defer_stack = vecptr_new(SemaNode, 4);
+
     // pre-collect entitites
     for_n (i, 1, top->list.len) {
         PNode* tls = top->list.at[i];
@@ -597,7 +650,7 @@ Module* sema_check_module(PNode* top) {
             PNode* ident = tls->decl.ident;
             string ident_name = pnode_span(ident);
             Entity* ent = etbl_put(mod->global, ident_name);
-            ent->check_status = CHK_NONE;
+            ent->check_status = ENT_CHECK_NONE;
             ent->decl_pnode = tls;
             ent->tbl = mod->global;
             } break;
@@ -607,7 +660,7 @@ Module* sema_check_module(PNode* top) {
             PNode* ident = prototype->fnproto.ident;
             string ident_name = pnode_span(ident);
             Entity* ent = etbl_put(mod->global, ident_name);
-            ent->check_status = CHK_NONE;
+            ent->check_status = ENT_CHECK_NONE;
             ent->decl_pnode = tls;
             ent->tbl = mod->global;
             } break;

@@ -22,6 +22,9 @@
         often a pointer or internal handle of some kind,
         and {kind} is 'var', 'fn', 'type'
 
+
+    ARRAYS: arrays get put into wrapper structs
+
 */
 
 static StringBuilder* sb;
@@ -128,7 +131,7 @@ static void c_emit_type(Type t, bool force_full_type) {
         for_n(i, 0, type(t)->as_record.len) {
             TypeRecordField* field = &type(t)->as_record.at[i];
             sb_append_c(sb, "    ");
-            c_emit_declaration(true, field->name, field->type, false);
+            c_emit_declaration(true, field->name, field->type, false, false);
             sb_append_c(sb, ";\n");
         }
         sb_append_c(sb, "}");
@@ -138,7 +141,7 @@ static void c_emit_type(Type t, bool force_full_type) {
         for_n(i, 0, type(t)->as_record.len) {
             TypeRecordField* field = &type(t)->as_record.at[i];
             sb_append_c(sb, "    ");
-            c_emit_declaration(false, field->name, field->type, false);
+            c_emit_declaration(false, field->name, field->type, false, false);
             sb_append_c(sb, ";\n");
         }
         sb_append_c(sb, "}");
@@ -172,7 +175,9 @@ static bool is_standalone_type(Type t, bool force_full_type) {
 
 da_typedef(Type);
 
-static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* declarators) {
+// is_ret_type is used to declare the return type of a function, it prevents
+// the emitter from putting parens around declarators and fails on arrays.
+static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* declarators, bool is_ret_type) {
     if (declarators->len == 0) {
         if (!mutable) {
             sb_append_c(sb, "const ");
@@ -190,12 +195,13 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
         if (!type(declarator)->as_ref.mutable) {
             sb_append_c(sb, "const ");
         }
-        sb_append_c(sb, "(*");
-        c_emit_declarator(mutable, ident, base, declarators);
-        sb_append_c(sb, ")");
+        sb_append_c(sb, is_ret_type ? "*" : "(*");
+        c_emit_declarator(mutable, ident, base, declarators, is_ret_type);
+        sb_append_c(sb, is_ret_type ? "" : ")");
         break;
     case TYPE_ARRAY:
-        c_emit_declarator(mutable, ident, base, declarators);
+        assert(!is_ret_type);
+        c_emit_declarator(mutable, ident, base, declarators, is_ret_type);
         sb_printf(sb, "[%zu]", type(declarator)->as_array.len);
         break;
     default:
@@ -204,8 +210,30 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
 }
 
 
+void c_emit_function_prototype(string ident, Type fn_type) {
+    
+    Type ret_type = type(fn_type)->as_function.ret_type;
+    c_emit_declaration(true, ident, ret_type, false, true);
+    sb_append_c(sb, "(");
+
+    if (type(fn_type)->as_function.params.len != 0) {
+        TypeFnParam param = type(fn_type)->as_function.params.at[0];
+        c_emit_declaration(true, param.name, param.type, false, false);
+    }
+
+    for_n (i, 1, type(fn_type)->as_function.params.len) {
+        sb_append_c(sb, ", ");
+        TypeFnParam param = type(fn_type)->as_function.params.at[i];
+        c_emit_declaration(true, param.name, param.type, false, false);
+    }
+
+    sb_append_c(sb, ")");
+}
+
 // force_full_type is used for type declarations and stuff
-void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type) {
+// is_ret_type is used to declare the return type of a function, it prevents
+// the emitter from putting parens around declarators and fails on arrays.
+void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type, bool is_ret_type) {
     static da(Type) declarators;
     if (declarators.at == NULL) { // there should really be a macro for checking uninitialized lol
         da_init(&declarators, 4);
@@ -221,6 +249,7 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
             base = type(base)->as_ref.pointee;
             break;
         case TYPE_ARRAY:
+            assert(!is_ret_type);
             base = type(base)->as_array.sub;
             break;
         default:
@@ -233,7 +262,7 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
     sb_append_c(sb, " ");
 
     // emit declarators
-    c_emit_declarator(mutable, ident, base, &declarators);
+    c_emit_declarator(mutable, ident, base, &declarators, is_ret_type);
 
     da_clear(&declarators);
 }
@@ -289,6 +318,10 @@ void c_emit_simple_expr(SemaNode* n) {
 void c_prepare(Module* m) {
     // mangle type names
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
+        if (type(t)->kind == TYPE_ARRAY) {
+            TODO("ARRAYS IN C ARE COMPLETELY FUCKED LMFAO");
+        }
+
         if (type_has_name(t)) {
             string mangled = gen_mangled(m, type_get_name(t));
             type_attach_name(t, mangled);
@@ -296,6 +329,7 @@ void c_prepare(Module* m) {
             switch (type(t)->kind) {
             case TYPE_ARRAY:
             case TYPE_POINTER:
+            case TYPE_BOUNDLESS_SLICE:
                 continue;
             }
             string mangled = gen_mangled_anon(m, "type", type(t));
@@ -304,9 +338,8 @@ void c_prepare(Module* m) {
     }
 
     // mangle entity names
-    for_n(i, 0, m->decls.len) {
-        SemaNode* decl = m->decls.at[i];
-        Entity* ent = decl->decl.entity;
+    for_n(i, 0, m->global->len) {
+        Entity* ent = m->global->at[i];
         ent->name = gen_mangled(m, ent->name);
     }
 }
@@ -337,15 +370,16 @@ static void c_header_internal(Module* m) {
     // emit def defines
     for_n(i, 0, m->decls.len) {
         SemaNode* decl = m->decls.at[i];
-        Entity* ent = decl->decl.entity; 
 
+        if (decl->kind != SN_VAR_DECL) continue;
+        Entity* ent = decl->decl.entity; 
         if (ent->storage != STORAGE_COMPTIME) continue;
         if (ent->type == TYPE_TYPEID) continue;
 
         sb_append_c(sb, "#define ");
         sb_append(sb, ent->name);
         sb_append_c(sb, " ((");
-        c_emit_declaration(true, constr(""), ent->type, false);
+        c_emit_declaration(true, constr(""), ent->type, false, false);
         sb_append_c(sb, ")(");
         c_emit_simple_expr(decl->decl.value);
         sb_append_c(sb, "))\n");
@@ -354,25 +388,42 @@ static void c_header_internal(Module* m) {
     // emit predecl typedefs
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
         if (!type_has_name(t)) continue;
+        if (type(t)->kind == TYPE_FUNCTION) {
+            continue;
+        }
         string typename = type_get_name(t);
         sb_append_c(sb, "typedef ");
-        c_emit_declaration(true, typename, t, true);
-        sb_append_c(sb, ";\n\n");
-    }
-
-    // emit variable extern decls
-    for_n(i, 0, m->decls.len) {
-        SemaNode* decl = m->decls.at[i];
-        Entity* ent = decl->decl.entity; 
-
-        if (ent->storage == STORAGE_COMPTIME) continue;
-
-        sb_append_c(sb, "extern ");
-        c_emit_declaration(ent->mutable, ent->name, ent->type, false);
+        c_emit_declaration(true, typename, t, true, false);
         sb_append_c(sb, ";\n");
     }
-
     sb_append_c(sb, "\n");
+
+    // emit function forward decls
+    for_n(i, 0, m->global->len) {
+        Entity* ent = m->global->at[i];
+        SemaNode* decl = ent->decl;
+
+        switch (ent->decl->kind) {
+        case SN_FN_DECL:
+            assert(ent->storage == STORAGE_FUNCTION);
+            c_emit_function_prototype(ent->name, ent->type);
+            sb_append_c(sb, ";\n");
+        }
+    }
+    sb_append_c(sb, "\n");
+
+    // emit variable extern decls
+    for_n(i, 0, m->global->len) {
+        Entity* ent = m->global->at[i];
+        SemaNode* decl = ent->decl;
+        switch (ent->decl->kind) {
+        case SN_VAR_DECL:
+            if (ent->storage == STORAGE_COMPTIME) continue;
+            sb_append_c(sb, "extern ");
+            c_emit_declaration(ent->mutable, ent->name, ent->type, false, false);
+            sb_append_c(sb, ";\n");
+        }
+    }
     
     sb_append_c(sb, "\n");
 
@@ -382,7 +433,6 @@ static void c_header_internal(Module* m) {
 }
 
 string c_header(Module* mod) {
-    // type_condense();
 
     StringBuilder strbuilder;
     sb = &strbuilder;
@@ -401,22 +451,32 @@ static void c_body_internal(Module* m) {
     sb_append_c(sb, ".h\"\n\n");
 
     // emit global var decls
-    for_n(i, 0, m->decls.len) {
-        SemaNode* decl = m->decls.at[i];
-        Entity* ent = decl->decl.entity; 
-        if (ent->storage == STORAGE_COMPTIME) continue;
+    for_n(i, 0, m->global->len) {
+        Entity* ent = m->global->at[i];
+        SemaNode* decl = ent->decl;
 
-        c_emit_declaration(ent->mutable, ent->name, ent->type, false);
-        if (!ent->uninit) {
-            sb_append_c(sb, " = ");
-            if (decl->decl.value != NULL) {
-                c_emit_simple_expr(decl->decl.value);
-            } else {
-                c_emit_simple_expr_zero(ent->type);
+        switch (ent->decl->kind) {
+        case SN_VAR_DECL: {
+            if (ent->storage == STORAGE_COMPTIME) continue;
+
+            c_emit_declaration(ent->mutable, ent->name, ent->type, false, false);
+            if (!ent->uninit) {
+                sb_append_c(sb, " = ");
+                if (decl->decl.value != NULL) {
+                    c_emit_simple_expr(decl->decl.value);
+                } else {
+                    c_emit_simple_expr_zero(ent->type);
+                }
             }
-        }
-        sb_append_c(sb, ";\n");
+            sb_append_c(sb, ";\n");
+            } break;
+        case SN_FN_DECL: {
+            assert(ent->storage == STORAGE_FUNCTION);
+            c_emit_function_prototype(ent->name, ent->type);
 
+            sb_append_c(sb, "\n");
+            } break;
+        }
     }
 }
 

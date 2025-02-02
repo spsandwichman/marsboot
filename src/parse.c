@@ -256,14 +256,7 @@ PNode* parse_fn_prototype() {
     advance();
     if (match(TOK_ARROW_RIGHT)) {
         advance();
-        if (match(TOK_OPEN_PAREN)) {
-            advance();
-            proto->fnproto.returns = parse_item_list(TOK_CLOSE_PAREN);
-            expect(TOK_CLOSE_PAREN);
-            advance();
-        } else {
-            proto->fnproto.returns = parse_expr();
-        }
+        proto->fnproto.ret_type = parse_expr();
     }
     return proto;
 }
@@ -400,16 +393,16 @@ PNode* parse_for_stmt() {
     PNode* left = parse_simple_stmt();
     if (current()->kind == TOK_KEYWORD_IN) {
         // parse ranged for loop
-        PNode* fl = new_node(for_nd, PN_STMT_FOR_RANGED);
+        PNode* fl = new_node(for_ranged, PN_STMT_FOR_RANGED);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
 
-        fl->for_nd.decl = left;
+        fl->for_ranged.decl = left;
         expect(TOK_KEYWORD_IN);
         advance();
-        fl->for_nd.range = parse_expr();
-        fl->for_nd.block = parse_do_group();
+        fl->for_ranged.range = parse_expr();
+        fl->for_ranged.block = parse_do_group();
         return fl;
     } else {
         // parse cstyle loop
