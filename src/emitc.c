@@ -27,6 +27,7 @@
 
 */
 
+static usize indent_level = 0;
 static StringBuilder* sb;
 
 static StringBuilder _mangled_sb;
@@ -209,27 +210,6 @@ static void c_emit_declarator(bool mutable, string ident, Type base, da(Type)* d
     }
 }
 
-
-void c_emit_function_prototype(string ident, Type fn_type) {
-    
-    Type ret_type = type(fn_type)->as_function.ret_type;
-    c_emit_declaration(true, ident, ret_type, false, true);
-    sb_append_c(sb, "(");
-
-    if (type(fn_type)->as_function.params.len != 0) {
-        TypeFnParam param = type(fn_type)->as_function.params.at[0];
-        c_emit_declaration(true, param.name, param.type, false, false);
-    }
-
-    for_n (i, 1, type(fn_type)->as_function.params.len) {
-        sb_append_c(sb, ", ");
-        TypeFnParam param = type(fn_type)->as_function.params.at[i];
-        c_emit_declaration(true, param.name, param.type, false, false);
-    }
-
-    sb_append_c(sb, ")");
-}
-
 // force_full_type is used for type declarations and stuff
 // is_ret_type is used to declare the return type of a function, it prevents
 // the emitter from putting parens around declarators and fails on arrays.
@@ -265,6 +245,178 @@ void c_emit_declaration(bool mutable, string ident, Type t, bool force_full_type
     c_emit_declarator(mutable, ident, base, &declarators, is_ret_type);
 
     da_clear(&declarators);
+}
+
+void c_emit_expr_id(SemaNode* expr) {
+    sb_printf(sb, "expr%llu", expr);
+}
+
+// is_ret_type is used to declare the return type of a function, it prevents
+// the emitter from putting parens around declarators and fails on arrays.
+static void c_emit_temp_declarator(bool mutable, SemaNode* expr, Type base, da(Type)* declarators) {
+    if (declarators->len == 0) {
+        if (!mutable) {
+            sb_append_c(sb, "const ");
+        }
+        c_emit_expr_id(expr);
+
+        return;
+    }
+    Type declarator = declarators->at[--declarators->len];
+
+    switch (type(declarator)->kind) {
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
+
+        if (!type(declarator)->as_ref.mutable) {
+            sb_append_c(sb, "const ");
+        }
+        sb_append_c(sb, "(*");
+        c_emit_temp_declarator(mutable, expr, base, declarators);
+        sb_append_c(sb, ")");
+        break;
+    case TYPE_ARRAY:
+        c_emit_temp_declarator(mutable, expr, base, declarators);
+        sb_printf(sb, "[%zu]", type(declarator)->as_array.len);
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+// force_full_type is used for type declarations and stuff
+// is_ret_type is used to declare the return type of a function, it prevents
+// the emitter from putting parens around declarators and fails on arrays.
+void c_emit_temp_declaration(bool mutable, SemaNode* expr, Type t, bool force_full_type) {
+    static da(Type) declarators;
+    if (declarators.at == NULL) { // there should really be a macro for checking uninitialized lol
+        da_init(&declarators, 4);
+    }
+    
+    // find base type
+    Type base = t;
+    while (!is_standalone_type(base, force_full_type)) {
+        da_append(&declarators, base);
+        switch (type(base)->kind) {
+        case TYPE_POINTER:
+        case TYPE_BOUNDLESS_SLICE:
+            base = type(base)->as_ref.pointee;
+            break;
+        case TYPE_ARRAY:
+            base = type(base)->as_array.sub;
+            break;
+        default:
+            break;
+        }
+    }
+
+    // emit base type
+    c_emit_type(base, force_full_type);
+    sb_append_c(sb, " ");
+
+    // emit declarators
+    c_emit_temp_declarator(mutable, expr, base, &declarators);
+
+    da_clear(&declarators);
+}
+
+
+void c_emit_function_prototype(string ident, Type fn_type) {
+    
+    Type ret_type = type(fn_type)->as_function.ret_type;
+    c_emit_declaration(true, ident, ret_type, false, true);
+    sb_append_c(sb, "(");
+
+    if (type(fn_type)->as_function.params.len != 0) {
+        TypeFnParam param = type(fn_type)->as_function.params.at[0];
+        c_emit_declaration(true, param.name, param.type, false, false);
+    }
+
+    for_n (i, 1, type(fn_type)->as_function.params.len) {
+        sb_append_c(sb, ", ");
+        TypeFnParam param = type(fn_type)->as_function.params.at[i];
+        c_emit_declaration(true, param.name, param.type, false, false);
+    }
+
+    sb_append_c(sb, ")");
+}
+
+static void indent() {
+    for_n(i, 0, indent_level) {
+        sb_append_c(sb, "    ");
+    }
+}
+
+void c_emit_expr(SemaNode* expr) {
+    switch (expr->kind) {
+    case SN_CONSTVAL:
+        indent();
+        c_emit_temp_declaration(true, expr, expr->type, false);
+        sb_append_c(sb, " = ");
+        c_emit_constval(expr);
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_ENTITY:
+        indent();
+        c_emit_temp_declaration(true, expr, expr->type, false);
+        sb_append_c(sb, " = ");
+        sb_append(sb, expr->entity->name);
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_BINOP:
+        c_emit_expr(expr->binop.lhs);
+        c_emit_expr(expr->binop.rhs);
+        indent();
+        c_emit_temp_declaration(true, expr, expr->type, false);
+        sb_append_c(sb, " = ");
+
+        c_emit_expr_id(expr->binop.lhs);
+        switch (expr->pnode->base.kind) {
+        case PN_EXPR_ADD: sb_append_c(sb, " + "); break;
+        case PN_EXPR_SUB: sb_append_c(sb, " - "); break;
+        case PN_EXPR_MUL: sb_append_c(sb, " * "); break;
+        case PN_EXPR_DIV: sb_append_c(sb, " / "); break;
+        case PN_EXPR_MOD: sb_append_c(sb, " % "); break;
+        default:
+            UNREACHABLE;
+        }
+        c_emit_expr_id(expr->binop.rhs);
+        sb_append_c(sb, ";\n");
+        break;
+    default:
+        printf("attempt emit expr kind %d\n", expr->kind);
+        UNREACHABLE;
+    }
+}
+
+void c_emit_stmt(SemaNode* stmt) {
+    
+    switch (stmt->kind) {
+    case SN_STMT_BLOCK:
+        indent();
+        sb_append_c(sb, "{\n");
+        indent_level++;
+        for_vec(SemaNode** substmt, &stmt->list) {
+            c_emit_stmt(*substmt);
+        }
+        indent_level--;
+        indent();
+        sb_append_c(sb, "}\n");
+        break;
+    case SN_STMT_RETURN:
+        if (stmt->return_stmt.value) {
+            c_emit_expr(stmt->return_stmt.value);
+        }
+        indent();
+        sb_append_c(sb, "return ");
+        if (stmt->return_stmt.value) {
+            c_emit_expr_id(stmt->return_stmt.value);
+        }
+        sb_append_c(sb, ";\n");
+        break;
+    default:
+        UNREACHABLE;
+    }
 }
 
 void c_emit_constval(SemaNode* n) {
@@ -473,7 +625,8 @@ static void c_body_internal(Module* m) {
         case SN_FN_DECL: {
             assert(ent->storage == STORAGE_FUNCTION);
             c_emit_function_prototype(ent->name, ent->type);
-
+            sb_append_c(sb, " ");
+            c_emit_stmt(decl->fn_decl.body);
             sb_append_c(sb, "\n");
             } break;
         }

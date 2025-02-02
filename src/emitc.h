@@ -10,4 +10,6 @@ string c_body(Module* m);
 
 void c_emit_declaration(bool constant, string ident, Type t, bool force_full_type, bool is_ret_type);
 
+void c_emit_constval(SemaNode* n);
+
 #endif // EMITC_H

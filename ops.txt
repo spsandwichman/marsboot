@@ -13,16 +13,11 @@ note:
 
 operations:
 
-    <T> + <T>  -> <T>       where T: IntLike
-    <T> - <T>  -> <T>       where T: IntLike
-    <T> * <T>  -> <T>       where T: IntLike
-    <T> / <T>  -> <T>       where T: IntLike
+    <T> + <T>  -> <T>       where T: Numeric
+    <T> - <T>  -> <T>       where T: Numeric
+    <T> * <T>  -> <T>       where T: Numeric
+    <T> / <T>  -> <T>       where T: Numeric
     <T> % <T>  -> <T>       where T: IntLike (truncated, like C)
-
-    <T> + <T>  -> <T>       where T: Float
-    <T> - <T>  -> <T>       where T: Float
-    <T> * <T>  -> <T>       where T: Float
-    <T> / <T>  -> <T>       where T: Float
 
     <T> & <T>  -> <T>       where T: IntLike
     <T> | <T>  -> <T>       where T: IntLike

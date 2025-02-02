@@ -236,6 +236,7 @@ enum SemaNodeKind {
     SN_IMPLICIT_CAST,
 
     SN_STMT_BLOCK,
+    SN_STMT_RETURN,
 
     SN_VAR_DECL,
 
@@ -263,12 +264,16 @@ typedef struct SemaNode {
         } decl;
 
         struct {
+            SemaNode* value;
+        } return_stmt;
+
+        struct {
             Type to;
             SemaNode* sub;
         } cast;
 
         struct {
-            SemaNode* at;
+            SemaNode** at;
             u32 len;
             u32 cap;
         } list;
@@ -290,6 +295,7 @@ VecPtr_typedef(SemaNode);
 typedef struct Analyzer {
     Module* m;
     Entity* current_fn;
+    Type return_type;
     VecPtr(SemaNode) defer_stack;
 } Analyzer;
 

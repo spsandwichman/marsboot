@@ -97,7 +97,7 @@ static u64 eval_integer(PNode* pn, char* raw, usize len) {
 SemaNode* check_expr_integer(Analyzer* an, EntityTable* scope, PNode* pn) {
     // get integer value
     i64 value = eval_integer(pn, pn->base.raw, pn->base.len);
-    SemaNode* integer = new_node(an->m, pn, SN_CONSTVAL);
+    SemaNode* integer = new_node(an, pn, SN_CONSTVAL);
     integer->constval = (ConstVal){
         .i64 = value,
         .type = TYPE_UNTYPED_INT,
@@ -148,7 +148,7 @@ bool type_is_intlike(Type t) {
     }
 
 // +, -, *, /, %
-void const_eval_expr_arith_binop(Module* m, SemaNode* n, u8 kind) {
+void const_eval_expr_arith_binop(Analyzer* m, SemaNode* n, u8 kind) {
     SemaNode* lhs = n->binop.lhs;
     SemaNode* rhs = n->binop.rhs;
 
@@ -170,6 +170,10 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     // if its a constant val, we can just change reassign the type
     // TODO there might be more conversion to do here,
     // probably separate that out into a different function
+    if (n->type == to || type(n->type) == type(to)) {
+        return n;
+    }
+
     if (n->kind == SN_CONSTVAL) {
         n->type = to;
         n->constval.type = to;
@@ -183,11 +187,11 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
 }
 
 // +, -, *, /, %
-SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
+SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
-    SemaNode* lhs = check_expr(m, scope, pn->binop.lhs, TYPE_UNKNOWN);
-    SemaNode* rhs = check_expr(m, scope, pn->binop.rhs, TYPE_UNKNOWN);
-    SemaNode* binop = new_node(m, pn, SN_BINOP);
+    SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
+    SemaNode* binop = new_node(an, pn, SN_BINOP);
     binop->type = TYPE_UNKNOWN;
     binop->binop.lhs = lhs;
     binop->binop.rhs = rhs;
@@ -208,10 +212,10 @@ SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* scope, PNode* 
 
     if (!type_compare(lhs->type, rhs->type, false, false)) {
         if (type_can_implicit_cast(lhs->type, rhs->type)) {
-            lhs = insert_implicit_cast(m, lhs, rhs->type);
+            lhs = insert_implicit_cast(an, lhs, rhs->type);
             binop->type = rhs->type;
         } else if (type_can_implicit_cast(rhs->type, lhs->type)) {
-            rhs = insert_implicit_cast(m, rhs, lhs->type);
+            rhs = insert_implicit_cast(an, rhs, lhs->type);
             binop->type = lhs->type;
         }
     } else {
@@ -226,13 +230,13 @@ SemaNode* check_expr_arith_binop(Module* m, u8 kind, EntityTable* scope, PNode* 
     }
 
     if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
-        const_eval_expr_arith_binop(m, binop, kind);
+        const_eval_expr_arith_binop(an, binop, kind);
     }
 
     return binop;
 }
 
-SemaNode* check_expr_ident(Module* m, EntityTable* scope, PNode* pn) {
+SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
     string ident = pnode_span(pn);
     Entity* ent = etbl_search(scope, ident);
     if (ent == NULL) {
@@ -240,7 +244,7 @@ SemaNode* check_expr_ident(Module* m, EntityTable* scope, PNode* pn) {
     }
     // this entitiy is global, but hasnt been checked yet. lets go do that
     if (ent->check_status == ENT_CHECK_NONE) {
-        SemaNode* decl = check_var_decl(m, ent->tbl, ent->decl_pnode);
+        SemaNode* decl = check_var_decl(an, ent->tbl, ent->decl_pnode);
     } else if (ent->check_status == ENT_CHECK_IN_PROGRESS || 
                ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
         report_pnode(true, pn, "cannot define '"str_fmt"' in terms of itself", str_arg(ident));
@@ -249,12 +253,12 @@ SemaNode* check_expr_ident(Module* m, EntityTable* scope, PNode* pn) {
     // if storage is comptime, return the value as a SN_CONSTVAL
     // else, return a SN_ENTITY reference to the variable
     if (ent->storage == STORAGE_COMPTIME) {
-        SemaNode* cv = new_node(m, pn, SN_CONSTVAL);
+        SemaNode* cv = new_node(an, pn, SN_CONSTVAL);
         cv->constval = ent->constval;
         cv->type = cv->constval.type;
         return cv;
     } else {
-        SemaNode* sn_entity = new_node(m, pn, SN_ENTITY);
+        SemaNode* sn_entity = new_node(an, pn, SN_ENTITY);
         sn_entity->entity = ent;
         sn_entity->type = ent->type;
         return sn_entity;
@@ -487,7 +491,9 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 }
 
 SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return) {
-    VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
+    // VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
+    SemaNode* list = new_node(an, pbody, SN_STMT_BLOCK);
+    vec_init(&list->list, 8);
 
     bool seen_return = false;
     for_n (i, 0, pbody->list.len) {
@@ -496,8 +502,9 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
         if (pstmt->base.kind == PN_STMT_RETURN) {
             seen_return = true;
         }
-        vec_append(&stmts, stmt);
+        vec_append(&list->list, stmt);
     }
+    return list;
 }
 
 SemaNode* check_fn_body(Analyzer* an, EntityTable* scope, PNode* pbody, Type ret_type) {
@@ -516,7 +523,7 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     bool is_global_decl = scope == an->m->global;
 
 
-    SemaNode* decl = new_node(an->m, pstmt, SN_FN_DECL);
+    SemaNode* decl = new_node(an, pstmt, SN_FN_DECL);
     Entity* ent = etbl_search(scope, name);
     if (is_global_decl) {
         // this is guaranteed to exist    
@@ -550,7 +557,7 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     for_n (i, 0, param_list->list.len) {
         PNode* items = param_list->list.at[i];
         
-        Type t = ingest_type(an->m, fn_scope, items->item.type);
+        Type t = ingest_type(an, fn_scope, items->item.type);
 
         if (items->item.ident->base.kind == PN_IDENT) {
             string name = pnode_span(items->item.ident);
@@ -591,7 +598,7 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 
     Type ret_type;
     if (proto->fnproto.ret_type) {
-        ret_type = ingest_type(an->m, fn_scope, proto->fnproto.ret_type);
+        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type);
     } else {
         ret_type = TYPE_VOID;
     }
@@ -608,11 +615,39 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ent->decl = decl;
     ent->type = t;
 
-    decl->fn_decl.body = check_fn_body(an->m, fn_scope, pstmt->fn_decl.stmts, ret_type);
+    an->current_fn = ent;
+    an->return_type = ret_type;
+
+    decl->fn_decl.body = check_fn_body(an, fn_scope, pstmt->fn_decl.stmts, ret_type);
     
     ent->check_status = ENT_CHECK_DONE;
     
     return decl;
+}
+
+SemaNode* check_stmt_return(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* ret_stmt = new_node(an, pstmt, SN_STMT_RETURN);
+    ret_stmt->return_stmt.value = NULL;
+    if (an->return_type == TYPE_VOID) {
+        if (pstmt->expr_stmt.expr != NULL) {
+            report_pnode(true, pstmt, "cannot return with a value from a function with no return type");
+        }
+    } else {
+        SemaNode* ret_expr = check_expr(an, scope, pstmt->expr_stmt.expr, an->return_type);
+        if (type_can_implicit_cast(ret_expr->type, an->return_type)) {
+            ret_expr = insert_implicit_cast(an, ret_expr, an->return_type);
+        } else {
+            string ret_type_str = type_gen_string(an->return_type, true);
+            string value_type_str = type_gen_string(ret_expr->type, true);
+            report_pnode(true, ret_expr->pnode, "cannot coerce from '"str_fmt"' to '"str_fmt"'", 
+                str_arg(value_type_str),
+                str_arg(ret_type_str)
+            );
+        }
+        ret_stmt->return_stmt.value = ret_expr;
+    }
+    return ret_stmt;
+
 }
 
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
@@ -621,6 +656,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_var_decl(an, scope, pstmt);
     case PN_STMT_FN_DECL:
         return check_fn_decl(an, scope, pstmt);
+    case PN_STMT_RETURN:
+        return check_stmt_return(an, scope, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement");
         return NULL;
@@ -640,6 +677,7 @@ Module* sema_check_module(PNode* top) {
     Analyzer an;
     an.m = mod;
     an.current_fn = NULL;
+    an.return_type = TYPE_UNKNOWN;
     an.defer_stack = vecptr_new(SemaNode, 4);
 
     // pre-collect entitites
@@ -672,7 +710,7 @@ Module* sema_check_module(PNode* top) {
     // check stmts
     for_n (i, 1, top->list.len) {
         PNode* tls = top->list.at[i];
-        SemaNode* decl = check_stmt(mod, mod->global, tls);
+        SemaNode* decl = check_stmt(&an, mod->global, tls);
         da_append(&mod->decls, decl);
     }
 

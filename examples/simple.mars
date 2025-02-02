@@ -1,5 +1,5 @@
-module mod;
+module simple;
 
-fn some_function(x: int) -> int {
-    return x;
+fn foo(x, y: int) -> int {
+    return x + y;
 }
