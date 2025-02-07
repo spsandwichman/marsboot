@@ -47,11 +47,20 @@ SemaNode* new_node(Analyzer* an, PNode* pn, u8 kind) {
     return node;
 }
 
-static u64 eval_integer(PNode* pn, char* raw, usize len) {
+ConstVal constval_compound(Type t, u32 len) {
+    ConstVal cv;
+    cv.type = t;
+    cv.compound.at = malloc(len * sizeof(ConstVal));
+    memset(cv.compound.at, 0, len * sizeof(ConstVal));
+    cv.compound.len = len;
+    return cv;
+} 
+
+static usize eval_integer(PNode* pn, char* raw, usize len) {
     if (len == 1) {
         return raw[0] - '0';
     }
-    isize value = 0;
+    usize value = 0;
     usize base = 10;
     if (raw[0] == '0') switch (raw[1]) {
     case 'x':
@@ -81,9 +90,9 @@ static u64 eval_integer(PNode* pn, char* raw, usize len) {
         if ('0' <= c && c <= '9') {
             cval = c - '0';
         } else if ('a' <= c && c <= 'f') {
-            cval = c - 'a';
+            cval = c - 'a' + 10;
         } else if ('A' <= c && c <= 'F') {
-            cval = c - 'A';
+            cval = c - 'A' + 10;
         }
         if (cval >= base) {
             report_pnode(true, pn, "'%c' is not a valid base-%d digit", c, base);
@@ -96,7 +105,9 @@ static u64 eval_integer(PNode* pn, char* raw, usize len) {
 
 SemaNode* check_expr_integer(Analyzer* an, EntityTable* scope, PNode* pn) {
     // get integer value
-    i64 value = eval_integer(pn, pn->base.raw, pn->base.len);
+
+    i64 value = (i64)eval_integer(pn, pn->base.raw, pn->base.len);
+
     SemaNode* integer = new_node(an, pn, SN_CONSTVAL);
     integer->constval = (ConstVal){
         .i64 = value,
@@ -152,6 +163,10 @@ void const_eval_expr_arith_binop(Analyzer* m, SemaNode* n, u8 kind) {
     SemaNode* lhs = n->binop.lhs;
     SemaNode* rhs = n->binop.rhs;
 
+    if (lhs->kind != SN_CONSTVAL || rhs->kind != SN_CONSTVAL) {
+        return;
+    }
+
     n->kind = SN_CONSTVAL;
     n->constval.type = n->type;
 
@@ -167,22 +182,33 @@ void const_eval_expr_arith_binop(Analyzer* m, SemaNode* n, u8 kind) {
 }
 
 SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
-    // if its a constant val, we can just change reassign the type
-    // TODO there might be more conversion to do here,
-    // probably separate that out into a different function
     if (n->type == to || type(n->type) == type(to)) {
         return n;
     }
 
+    // if its a constant val, we can just change reassign the type
+    // TODO there might be more conversion to do here,
+    // probably separate that out into a different function
     if (n->kind == SN_CONSTVAL) {
+        Type undistinct = type_unwrap_distinct(to);
+        if (type_is_integer(undistinct)) {
+            isize minimum = type_integer_min(undistinct);
+            isize maximum = type_integer_max(undistinct);
+            if (n->constval.i64 < minimum || n->constval.i64 > maximum) {
+                string typestr = type_gen_string(to, true);
+                report_pnode(false, n->pnode, "constant is out of range for '"str_fmt"'", str_arg(typestr));
+            }
+        }
         n->type = to;
         n->constval.type = to;
         return n;
     }
 
+    printf("inserting implicit cast\n");
+
     SemaNode* impl_cast = new_node(an, NULL, SN_IMPLICIT_CAST);
-    impl_cast->cast.sub = n;
-    impl_cast->cast.to = to;
+    impl_cast->unop.sub = n;
+    impl_cast->type = to;
     return impl_cast;
 }
 
@@ -191,10 +217,15 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     
     SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
     SemaNode* rhs = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
-    SemaNode* binop = new_node(an, pn, SN_BINOP);
+    SemaNode* binop = new_node(an, pn, SN_ADD);
     binop->type = TYPE_UNKNOWN;
-    binop->binop.lhs = lhs;
-    binop->binop.rhs = rhs;
+    switch (pn->base.kind) {
+    case PN_EXPR_ADD: binop->kind = SN_ADD; break;
+    case PN_EXPR_SUB: binop->kind = SN_SUB; break;
+    case PN_EXPR_MUL: binop->kind = SN_MUL; break;
+    case PN_EXPR_DIV: binop->kind = SN_DIV; break;
+    case PN_EXPR_MOD: binop->kind = SN_MOD; break;
+    }
     
     if (!type_is_numeric(lhs->type)) {
         report_pnode(true, lhs->pnode, "expression type is not numeric");
@@ -210,7 +241,7 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
             str_arg(lhs_typestr), str_arg(rhs_typestr));
     }
 
-    if (!type_compare(lhs->type, rhs->type, false, false)) {
+    if (!type_equal(lhs->type, rhs->type, false, false)) {
         if (type_can_implicit_cast(lhs->type, rhs->type)) {
             lhs = insert_implicit_cast(an, lhs, rhs->type);
             binop->type = rhs->type;
@@ -222,6 +253,9 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
         binop->type = rhs->type;
     }
 
+    binop->binop.lhs = lhs;
+    binop->binop.rhs = rhs;
+
     if (binop->type == TYPE_UNKNOWN) {
         string lhs_typestr = type_gen_string(lhs->type, true);
         string rhs_typestr = type_gen_string(rhs->type, true);
@@ -230,6 +264,7 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     }
 
     if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
+        printf("const eval\n");
         const_eval_expr_arith_binop(an, binop, kind);
     }
 
@@ -266,6 +301,38 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
     UNREACHABLE;
 }
 
+SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* access = new_node(an, pn, SN_INDEX);
+
+    SemaNode* indexee = check_expr(an, scope, pn->binop.lhs, expected);
+    switch (type(indexee->type)->kind) {
+    case TYPE_ARRAY:
+    case TYPE_ARRAY_LEN_UNKNOWN:
+        access->type = type(indexee->type)->as_array.sub;
+        break;
+    case TYPE_BOUNDLESS_SLICE:
+    case TYPE_SLICE:
+        access->type = type(indexee->type)->as_ref.pointee;
+        access->mutable = type(indexee->type)->as_ref.mutable;
+        break;
+    default:
+        string typestr = type_gen_string(indexee->type, true);
+        report_pnode(true ,pn->binop.lhs, "cannot index expression of type '"str_fmt"'", str_arg(typestr));
+    }
+
+    SemaNode* indexer = check_expr(an, scope, pn->binop.rhs, expected);
+
+    // indexer must be an integer of some kind
+    bool is_integer = type_is_integer(type_unwrap_distinct(indexer->type));
+    if (!is_integer) {
+        report_pnode(true ,pn->binop.lhs, "cannot index with non-integer");
+    }
+    access->binop.lhs = indexee;
+    access->binop.rhs = indexer;
+
+    return access;
+}
+
 SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     if (expected == TYPE_DYN) {
         TODO("insert dyn boxing");
@@ -296,8 +363,14 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_SUB:
     case PN_EXPR_MUL:
     case PN_EXPR_DIV:
+    case PN_EXPR_MOD:
         expr = check_expr_arith_binop(an, pn->base.kind, scope, pn, expected);
         break;
+    case PN_EXPR_INDEX:
+        expr = check_expr_index(an, scope, pn, expected);
+        break;
+    case PN_DISCARD:
+        report_pnode(true, pn, "_ not allowed here");
     default:
         report_pnode(true, pn, "expected valid expression");
     }
@@ -452,7 +525,7 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
             
             // this is actually a type declaration!!
             ent->type = TYPE_TYPEID;
-            Type alias = type_create_alias(an->m, value->constval.typeid);
+            Type alias = type_new_alias(an->m, value->constval.typeid);
             type_attach_name(alias, name);
             value->constval.typeid = alias;
         }

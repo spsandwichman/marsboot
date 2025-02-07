@@ -25,6 +25,9 @@
 
 
     ARRAYS: arrays get put into wrapper structs
+    [10]T becomes
+
+    array_10_<typeid of T>
 
 */
 
@@ -100,13 +103,17 @@ static char* aprintf(char* format, ...) {
 
 static char* get_node_id(SemaNode* n) {
     static PtrMap node_ids;
-    static usize id_num = 0;
+    static usize id_counter = 0;
     if (node_ids.keys == NULL) {
         ptrmap_init(&node_ids, 512);
     }
     char* id = ptrmap_get(&node_ids, n);
     if (id == PTRMAP_NOT_FOUND) {
-        id = aprintf("expr%llu", ++id_num);
+        // TODO for completeness, check if this interferes with anything in the 
+        //      current namespace if so, we need to generate a new unique name 
+        //      using some other scheme. probably just increment the counter 
+        //      until it works lmao
+        id = aprintf("_t%llu", ++id_counter);
         ptrmap_put(&node_ids, n, id);
     }
     return id;
@@ -167,7 +174,12 @@ static void c_emit_type(Type t, bool force_full_type) {
         sb_append_c(sb, "}");
         break;
     case TYPE_UNION:
-        sb_append_c(sb, "union {\n");
+        sb_append_c(sb, "union ");
+        if (force_full_type && type_has_name(t)) {
+            sb_append(sb, type_get_name(t));
+            sb_append_c(sb, " ");
+        }
+        sb_append_c(sb, "{\n");
         for_n(i, 0, type(t)->as_record.len) {
             TypeRecordField* field = &type(t)->as_record.at[i];
             sb_append_c(sb, "    ");
@@ -175,6 +187,16 @@ static void c_emit_type(Type t, bool force_full_type) {
             sb_append_c(sb, ";\n");
         }
         sb_append_c(sb, "}");
+        break;
+    case TYPE_ARRAY:
+        sb_append_c(sb, "struct ");
+        if (force_full_type && type_has_name(t)) {
+            sb_append(sb, type_get_name(t));
+            sb_append_c(sb, " ");
+        }
+        sb_append_c(sb, "{\n    ");
+        c_emit_declaration(false, constr(" "), type(t)->as_array.sub, false, false);
+        sb_printf(sb, "[%llu];\n}", type(t)->as_array.len);
         break;
     default:
         if (type_has_name(t)) {
@@ -302,59 +324,81 @@ static void indent() {
     }
 }
 
-// void c_emit_expr(SemaNode* expr) {
-//     switch (expr->kind) {
-//     case SN_CONSTVAL:
-//         indent();
-//         c_emit_temp_declaration(true, expr, expr->type, false);
-//         sb_append_c(sb, " = ");
-//         c_emit_constval(expr);
-//         sb_append_c(sb, ";\n");
-//         break;
-//     case SN_ENTITY:
-//         indent();
-//         c_emit_temp_declaration(true, expr, expr->type, false);
-//         sb_append_c(sb, " = ");
-//         sb_append(sb, expr->entity->name);
-//         sb_append_c(sb, ";\n");
-//         break;
-//     case SN_BINOP:
-//         c_emit_expr(expr->binop.lhs);
-//         c_emit_expr(expr->binop.rhs);
-//         indent();
-//         c_emit_temp_declaration(true, expr, expr->type, false);
-//         sb_append_c(sb, " = ");
-
-//         c_emit_expr_id(expr->binop.lhs);
-//         switch (expr->pnode->base.kind) {
-//         case PN_EXPR_ADD: sb_append_c(sb, " + "); break;
-//         case PN_EXPR_SUB: sb_append_c(sb, " - "); break;
-//         case PN_EXPR_MUL: sb_append_c(sb, " * "); break;
-//         case PN_EXPR_DIV: sb_append_c(sb, " / "); break;
-//         case PN_EXPR_MOD: sb_append_c(sb, " % "); break;
-//         default:
-//             UNREACHABLE;
-//         }
-//         c_emit_expr_id(expr->binop.rhs);
-//         sb_append_c(sb, ";\n");
-//         break;
-//     default:
-//         printf("attempt emit expr kind %d\n", expr->kind);
-//         UNREACHABLE;
-//     }
-// }
-
-void c_emit_simple_expr(SemaNode* n) {
+void c_emit_expr_head(SemaNode* n, bool full) {
     switch (n->kind) {
+    case SN_IMPLICIT_CAST:
+        if (!full) {
+            sb_append_c(sb, get_node_id(n));
+            break;
+        }
+        sb_append_c(sb, "(");
+        c_emit_declaration(true, constr(""), n->type, false, false);
+        sb_append_c(sb, ")(");
+        c_emit_expr_head(n->unop.sub, false);
+        sb_append_c(sb, ")");
+        break;
     case SN_CONSTVAL:
         c_emit_constval(n);
         break;
     case SN_ENTITY:
         sb_append(sb, n->entity->name);
         break;
+    case SN_ADD:
+    case SN_SUB:
+    case SN_MUL:
+    case SN_DIV:
+    case SN_MOD:
+        if (!full) {
+            sb_append_c(sb, get_node_id(n));
+            break;
+        }
+        c_emit_expr_head(n->binop.lhs, false);
+        switch (n->pnode->base.kind) {
+        case PN_EXPR_ADD: sb_append_c(sb, " + "); break;
+        case PN_EXPR_SUB: sb_append_c(sb, " - "); break;
+        case PN_EXPR_MUL: sb_append_c(sb, " * "); break;
+        case PN_EXPR_DIV: sb_append_c(sb, " / "); break;
+        case PN_EXPR_MOD: sb_append_c(sb, " % "); break;
+        default:
+            UNREACHABLE;
+        }
+        c_emit_expr_head(n->binop.rhs, false);
     default:
-        sb_append_c(sb, get_node_id(n));
         break;
+    }
+}
+
+void c_emit_expr_tree(SemaNode* expr, bool initial) {
+    switch (expr->kind) {
+    case SN_CONSTVAL:
+    case SN_ENTITY:
+        break;
+    case SN_IMPLICIT_CAST:
+        c_emit_expr_tree(expr->unop.sub, false);
+        if (initial) break;
+        indent();
+        c_emit_declaration(true, str(get_node_id(expr)), expr->type, false, false);
+        sb_append_c(sb, " = ");
+        c_emit_expr_head(expr, true);
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_ADD:
+    case SN_SUB:
+    case SN_MUL:
+    case SN_DIV:
+    case SN_MOD:
+        c_emit_expr_tree(expr->binop.lhs, false);
+        c_emit_expr_tree(expr->binop.rhs, false);
+        if (initial) break;
+        indent();
+        c_emit_declaration(true, str(get_node_id(expr)), expr->type, false, false);
+        sb_append_c(sb, " = ");
+        c_emit_expr_head(expr, true);
+        sb_append_c(sb, ";\n");
+        break;
+    default:
+        printf("attempt emit expr kind %d\n", expr->kind);
+        UNREACHABLE;
     }
 }
 
@@ -373,15 +417,14 @@ void c_emit_stmt(SemaNode* stmt) {
         sb_append_c(sb, "}\n");
         break;
     case SN_STMT_RETURN:
-        // if (stmt->return_stmt.value) {
-        //     c_emit_expr(stmt->return_stmt.value);
-        // }
+        if (stmt->return_stmt.value) {
+            c_emit_expr_tree(stmt->return_stmt.value, true);
+        }
         indent();
         sb_append_c(sb, "return ");
-        c_emit_simple_expr(stmt->return_stmt.value);
-        // if (stmt->return_stmt.value) {
-        //     c_emit_expr_id(stmt->return_stmt.value);
-        // }
+        if (stmt->return_stmt.value) {
+            c_emit_expr_head(stmt->return_stmt.value, true);
+        }
         sb_append_c(sb, ";\n");
         break;
     default:
@@ -389,13 +432,19 @@ void c_emit_stmt(SemaNode* stmt) {
     }
 }
 
+// thank you dasha
 void c_emit_constval(SemaNode* n) {
     switch (n->constval.type) {
-    case TYPE_I8:  sb_printf(sb, "%lld", (i8)n->constval.i8); break;
-    case TYPE_I16: sb_printf(sb, "%lld", (i16)n->constval.i16); break;
-    case TYPE_I32: sb_printf(sb, "%lld", (i32)n->constval.i32); break;
+    case TYPE_I8:
+    case TYPE_I16:
+    case TYPE_I32:
     case TYPE_UNTYPED_INT:
-    case TYPE_I64: sb_printf(sb, "%lld", (i64)n->constval.i64); break;
+    case TYPE_I64: sb_printf(sb, "%lli", (i64)n->constval.i64); break;
+    
+    case TYPE_U8:
+    case TYPE_U16:
+    case TYPE_U32:
+    case TYPE_U64: sb_printf(sb, "%llu", (i64)n->constval.i64); break;
     default:
         UNREACHABLE;
     }
@@ -431,7 +480,8 @@ void c_prepare(Module* m) {
     // mangle type names
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
         if (type(t)->kind == TYPE_ARRAY) {
-            TODO("ARRAYS IN C ARE COMPLETELY FUCKED LMFAO");
+            string mangled = gen_mangled_anon(m, "array", type(t));
+            type_attach_name(t, mangled);
         }
 
         if (type_has_name(t)) {
@@ -493,7 +543,7 @@ static void c_header_internal(Module* m) {
         sb_append_c(sb, " ((");
         c_emit_declaration(true, constr(""), ent->type, false, false);
         sb_append_c(sb, ")(");
-        c_emit_simple_expr(decl->decl.value);
+        c_emit_expr_head(decl->decl.value, true);
         sb_append_c(sb, "))\n");
     }
 
@@ -575,7 +625,7 @@ static void c_body_internal(Module* m) {
             if (!ent->uninit) {
                 sb_append_c(sb, " = ");
                 if (decl->decl.value != NULL) {
-                    c_emit_simple_expr(decl->decl.value);
+                    c_emit_expr_head(decl->decl.value, true);
                 } else {
                     c_emit_constval_zero(ent->type);
                 }

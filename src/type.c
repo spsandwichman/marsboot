@@ -43,14 +43,49 @@ Type type_new_record(Module* m, u8 kind, usize len) {
     return t;
 }
 
+Type type_new_array(Module* m, Type elem_type, usize len) {
+    for_n (i, 0, tg.handles.len) {
+        if (type(i)->kind != TYPE_ARRAY) continue;
+        if (type(i)->as_array.len != len) continue;
+        Type t_elem_type = type(i)->as_array.sub;
+        if (!type_equal(t_elem_type, elem_type, false, false)) continue;
+        return i;
+    }
+
+    Type t = type_new(m, TYPE_ARRAY);
+    type(t)->as_array.len = len;
+    type(t)->as_array.sub = elem_type;
+    return t;
+}
+
+Type type_new_array_len_unknown(Module* m, Type elem_type) {
+    Type t = type_new(m, TYPE_ARRAY_LEN_UNKNOWN);
+    type(t)->as_array.sub = elem_type;
+    return t;
+}
+
+// convert an unknown array len type into a known one and get a unique type
+Type type_canon_array(Module* m, Type array_len_unknown, usize len) {
+    return type_new_array(m, type(array_len_unknown)->as_array.sub, len);
+}
+
 Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable) {
+
+    for_n (i, 0, tg.handles.len) {
+        if (type(i)->kind != kind) continue;
+        if (type(i)->as_ref.mutable != mutable) continue;
+        Type t_pointee = type(i)->as_ref.pointee;
+        if (!type_equal(t_pointee, pointee, false, false)) continue;
+        return i;
+    }
+
     Type t = type_new(m, kind);
     type(t)->as_ref.pointee = pointee;
     type(t)->as_ref.mutable = mutable;
     return t;
 }
 
-Type type_create_alias(Module* m, Type t) {
+Type type_new_alias(Module* m, Type t) {
     Type alias = type_new(m, TYPE_UNKNOWN);
     tg.handles.at[alias] = type(t); // make the handle point to the same type node
     return alias;
@@ -136,15 +171,16 @@ static void type_reset_num(Type a) {
     }
 }
 
-static  bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct);
-bool type_compare(Type a, Type b, bool ignore_idents, bool ignore_distinct) {
-    bool is_eq = type_compare_internal(a, b, 1, ignore_idents, ignore_distinct);
+static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct);
+
+bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct) {
+    bool is_eq = type_equal_internal(a, b, 1, ignore_idents, ignore_distinct);
     type_reset_num(a);
     type_reset_num(b);
     return is_eq;
 }
 
-static bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct) {
+static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct) {
     if (ignore_distinct) {
         a = type_unwrap_distinct(a);
         b = type_unwrap_distinct(b);
@@ -173,7 +209,7 @@ static bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, b
             return false;
         }
         set(a, b, n);
-        bool eq = type_compare_internal(
+        bool eq = type_equal_internal(
             type(a)->as_ref.pointee,
             type(b)->as_ref.pointee, 
             inc(n), 
@@ -197,7 +233,7 @@ static bool type_compare_internal(Type a, Type b, usize n, bool ignore_idents, b
 //         for_n(a, _TYPE_SIMPLE_END, tg.handles.len) {
 //             for_n(b, a, tg.handles.len) {
 //                 if (type(a) == type(b)) continue;
-//                 bool is_eq = type_compare(a, b, 1);
+//                 bool is_eq = type_equal(a, b, 1);
 //                 type_reset_num(a);
 //                 type_reset_num(b);
 //                 if (is_eq) merge(a, b);
@@ -377,6 +413,46 @@ bool type_is_solid_integer(Type t) {
     default:
         return false;
     }
+}
+
+isize type_integer_min(Type t) {
+    if (!type_is_integer(t)) {
+        return 0;
+    }
+
+    static const usize minimums[] = {
+        [TYPE_I8]  = INT8_MIN,
+        [TYPE_I16] = INT16_MIN,
+        [TYPE_I32] = INT32_MIN,
+        [TYPE_I64] = INT64_MIN,
+        [TYPE_UNTYPED_INT] = INT64_MIN,
+
+        [TYPE_U8]  = 0,
+        [TYPE_U16] = 0,
+        [TYPE_U32] = 0,
+        [TYPE_U64] = 0,
+    };
+    return minimums[t];
+}
+
+usize type_integer_max(Type t) {
+    if (!type_is_integer(t)) {
+        return 0;
+    }
+
+    static const usize minimums[] = {
+        [TYPE_I8]  = INT8_MAX,
+        [TYPE_I16] = INT16_MAX,
+        [TYPE_I32] = INT32_MAX,
+        [TYPE_I64] = INT64_MAX,
+        [TYPE_UNTYPED_INT] = UINT64_MAX,
+
+        [TYPE_U8]  = UINT8_MAX,
+        [TYPE_U16] = UINT16_MAX,
+        [TYPE_U32] = UINT32_MAX,
+        [TYPE_U64] = UINT64_MAX,
+    };
+    return minimums[t];
 }
 
 bool type_is_integer(Type t) {

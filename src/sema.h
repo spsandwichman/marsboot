@@ -119,7 +119,9 @@ void type_init();
 Type type_new(Module* m, u8 kind);
 Type type_new_record(Module* m, u8 kind, usize len);
 Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
-Type type_create_alias(Module* m, Type t);
+Type type_new_array(Module* m, Type elem_type, usize len);
+Type type_new_alias(Module* m, Type t);
+Type type_new_array_len_unknown(Module* m, Type elem_type);
 TNode* type(Type t);
 // void type_condense();
 
@@ -131,6 +133,8 @@ bool type_is_solid_integer(Type t);
 bool type_is_integer(Type t);
 bool type_is_untyped(Type t);
 
+isize type_integer_min(Type t);
+usize type_integer_max(Type t);
 
 bool type_has_name(Type t);
 string type_get_name(Type t);
@@ -139,7 +143,7 @@ void type_attach_name(Type t, string name);
 string type_gen_string(Type t, bool use_names);
 
 Type type_unwrap_distinct(Type t);
-bool type_compare(Type a, Type b, bool ignore_idents, bool ignore_distinct);
+bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct);
 isize type_binary_implicit_cast_priority(Type t);
 bool type_can_implicit_cast(Type from, Type to);
 bool type_can_explicit_cast(Type from, Type to);
@@ -150,6 +154,7 @@ bool type_can_explicit_cast(Type from, Type to);
 typedef struct SemaNode SemaNode;
 typedef struct Entity Entity;
 typedef struct EntityTable EntityTable;
+typedef struct ConstVal ConstVal;
 
 // ---------------------------------------------------------
 
@@ -168,6 +173,11 @@ typedef struct ConstVal {
         f32 f32;
         f64 f64;
         Type typeid;
+
+        struct {
+            ConstVal* at;
+            u32 len;
+        } compound;
     };
 } ConstVal;
 
@@ -232,8 +242,13 @@ enum SemaNodeKind {
     SN_CONSTVAL,
     SN_ENTITY,
 
-    SN_BINOP,
-    SN_IMPLICIT_CAST,
+    SN_ADD, // binop
+    SN_SUB, // binop
+    SN_MUL, // binop
+    SN_DIV, // binop
+    SN_MOD, // binop
+    SN_IMPLICIT_CAST, // unop
+    SN_INDEX, // binop
 
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
@@ -268,9 +283,8 @@ typedef struct SemaNode {
         } return_stmt;
 
         struct {
-            Type to;
             SemaNode* sub;
-        } cast;
+        } unop;
 
         struct {
             SemaNode** at;
