@@ -49,11 +49,14 @@ int main(int argc, char** argv) {
     PNode* top = parse_file(tb, NULL_STR);
 
     type_init();
-    Module* mod = sema_check_module(top);
+    Module* m = sema_check_module(top);
 
     // -----------------------------------
 
-    // Type vec3 = type_new_record(&mod, TYPE_STRUCT, 3);
+    // Type selfptr = type_new_ref(m, TYPE_POINTER, TYPE_I64, true);
+    // type(selfptr)->as_ref.pointee = selfptr;
+
+    // Type vec3 = type_new_record(m, TYPE_STRUCT, 3);
     
     // type_attach_name(vec3, constr("Vec3"));
     // type(vec3)->as_record.at[0].name = constr("x");
@@ -63,14 +66,14 @@ int main(int argc, char** argv) {
     // type(vec3)->as_record.at[2].name = constr("z");
     // type(vec3)->as_record.at[2].type = TYPE_I64;
 
-    // Type llnode = type_new_record(&mod, TYPE_STRUCT, 2);
+    // Type llnode = type_new_record(m, TYPE_STRUCT, 2);
     // type_attach_name(llnode, constr("LLNode"));
     // type(llnode)->as_record.at[0].name = constr("data");
     // type(llnode)->as_record.at[0].type = TYPE_I64;
     // type(llnode)->as_record.at[1].name = constr("next");
-    // type(llnode)->as_record.at[1].type = type_new_ref(&mod, TYPE_POINTER, llnode, true);
+    // type(llnode)->as_record.at[1].type = type_new_ref(m, TYPE_POINTER, llnode, true);
 
-    // Type foo = type_new_record(TYPE_STRUCT, 2);
+    // Type foo = type_new_record(m, TYPE_STRUCT, 2);
     // type_attach_name(foo, constr("Foo"));
     // type(foo)->as_record.at[0].name = constr("vec");
     // type(foo)->as_record.at[0].type = vec3;
@@ -79,15 +82,11 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-    c_prepare(mod);
-    string header = c_header(mod);
-    string body = c_body(mod);
+    string header = c_gen(m);
 
-    printf("------------- HEADER -------------\n");
+    // printf("--------------- C ---------------\n");
     printf(str_fmt, str_arg(header));
-    printf("-------------- BODY --------------\n");
-    printf(str_fmt, str_arg(body));
-    printf("----------------------------------\n");
+    // printf("---------------------------------\n");
 
     // char* h_path = argv[1];
     // size_t path_len = strlen(argv[1]);

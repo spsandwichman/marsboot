@@ -1,0 +1,10 @@
+module test;
+
+// mut x = 1;
+
+mut x: ^mut int;
+mut y: int;
+
+fn bruh(a, b: int) -> int {
+    return a + b;
+}

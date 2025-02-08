@@ -1,3 +1,0 @@
-module simple;
-
-mut arr: [3]int;

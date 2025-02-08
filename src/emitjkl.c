@@ -40,7 +40,7 @@ void jkl_emit_type(Type t) {
 
 // ensure this type is safe to emit
 void jkl_ensure_typedecl(Type t) {
-    if (t < _TYPE_SIMPLE_END || type(t)->visited) {
+    if (t < _TYPE_SIMPLE_END || type(t)->flags) {
         return;
     }
 
@@ -60,7 +60,7 @@ void jkl_emit_typedecl(Type t, string typename) {
         return; // primitive types already emitted lol
     }
 
-    type(t)->visited = true;
+    type(t)->flags = true;
 
     switch (type(t)->kind) {
     case TYPE_STRUCT:
@@ -98,7 +98,7 @@ static void jkl_header_internal(Module* m) {
 
     // todo...
     for_n(t, _TYPE_SIMPLE_END, tg.handles.len) {
-        if (type_has_name(t) && !type(t)->visited) {
+        if (type_has_name(t) && !type(t)->flags) {
             jkl_emit_typedecl(t, type_get_name(t));
         }
     }

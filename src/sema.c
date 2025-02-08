@@ -204,7 +204,7 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
         return n;
     }
 
-    printf("inserting implicit cast\n");
+    // printf("inserting implicit cast\n");
 
     SemaNode* impl_cast = new_node(an, NULL, SN_IMPLICIT_CAST);
     impl_cast->unop.sub = n;

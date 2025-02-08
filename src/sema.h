@@ -67,7 +67,7 @@ typedef struct TypeEnumVariant {
 
 typedef struct TNode {
     u8 kind;
-    bool visited; // for shit
+    u8 flags; // for shit
     u32 num_a;
     u32 num_b;
 
@@ -141,6 +141,7 @@ string type_get_name(Type t);
 void type_attach_name(Type t, string name);
 
 string type_gen_string(Type t, bool use_names);
+u64 type_gen_typeid(Type t);
 
 Type type_unwrap_distinct(Type t);
 bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct);
