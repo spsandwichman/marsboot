@@ -352,6 +352,15 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
 
         sb_append_c(sb, ";\n");
         break;
+    case SN_DEREF:
+        c_calculate_expr(m, expr->unop.sub);
+        indent();
+        sb_append_c(sb, "Ptr ");
+        c_emit_expr_id(expr);
+        sb_append_c(sb, " = ");
+        c_emit_expr_id(expr->unop.sub); 
+        sb_append_c(sb, ";\n");
+        break;
     case SN_ARRAY_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
         c_calculate_expr_ptr(m, expr->binop.lhs);
@@ -414,6 +423,16 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         c_emit_expr_id(expr->binop.rhs);
         sb_append_c(sb, ";\n");
         break;
+    case SN_DEREF:
+        c_calculate_expr(m, expr->unop.sub);
+
+        decl_begin(expr);
+        sb_append_c(sb, "*(");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->binop.lhs);        
+        sb_append_c(sb, ";\n");
+        break;
     case SN_ARRAY_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
         c_calculate_expr_ptr(m, expr->binop.lhs);
@@ -425,8 +444,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         c_emit_expr_id(expr->binop.lhs);        
         sb_append_c(sb, ")[");
         c_emit_expr_id(expr->binop.rhs);        
-        sb_append_c(sb, "]");
-        sb_append_c(sb, ";\n");
+        sb_append_c(sb, "];\n");
         break;
     case SN_SLICE_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -440,8 +458,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         sb_append_c(sb, ".raw");
         sb_append_c(sb, ")[");
         c_emit_expr_id(expr->binop.rhs);        
-        sb_append_c(sb, "]");
-        sb_append_c(sb, ";\n");
+        sb_append_c(sb, "];\n");
         break;
     case SN_ENTITY:
         decl_begin(expr);

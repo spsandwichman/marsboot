@@ -302,6 +302,24 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
     UNREACHABLE;
 }
 
+
+SemaNode* check_expr_deref(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* access = new_node(an, pn, SN_DEREF);
+
+    SemaNode* ptr = check_expr(an, scope, pn->unop.sub, expected);
+    access->unop.sub = ptr;
+    
+    if (type(ptr->type)->kind != TYPE_POINTER) {
+        string typestr = type_gen_string(ptr->type, true);
+        report_pnode(true ,pn->binop.lhs, "cannot dereference type '"str_fmt"'", str_arg(typestr));
+    }
+    
+    access->type = type(ptr->type)->as_ref.pointee;
+    access->mutable = type(ptr->type)->as_ref.mutable;
+
+    return access;
+}
+
 SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* access = new_node(an, pn, SN_ARRAY_INDEX);
 
@@ -324,7 +342,7 @@ SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
         break;
     default:
         string typestr = type_gen_string(indexee->type, true);
-        report_pnode(true ,pn->binop.lhs, "cannot index expression of type '"str_fmt"'", str_arg(typestr));
+        report_pnode(true ,pn->binop.lhs, "cannot index type '"str_fmt"'", str_arg(typestr));
     }
 
     SemaNode* indexer = check_expr(an, scope, pn->binop.rhs, expected);
@@ -375,6 +393,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         break;
     case PN_EXPR_INDEX:
         expr = check_expr_index(an, scope, pn, expected);
+        break;
+    case PN_EXPR_DEREF:
+        expr = check_expr_deref(an, scope, pn, expected);
         break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");

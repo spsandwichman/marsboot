@@ -5,3 +5,7 @@ fn store(arr: []mut int, index: int, value: int) -> int {
     arr[index] = value;
     return previous;
 }
+
+fn access(foo: []let []let int) -> int {
+    return foo[0][0];
+}

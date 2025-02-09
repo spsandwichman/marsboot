@@ -254,6 +254,8 @@ enum SemaNodeKind {
     SN_SLICE_INDEX, // binop
     SN_BOUNDLESS_SLICE_INDEX, // binop
 
+    SN_DEREF, // unop
+
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
     SN_STMT_ASSIGN,
