@@ -296,22 +296,29 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
         SemaNode* sn_entity = new_node(an, pn, SN_ENTITY);
         sn_entity->entity = ent;
         sn_entity->type = ent->type;
+        sn_entity->mutable = ent->mutable;
         return sn_entity;
     }
     UNREACHABLE;
 }
 
 SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
-    SemaNode* access = new_node(an, pn, SN_INDEX);
+    SemaNode* access = new_node(an, pn, SN_ARRAY_INDEX);
 
     SemaNode* indexee = check_expr(an, scope, pn->binop.lhs, expected);
     switch (type(indexee->type)->kind) {
     case TYPE_ARRAY:
     case TYPE_ARRAY_LEN_UNKNOWN:
         access->type = type(indexee->type)->as_array.sub;
+        access->mutable = indexee->mutable;
         break;
     case TYPE_BOUNDLESS_SLICE:
+        access->kind = SN_BOUNDLESS_SLICE_INDEX;
+        access->type = type(indexee->type)->as_ref.pointee;
+        access->mutable = type(indexee->type)->as_ref.mutable;
+        break;
     case TYPE_SLICE:
+        access->kind = SN_SLICE_INDEX;
         access->type = type(indexee->type)->as_ref.pointee;
         access->mutable = type(indexee->type)->as_ref.mutable;
         break;
@@ -325,7 +332,7 @@ SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     // indexer must be an integer of some kind
     bool is_integer = type_is_integer(type_unwrap_distinct(indexer->type));
     if (!is_integer) {
-        report_pnode(true ,pn->binop.lhs, "cannot index with non-integer");
+        report_pnode(true ,pn->binop.rhs, "cannot index by non-integer");
     }
     access->binop.lhs = indexee;
     access->binop.rhs = indexer;
@@ -408,9 +415,10 @@ static Type ingest_type_internal(Analyzer* an, EntityTable* scope, PNode* pn) {
             report_pnode(true, pn->array_type.len, "array length must be a constant integer");
         }
         Type sub = ingest_type_internal(an, scope, pn->array_type.sub);
-        Type arr = type_new(an->m, TYPE_ARRAY);
-        type(arr)->as_array.len = length->constval.i64;
-        type(arr)->as_array.sub = sub;
+        // Type arr = type_new(an->m, TYPE_ARRAY);
+        // type(arr)->as_array.len = length->constval.i64;
+        // type(arr)->as_array.sub = sub;
+        Type arr = type_new_array(an->m, sub, length->constval.i64);
         return arr;
     case PN_TYPE_POINTER:
         Type pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
@@ -703,7 +711,7 @@ SemaNode* check_stmt_return(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ret_stmt->return_stmt.value = NULL;
     if (an->return_type == TYPE_VOID) {
         if (pstmt->expr_stmt.expr != NULL) {
-            report_pnode(true, pstmt, "cannot return with a value from a function with no return type");
+            report_pnode(true, pstmt, "cannot return with value");
         }
     } else {
         SemaNode* ret_expr = check_expr(an, scope, pstmt->expr_stmt.expr, an->return_type);
@@ -723,6 +731,33 @@ SemaNode* check_stmt_return(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 
 }
 
+SemaNode* check_stmt_assign(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* assign_stmt = new_node(an, pstmt, SN_STMT_ASSIGN);
+
+    SemaNode* lhs = check_expr(an, scope, pstmt->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(an, scope, pstmt->binop.rhs, lhs->type);
+    assign_stmt->assign.lhs = lhs;
+    assign_stmt->assign.rhs = rhs;
+
+    if (!assign_stmt->assign.lhs->mutable) {
+        report_pnode(true, lhs->pnode, "cannot assign to immutable expression");
+    }
+
+    if (type_can_implicit_cast(rhs->type, lhs->type)) {
+        lhs = insert_implicit_cast(an, rhs, lhs->type);
+    } else {
+        report_pnode(true, lhs->pnode, "cannot assign to immutable expression");
+        string lhs_type_str = type_gen_string(lhs->type, true);
+        string rhs_type_str = type_gen_string(rhs->type, true);
+        report_pnode(true, rhs->pnode, "cannot coerce from '"str_fmt"' to '"str_fmt"'", 
+            str_arg(rhs_type_str),
+            str_arg(lhs_type_str)
+        );
+    }
+
+    return assign_stmt;
+}
+
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_STMT_DECL:
@@ -731,8 +766,10 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_fn_decl(an, scope, pstmt);
     case PN_STMT_RETURN:
         return check_stmt_return(an, scope, pstmt);
+    case PN_STMT_ASSIGN:
+        return check_stmt_assign(an, scope, pstmt);
     default:
-        report_pnode(true, pstmt, "expected statement");
+        report_pnode(true, pstmt, "expected statement %d", pstmt->base.kind);
         return NULL;
     }
 }

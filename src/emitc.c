@@ -32,6 +32,11 @@ static StringBuilder* sb;
 // }
 
 static void emit_hex_fast(u64 id) {
+    if (id < 10) {
+        sb_append_char(sb, id + '0');
+        return;
+    }
+
     static const char charset[] = {
         '0', '1', '2', '3', '4', '5', '6', '7',
         '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
@@ -74,7 +79,7 @@ static void emit_mangled_anon(Module* m, void* rand) {
     emit_hex_fast((u64)rand);
 }
 
-static void emit_mangled_smth(Module* m, const char* kind, void* rand) {
+static void emit_mangled_smth(const char* kind, void* rand) {
     // sb_append(sb, m->name);
     // sb_append_char(sb, '_');
     sb_append_c(sb, kind);
@@ -82,7 +87,7 @@ static void emit_mangled_smth(Module* m, const char* kind, void* rand) {
     emit_hex_fast((u64)rand);
 }
 
-static void emit_typename(Module* m, TNode* t) {
+static void emit_typename(TNode* t) {
     while (t->kind == TYPE_DISTINCT) {
         t = type(t->as_distinct);
     }
@@ -94,6 +99,7 @@ static void emit_typename(Module* m, TNode* t) {
     case TYPE_I8:  sb_append_c(sb, "int8_t"); break;
     case TYPE_I16: sb_append_c(sb, "int16_t"); break;
     case TYPE_I32: sb_append_c(sb, "int32_t"); break;
+    case TYPE_UNTYPED_INT:
     case TYPE_I64: sb_append_c(sb, "int64_t"); break;
     case TYPE_U8:  sb_append_c(sb, "uint8_t"); break;
     case TYPE_U16: sb_append_c(sb, "uint16_t"); break;
@@ -102,14 +108,16 @@ static void emit_typename(Module* m, TNode* t) {
     case TYPE_F16: sb_append_c(sb, "_Float16"); break;
     case TYPE_F32: sb_append_c(sb, "float"); break;
     case TYPE_F64: sb_append_c(sb, "double"); break;
-    case TYPE_STRUCT: emit_mangled_smth(m, "Struct", t); break;
-    case TYPE_UNION: emit_mangled_smth(m, "Union", t); break;
-    case TYPE_FUNCTION: emit_mangled_smth(m, "Fn", t); break;
-    case TYPE_SLICE: sb_append_c(sb, "Slice");
+    case TYPE_STRUCT: emit_mangled_smth("Struct", t); break;
+    case TYPE_UNION: emit_mangled_smth("Union", t); break;
+    case TYPE_FUNCTION: emit_mangled_smth("Fn", t); break;
+    case TYPE_SLICE: sb_append_c(sb, "Slice"); break;
+    case TYPE_ARRAY: emit_mangled_smth("Array", t); break;
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE: sb_append_c(sb, "Ptr"); break;
-    case TYPE_ENUM: emit_typename(m, type(t->as_enum.underlying)); break;
+    case TYPE_ENUM: emit_typename(type(t->as_enum.underlying)); break;
     default:
+        printf("-- %d\n", t->kind);
         UNREACHABLE;
     }
 }
@@ -144,16 +152,16 @@ void emit_typedef(Module* m, TNode* t) {
         case TYPE_STRUCT:
         case TYPE_ARRAY:
             sb_append_c(sb, "typedef struct ");
-            emit_typename(m, t);
+            emit_typename(t);
             sb_append_c(sb, " ");
-            emit_typename(m, t);
+            emit_typename(t);
             sb_append_c(sb, ";\n");
             break;
         case TYPE_UNION:
             sb_append_c(sb, "typedef union ");
-            emit_typename(m, t);
+            emit_typename(t);
             sb_append_c(sb, " ");
-            emit_typename(m, t);
+            emit_typename(t);
             sb_append_c(sb, ";\n");
             break;
         }
@@ -185,7 +193,6 @@ void emit_typedef(Module* m, TNode* t) {
     case TYPE_SLICE:
         emit_typedef(m, type(t->as_array.sub));
         break;
-        break;
     default:
         UNREACHABLE;
     }
@@ -194,12 +201,12 @@ void emit_typedef(Module* m, TNode* t) {
     switch (t->kind) {
     case TYPE_STRUCT:
         sb_append_c(sb, "struct ");
-        emit_typename(m, t);
+        emit_typename(t);
         sb_append_c(sb, " {\n");
         for_n(i, 0, t->as_record.len) {
             TypeRecordField f = t->as_record.at[i];
-            sb_append_c(sb, "    ");
-            emit_typename(m, type(f.type));
+            sb_append_c(sb, "  ");
+            emit_typename(type(f.type));
             sb_append_c(sb, " ");
             sb_append(sb, f.name);
             sb_append_c(sb, ";\n");
@@ -208,12 +215,12 @@ void emit_typedef(Module* m, TNode* t) {
         break;
     case TYPE_UNION:
         sb_append_c(sb, "union ");
-        emit_typename(m, t);
+        emit_typename(t);
         sb_append_c(sb, " {\n");
         for_n(i, 0, t->as_record.len) {
             TypeRecordField f = t->as_record.at[i];
             sb_append_c(sb, "    ");
-            emit_typename(m, type(f.type));
+            emit_typename(type(f.type));
             sb_append_c(sb, " ");
             sb_append(sb, f.name);
             sb_append_c(sb, ";\n");
@@ -222,29 +229,29 @@ void emit_typedef(Module* m, TNode* t) {
         break;
     case TYPE_ARRAY:
         sb_append_c(sb, "struct ");
-        emit_typename(m, t);
+        emit_typename(t);
         sb_append_c(sb, " { ");
-        emit_typename(m, type(t->as_array.sub));
+        emit_typename(type(t->as_array.sub));
         sb_printf(sb, " _[%llu]; } ", t->as_array.len);
-        emit_typename(m, t);
+        emit_typename(t);
         break;
     case TYPE_SLICE:
         sb_append_c(sb, "struct ");
-        emit_typename(m, t);
+        emit_typename(t);
         sb_append_c(sb, " { ");
-        emit_typename(m, type(t->as_array.sub));
+        emit_typename(type(t->as_array.sub));
         sb_printf(sb, "* data; uint64_t len; } ", t->as_array.len);
-        emit_typename(m, t);
+        emit_typename(t);
         break;
     case TYPE_FUNCTION:
-        emit_typename(m, type(t->as_function.ret_type));
+        emit_typename(type(t->as_function.ret_type));
         sb_append_c(sb, " ");
-        emit_typename(m, t);
+        emit_typename(t);
         sb_append_c(sb, "(");
         for_n(i, 0, t->as_function.params.len) {
             if (i != 0) sb_append_c(sb, ", ");
             TypeFnParam f = t->as_function.params.at[i];
-            emit_typename(m, type(f.type));
+            emit_typename(type(f.type));
         }
         sb_append_c(sb, ")");
         break;
@@ -257,17 +264,20 @@ void emit_typedef(Module* m, TNode* t) {
 }
 
 // thank you dasha
-void c_emit_constval(SemaNode* n) {
-    switch (n->constval.type) {
+void c_emit_constval(ConstVal cv) {
+    sb_append_c(sb, "(");
+    emit_typename(type(cv.type));
+    sb_append_c(sb, ")");
+    switch (cv.type) {
     case TYPE_I8:
     case TYPE_I16:
     case TYPE_I32:
     case TYPE_UNTYPED_INT:
-    case TYPE_I64: sb_printf(sb, "%lli", (i64)n->constval.i64); break;
+    case TYPE_I64: sb_printf(sb, "%llill", cv.i64); break;
     case TYPE_U8:
     case TYPE_U16:
     case TYPE_U32:
-    case TYPE_U64: sb_printf(sb, "%llu", (i64)n->constval.i64); break;
+    case TYPE_U64: sb_printf(sb, "%lluull", cv.i64); break;
     default:
         UNREACHABLE;
     }
@@ -277,21 +287,231 @@ void c_emit_constval_zero(Type t) {
     t = type_unwrap_distinct(t);
 
     if (type_is_numeric(t)) {
-        sb_append_c(sb, "0");
+        sb_append_c(sb, "0ll");
         return;
     }
 
     switch (type(t)->kind) {
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE:
-        sb_append_c(sb, "((void*)0)");
+        sb_append_c(sb, "((Ptr)0)");
         break;
     case TYPE_UNION:
     case TYPE_STRUCT:
     case TYPE_ARRAY:
     case TYPE_SLICE:
     case TYPE_DYN:
-        sb_append_c(sb, "{0}");
+        sb_append_c(sb, "(");
+        emit_typename(type(t));
+        sb_append_c(sb, "){}");
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+void indent() {
+    for_n(_, 0, indent_level) {
+        sb_append_c(sb, "    ");
+    }
+}
+
+void c_emit_expr_id(SemaNode* expr) {
+    sb_append_c(sb, "t_");
+    emit_hex_fast((u64)expr);
+}
+
+static void decl_begin(SemaNode* expr) {
+    indent();
+    emit_typename(type(expr->type));
+    sb_append_c(sb, " ");
+    c_emit_expr_id(expr);
+    sb_append_c(sb, " = ");
+}
+
+static void ptr_decl_begin(SemaNode* expr) {
+    indent();
+    sb_append_c(sb, "Ptr ");
+    c_emit_expr_id(expr);
+    sb_append_c(sb, " = &");
+}
+
+void c_calculate_expr(Module* m, SemaNode* expr);
+
+void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
+    switch (expr->kind) {
+    case SN_ENTITY:
+        ptr_decl_begin(expr);
+
+        Entity* e = expr->entity;
+        if (e->storage == STORAGE_PARAMETER || e->storage == STORAGE_LOCAL) {
+            sb_append(sb, e->name);
+        } else {
+            emit_mangled(m, e->name);
+        }
+
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_ARRAY_INDEX:
+        c_calculate_expr(m, expr->binop.rhs);
+        c_calculate_expr_ptr(m, expr->binop.lhs);
+
+        ptr_decl_begin(expr);
+
+        sb_append_c(sb, "((");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->binop.lhs);        
+        sb_append_c(sb, ")[");
+        c_emit_expr_id(expr->binop.rhs);        
+        sb_append_c(sb, "]");
+
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_SLICE_INDEX:
+        c_calculate_expr(m, expr->binop.rhs);
+        c_calculate_expr(m, expr->binop.lhs);
+
+        ptr_decl_begin(expr);
+
+        sb_append_c(sb, "((");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->binop.lhs);        
+        sb_append_c(sb, ".raw");
+        sb_append_c(sb, ")[");
+        c_emit_expr_id(expr->binop.rhs);        
+        sb_append_c(sb, "]");
+        sb_append_c(sb, ";\n");
+        break;
+    default:
+        UNREACHABLE;
+    }
+
+}
+
+// run this before using an expression's value.
+// this will emit the c stmts needed to 
+void c_calculate_expr(Module* m, SemaNode* expr) {
+    switch (expr->kind) {
+    case SN_ADD:
+    case SN_SUB:
+    case SN_MUL:
+    case SN_DIV:
+    case SN_MOD:
+        c_calculate_expr(m, expr->binop.lhs);
+        c_calculate_expr(m, expr->binop.rhs);
+
+        decl_begin(expr);
+        c_emit_expr_id(expr->binop.lhs);
+        switch (expr->kind) {
+        case SN_ADD: sb_append_c(sb, " + "); break;
+        case SN_SUB: sb_append_c(sb, " - "); break;
+        case SN_MUL: sb_append_c(sb, " * "); break;
+        case SN_DIV: sb_append_c(sb, " / "); break;
+        case SN_MOD: sb_append_c(sb, " % "); break;
+        }
+        c_emit_expr_id(expr->binop.rhs);
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_ARRAY_INDEX:
+        c_calculate_expr(m, expr->binop.rhs);
+        c_calculate_expr_ptr(m, expr->binop.lhs);
+
+        decl_begin(expr);
+        sb_append_c(sb, "((");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->binop.lhs);        
+        sb_append_c(sb, ")[");
+        c_emit_expr_id(expr->binop.rhs);        
+        sb_append_c(sb, "]");
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_SLICE_INDEX:
+        c_calculate_expr(m, expr->binop.rhs);
+        c_calculate_expr(m, expr->binop.lhs);
+
+        decl_begin(expr);
+        sb_append_c(sb, "((");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->binop.lhs);        
+        sb_append_c(sb, ".raw");
+        sb_append_c(sb, ")[");
+        c_emit_expr_id(expr->binop.rhs);        
+        sb_append_c(sb, "]");
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_ENTITY:
+        decl_begin(expr);
+        Entity* e = expr->entity;
+
+        if (e->storage == STORAGE_PARAMETER || e->storage == STORAGE_LOCAL) {
+            sb_append(sb, e->name);
+        } else {
+            emit_mangled(m, e->name);
+        }
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_CONSTVAL:
+        decl_begin(expr);
+        c_emit_constval(expr->constval);
+        sb_append_c(sb, ";\n");
+        break;
+    default:
+        UNREACHABLE;
+    }
+}
+
+void c_emit_stmt(Module* m, SemaNode* stmt) {
+    switch (stmt->kind) {
+    case SN_STMT_BLOCK:
+        indent();
+        indent_level++;
+        sb_append_c(sb, "{\n");
+        for_n(i, 0, stmt->list.len) {
+            c_emit_stmt(m, stmt->list.at[i]);
+        }
+        indent_level--;
+        indent();
+        sb_append_c(sb, "}\n");
+        break;
+    case SN_STMT_RETURN:
+        if (stmt->return_stmt.value != NULL) {
+            c_calculate_expr(m, stmt->return_stmt.value);
+        }
+        indent();
+        sb_append_c(sb, "return ");
+        if (stmt->return_stmt.value != NULL) {
+            c_emit_expr_id(stmt->return_stmt.value);
+        }
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_VAR_DECL:
+        c_calculate_expr(m, stmt->decl.value);
+        Entity* e = stmt->decl.entity;
+
+        indent();
+        emit_typename(type(e->type));
+        sb_append_c(sb, " ");
+        sb_append(sb, e->name);
+        sb_append_c(sb, " = ");
+        c_emit_expr_id(stmt->decl.value);
+        sb_append_c(sb, ";\n");
+        break;
+    case SN_STMT_ASSIGN:
+        c_calculate_expr(m, stmt->assign.rhs);
+        c_calculate_expr_ptr(m, stmt->assign.lhs);
+
+        indent();
+        sb_append_c(sb, "*(");
+        emit_typename(type(stmt->assign.lhs->type));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(stmt->assign.lhs);
+        sb_append_c(sb, " = ");
+        c_emit_expr_id(stmt->assign.rhs);
+        sb_append_c(sb, ";\n");
         break;
     default:
         UNREACHABLE;
@@ -308,8 +528,8 @@ string c_gen(Module* m) {
     // builtins
     sb_append_c(sb, 
         "typedef void* Ptr;\n"
-        "typedef struct Slice { Ptr data; uint64_t len; } Slice;\n"
-        "typedef struct Dyn { Ptr data; uint64_t id; } Dyn;\n"
+        "typedef struct Slice { Ptr raw; uint64_t len; } Slice;\n"
+        "typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;\n"
     );
     // emit typegraph
     for_n (t, _TYPE_SIMPLE_END, tg.handles.len) {
@@ -325,7 +545,7 @@ string c_gen(Module* m) {
             continue;
         }
         sb_append_c(sb, "extern ");
-        emit_typename(m, type(e->type));
+        emit_typename(type(e->type));
         sb_append_c(sb, " ");
         emit_mangled(m, e->name);
         sb_append_c(sb, ";\n");
@@ -339,19 +559,18 @@ string c_gen(Module* m) {
         if (e->storage != STORAGE_FUNCTION) {
             continue;
         }
-        emit_typename(m, type(type(e->type)->as_function.ret_type));
+        emit_typename(type(type(e->type)->as_function.ret_type));
         sb_append_c(sb, " ");
         emit_mangled(m, e->name);
         sb_append_c(sb, "(");
         for_n(i, 0, type(e->type)->as_function.params.len) {
             if (i != 0) sb_append_c(sb, ", ");
             TypeFnParam f = type(e->type)->as_function.params.at[i];
-            emit_typename(m, type(f.type));
+            emit_typename(type(f.type));
             sb_append_c(sb, " ");
             sb_append(sb, f.name);
         }
-        sb_append_c(sb, ")");
-        sb_append_c(sb, ";\n");
+        sb_append_c(sb, ");\n");
     }
 
     sb_append_c(sb, "\n");
@@ -362,12 +581,35 @@ string c_gen(Module* m) {
         if (e->storage != STORAGE_GLOBAL) {
             continue;
         }
-        emit_typename(m, type(e->type));
+        emit_typename(type(e->type));
         sb_append_c(sb, " ");
         emit_mangled(m, e->name);
         sb_append_c(sb, " = ");
         c_emit_constval_zero(e->type);
         sb_append_c(sb, ";\n");
+    }
+
+    sb_append_c(sb, "\n");
+
+    // emit actual fn decls
+    for_n (i, 0, m->global->len) {
+        Entity* e = m->global->at[i];
+        if (e->storage != STORAGE_FUNCTION) {
+            continue;
+        }
+        emit_typename(type(type(e->type)->as_function.ret_type));
+        sb_append_c(sb, " ");
+        emit_mangled(m, e->name);
+        sb_append_c(sb, "(");
+        for_n(i, 0, type(e->type)->as_function.params.len) {
+            if (i != 0) sb_append_c(sb, ", ");
+            TypeFnParam f = type(e->type)->as_function.params.at[i];
+            emit_typename(type(f.type));
+            sb_append_c(sb, " ");
+            sb_append(sb, f.name);
+        }
+        sb_append_c(sb, ") ");
+        c_emit_stmt(m, e->decl->fn_decl.body);
     }
 
     string s = string_alloc(sb->len);

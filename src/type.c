@@ -52,6 +52,7 @@ Type type_new_array(Module* m, Type elem_type, usize len) {
         return i;
     }
 
+
     Type t = type_new(m, TYPE_ARRAY);
     type(t)->as_array.len = len;
     type(t)->as_array.sub = elem_type;
@@ -215,6 +216,20 @@ static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, boo
             inc(n), 
             ignore_idents, ignore_distinct
         );
+        set(a, b, 0);
+        return eq;
+    case TYPE_ARRAY:
+        if (type(a)->as_array.len != type(b)->as_array.len) {
+            return false;
+        }
+        set(a, b, n);
+        eq = type_equal_internal(
+            type(a)->as_array.sub,
+            type(b)->as_array.sub, 
+            inc(n), 
+            ignore_idents, ignore_distinct
+        );
+        set(a, b, 0);
         return eq;
     default:
         return false;

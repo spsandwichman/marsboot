@@ -249,10 +249,14 @@ enum SemaNodeKind {
     SN_DIV, // binop
     SN_MOD, // binop
     SN_IMPLICIT_CAST, // unop
-    SN_INDEX, // binop
+    
+    SN_ARRAY_INDEX, // binop
+    SN_SLICE_INDEX, // binop
+    SN_BOUNDLESS_SLICE_INDEX, // binop
 
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
+    SN_STMT_ASSIGN,
 
     SN_VAR_DECL,
 
@@ -282,6 +286,11 @@ typedef struct SemaNode {
         struct {
             SemaNode* value;
         } return_stmt;
+
+        struct {
+            SemaNode* lhs;
+            SemaNode* rhs;
+        } assign;
 
         struct {
             SemaNode* sub;

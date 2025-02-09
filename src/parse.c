@@ -468,35 +468,35 @@ PNode* parse_stmt() {
         break;
     case TOK_KEYWORD_RETURN:
         stmt = new_node(expr_stmt, PN_STMT_RETURN);
+        stmt->expr_stmt.expr = NULL;
         advance();
-        if (match(TOK_SEMICOLON)) {
-            break;
-        }
-        PNode* ret = parse_expr();
-        if (match(TOK_COMMA)) {
-            advance();
-            // return is a sequence!
-            PNodeList ret_list = list_new(4);
-            da_append(&ret_list, ret);
-            while (!match(TOK_SEMICOLON)) {
-                PNode* expr = parse_expr();
-                da_append(&ret_list, expr);
+        if (!match(TOK_SEMICOLON)) {
+            PNode* ret = parse_expr();
+            if (match(TOK_COMMA)) {
+                advance();
+                // return is a sequence!
+                PNodeList ret_list = list_new(4);
+                da_append(&ret_list, ret);
+                while (!match(TOK_SEMICOLON)) {
+                    PNode* expr = parse_expr();
+                    da_append(&ret_list, expr);
 
-                if (match(TOK_COMMA)) {
-                    advance();
-                    continue;
-                } else {
-                    break;
+                    if (match(TOK_COMMA)) {
+                        advance();
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
+                stmt->expr_stmt.expr = list_solidify(ret_list);
+                expect(TOK_SEMICOLON);
+                advance();
+                break;
             }
-            stmt->expr_stmt.expr = list_solidify(ret_list);
-            expect(TOK_SEMICOLON);
-            advance();
-            break;
+            stmt->expr_stmt.expr = ret;
         }
         expect(TOK_SEMICOLON);
         advance();
-        stmt->expr_stmt.expr = ret;
         span_extend(stmt, -1);
         break;
     case TOK_KEYWORD_IF:
