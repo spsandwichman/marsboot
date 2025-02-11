@@ -378,9 +378,11 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_TYPE_ARRAY:
     case PN_TYPE_DISTINCT:
     case PN_TYPE_POINTER:
+    case PN_TYPE_SLICE:
     case PN_TYPE_BOUNDLESS_SLICE:
         Type t = ingest_type(an, scope, pn);
         expr = new_node(an, pn, SN_CONSTVAL);
+        expr->constval.type = TYPE_TYPEID;
         expr->type = TYPE_TYPEID;
         expr->constval.typeid = t;
         break;
@@ -407,7 +409,7 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     return expr;
 }
 
-static Type ingest_type_internal(Analyzer* an, EntityTable* scope, PNode* pn) {
+Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
     switch (pn->base.kind) {
     case PN_TYPE_I8:  return TYPE_I8;
     case PN_TYPE_I16: return TYPE_I16;
@@ -435,31 +437,38 @@ static Type ingest_type_internal(Analyzer* an, EntityTable* scope, PNode* pn) {
         if (length->kind != SN_CONSTVAL || !type_is_integer(length->type)) {
             report_pnode(true, pn->array_type.len, "array length must be a constant integer");
         }
-        Type sub = ingest_type_internal(an, scope, pn->array_type.sub);
+        Type sub = ingest_type(an, scope, pn->array_type.sub);
         // Type arr = type_new(an->m, TYPE_ARRAY);
         // type(arr)->as_array.len = length->constval.i64;
         // type(arr)->as_array.sub = sub;
         Type arr = type_new_array(an->m, sub, length->constval.i64);
         return arr;
+    case PN_TYPE_DISTINCT:
+        sub = ingest_type(an, scope, pn->unop.sub);
+        Type distinct = type_new(an->m, TYPE_DISTINCT);
+        type(distinct)->as_distinct = sub;
+        return distinct;
     case PN_TYPE_POINTER:
-        Type pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        Type pointee = ingest_type(an, scope, pn->ref_type.sub);
         Type ptr = type_new_ref(an->m, TYPE_POINTER, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_BOUNDLESS_SLICE:
-        pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        pointee = ingest_type(an, scope, pn->ref_type.sub);
         ptr = type_new_ref(an->m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_SLICE:
-        pointee = ingest_type_internal(an, scope, pn->ref_type.sub);
+        pointee = ingest_type(an, scope, pn->ref_type.sub);
         ptr = type_new_ref(an->m, TYPE_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
-
     case PN_IDENT:
-        SemaNode* type = check_expr_ident(an, scope, pn);
-        if (type->type != TYPE_TYPEID || type->kind != SN_CONSTVAL) {
-            report_pnode(true, pn, "symbol is not a compile-time constant typeid");
+        SemaNode* snode = check_expr_ident(an, scope, pn);
+        if (snode->kind != SN_CONSTVAL) {
+            report_pnode(true, pn, "symbol is not a compile-time constant");
         }
-        return type->constval.typeid;
+        if (snode->type != TYPE_TYPEID) {
+            report_pnode(true, pn, "symbol is not a typeid");
+        }
+        return snode->constval.typeid;
     default:
         UNREACHABLE;
     }
@@ -474,12 +483,9 @@ static Type normalize_untyped(Module* m, Type t) {
         return TYPE_F64;
     case TYPE_UNTYPED_INT: 
         return TYPE_I64;
+    case TYPE_UNTYPED_STRING:
+        return type_new_ref(m, TYPE_SLICE, TYPE_U8, false);
     }
-    return t;
-}
-
-Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
-    Type t = ingest_type_internal(an, scope, pn);
     return t;
 }
 

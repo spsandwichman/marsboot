@@ -268,7 +268,7 @@ void c_emit_constval(ConstVal cv) {
     sb_append_c(sb, "(");
     emit_typename(type(cv.type));
     sb_append_c(sb, ")");
-    switch (cv.type) {
+    switch (type(cv.type)->kind) {
     case TYPE_I8:
     case TYPE_I16:
     case TYPE_I32:
@@ -277,7 +277,7 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_U8:
     case TYPE_U16:
     case TYPE_U32:
-    case TYPE_U64: sb_printf(sb, "%lluull", cv.i64); break;
+    case TYPE_U64: sb_printf(sb, "%llullu", cv.i64); break;
     default:
         UNREACHABLE;
     }
@@ -602,7 +602,11 @@ string c_gen(Module* m) {
         sb_append_c(sb, " ");
         emit_mangled(m, e->name);
         sb_append_c(sb, " = ");
-        c_emit_constval_zero(e->type);
+        if (e->decl->decl.value == NULL) {        
+            c_emit_constval_zero(e->type);
+        } else {
+            c_emit_constval(e->decl->decl.value->constval);
+        }
         sb_append_c(sb, ";\n");
     }
 
