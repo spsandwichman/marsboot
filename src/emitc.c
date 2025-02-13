@@ -317,7 +317,7 @@ void indent() {
 }
 
 void c_emit_expr_id(SemaNode* expr) {
-    sb_append_c(sb, "t_");
+    sb_append_c(sb, "v");
     emit_hex_fast((u64)expr);
 }
 
@@ -403,11 +403,8 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
 // this will emit the c stmts needed to 
 void c_calculate_expr(Module* m, SemaNode* expr) {
     switch (expr->kind) {
-    case SN_ADD:
-    case SN_SUB:
-    case SN_MUL:
-    case SN_DIV:
-    case SN_MOD:
+    case SN_ADD: case SN_SUB: case SN_MUL: case SN_DIV: case SN_MOD:
+    case SN_LESS: case SN_LESS_EQ: case SN_GREATER: case SN_GREATER_EQ:
         c_calculate_expr(m, expr->binop.lhs);
         c_calculate_expr(m, expr->binop.rhs);
 
@@ -419,6 +416,12 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         case SN_MUL: sb_append_c(sb, " * "); break;
         case SN_DIV: sb_append_c(sb, " / "); break;
         case SN_MOD: sb_append_c(sb, " % "); break;
+        case SN_LESS:       sb_append_c(sb, " < "); break;
+        case SN_LESS_EQ:    sb_append_c(sb, " <= "); break;
+        case SN_GREATER:    sb_append_c(sb, " > "); break;
+        case SN_GREATER_EQ: sb_append_c(sb, " >= "); break;
+        default:
+            UNREACHABLE;
         }
         c_emit_expr_id(expr->binop.rhs);
         sb_append_c(sb, ";\n");
@@ -483,6 +486,21 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
 
 void c_emit_stmt(Module* m, SemaNode* stmt) {
     switch (stmt->kind) {
+    case SN_STMT_IF:
+        c_calculate_expr(m, stmt->if_stmt.cond);
+        indent();
+        sb_append_c(sb, "if (");
+        c_emit_expr_id(stmt->if_stmt.cond);
+        sb_append_c(sb, ")\n");
+        if (stmt->if_stmt.if_true) {
+            c_emit_stmt(m, stmt->if_stmt.if_true);
+        }
+        if (stmt->if_stmt.if_false) {
+            indent();
+            sb_append_c(sb, "else\n");
+            c_emit_stmt(m, stmt->if_stmt.if_false);
+        }
+        break;
     case SN_STMT_BLOCK:
         indent();
         indent_level++;

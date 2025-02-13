@@ -17,7 +17,7 @@ typedef double   f64;
 typedef float    f32;
 typedef _Float16 f16;
 
-typedef uint8_t bool;
+typedef _Bool bool;
 #define false ((bool)0)
 #define true ((bool)1)
 

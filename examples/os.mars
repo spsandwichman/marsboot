@@ -1,11 +1,11 @@
 module os;
 
 when builtin::arch == .C {
-    extern .C fn alloc(size: uint) -> ^mut;
-    extern .C fn free(ptr: ^mut);
-    extern .C fn realloc(ptr: ^mut, new_size: uint) -> ^mut;
-    extern .C fn print(str: []let u8);
-    extern .C fn putc(char: u8);
+    extern fn alloc(size: uint) -> ^mut;
+    extern fn free(ptr: ^mut);
+    extern fn realloc(ptr: ^mut, new_size: uint) -> ^mut;
+    extern fn print(str: []let u8);
+    extern fn putc(char: u8);
 } else {
     // null allocator otherwise!
     fn alloc(size: uint) -> ^mut {

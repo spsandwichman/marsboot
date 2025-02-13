@@ -715,7 +715,7 @@ PNode* parse_atom_terminal(bool allow_none) {
         term = parse_expr();
         expect(TOK_CLOSE_PAREN);
         advance();
-        break;
+        return term;
     case TOK_OPEN_BRACKET:
         if (peek(1)->kind == TOK_CARET) {
             term = new_node(ref_type, PN_TYPE_BOUNDLESS_SLICE);

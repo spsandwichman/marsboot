@@ -558,6 +558,8 @@ static Type pointee(Type t) {
 
 bool type_is_numeric(Type t) {
     switch (type(t)->kind) {
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
     case TYPE_I8:
     case TYPE_U8:
     case TYPE_I16:

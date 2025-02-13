@@ -1,11 +1,19 @@
 module test;
 
-fn store(arr: []mut int, index: int, value: int) -> int {
-    let previous = arr[index];
-    arr[index] = value;
-    return previous;
-}
+// fn store(arr: []mut int, index: int, value: int) -> int {
+//     let previous = arr[index];
+//     arr[index] = value;
+//     return previous;
+// }
 
-fn access(foo: []let []let int) -> int {
-    return foo[0][0];
+// fn access(array: []let int, index: int) -> int {
+//     if index < 0 {
+//         return -1;
+//     }
+//     return array[index];
+// }
+
+fn return_local_pointer() -> ^mut int {
+    mut x = 1;
+    return &x;
 }

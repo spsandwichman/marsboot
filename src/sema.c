@@ -158,6 +158,25 @@ bool type_is_intlike(Type t) {
     default: UNREACHABLE; \
     }
 
+#define apply_bool_binop(result, typekind, lhs, op, rhs) \
+    switch (typekind) { \
+    case TYPE_U8:   (result).bool =  (lhs).u8  op (rhs).u8;  break;\
+    case TYPE_U16:  (result).bool = (lhs).u16 op (rhs).u16; break;\
+    case TYPE_U32:  (result).bool = (lhs).u32 op (rhs).u32; break;\
+    case TYPE_U64:  (result).bool = (lhs).u64 op (rhs).u64; break;\
+    case TYPE_I8:   (result).bool =  (lhs).i8  op (rhs).i8;  break;\
+    case TYPE_I16:  (result).bool = (lhs).i16 op (rhs).i16; break;\
+    case TYPE_I32:  (result).bool = (lhs).i32 op (rhs).i32; break;\
+    case TYPE_UNTYPED_INT: \
+    case TYPE_POINTER: \
+    case TYPE_BOUNDLESS_SLICE: \
+    case TYPE_I64:  (result).bool = (lhs).i64 op (rhs).i64; break;\
+    case TYPE_F16:  (result).bool = (lhs).f16 op (rhs).f16; break;\
+    case TYPE_F32:  (result).bool = (lhs).f32 op (rhs).f32; break;\
+    case TYPE_F64:  (result).bool = (lhs).f64 op (rhs).f64; break;\
+    default: UNREACHABLE; \
+    }
+
 // +, -, *, /, %
 void const_eval_expr_arith_binop(Analyzer* m, SemaNode* n, u8 kind) {
     SemaNode* lhs = n->binop.lhs;
@@ -176,6 +195,10 @@ void const_eval_expr_arith_binop(Analyzer* m, SemaNode* n, u8 kind) {
     case PN_EXPR_MUL: apply_binop(n->constval, n->type, lhs->constval, *, rhs->constval); break;
     case PN_EXPR_DIV: apply_binop(n->constval, n->type, lhs->constval, /, rhs->constval); break;
     case PN_EXPR_MOD: apply_binop_integer(n->constval, n->type, lhs->constval, %, rhs->constval); break;
+    case PN_EXPR_LESS: apply_bool_binop(n->constval, n->type, lhs->constval, /, rhs->constval); break;
+    case PN_EXPR_LESS_EQ: apply_bool_binop(n->constval, n->type, lhs->constval, /, rhs->constval); break;
+    case PN_EXPR_GREATER: apply_bool_binop(n->constval, n->type, lhs->constval, /, rhs->constval); break;
+    case PN_EXPR_GREATER_EQ: apply_bool_binop(n->constval, n->type, lhs->constval, /, rhs->constval); break;
     default:
         UNREACHABLE;
     }
@@ -212,7 +235,7 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     return impl_cast;
 }
 
-// +, -, *, /, %
+// +, -, *, /, %, <, >, <=, >=
 SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
     SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
@@ -225,14 +248,23 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     case PN_EXPR_MUL: binop->kind = SN_MUL; break;
     case PN_EXPR_DIV: binop->kind = SN_DIV; break;
     case PN_EXPR_MOD: binop->kind = SN_MOD; break;
+    case PN_EXPR_LESS: binop->kind = SN_LESS; break;
+    case PN_EXPR_LESS_EQ: binop->kind = SN_LESS_EQ; break;
+    case PN_EXPR_GREATER: binop->kind = SN_GREATER; break;
+    case PN_EXPR_GREATER_EQ: binop->kind = SN_GREATER_EQ; break;
     }
-    
+
     if (!type_is_numeric(lhs->type)) {
         report_pnode(true, lhs->pnode, "expression type is not numeric");
     }
     if (!type_is_numeric(rhs->type)) {
         report_pnode(true, rhs->pnode, "expression type is not numeric");
     }
+
+    // Type ptr_operation = TYPE_UNKNOWN;
+    // if ((type(rhs->type)->kind == TYPE_POINTER) && (type(rhs->type)) {
+
+    // } 
 
     if (kind == PN_EXPR_MOD && (type_is_float(lhs->type) || type_is_float(rhs->type))) {
         string lhs_typestr = type_gen_string(lhs->type, true);
@@ -264,11 +296,32 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     }
 
     if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
-        printf("const eval\n");
         const_eval_expr_arith_binop(an, binop, kind);
     }
 
+    if (SN_LESS <= binop->kind && binop->kind <= SN_GREATER_EQ) {
+        binop->type = TYPE_BOOL;
+    }
+
     return binop;
+}
+
+// SemaNode* check_expr_arith_unop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
+
+// }
+
+SemaNode* check_expr_addrof(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* addrof = new_node(an, pn, SN_ADDR_OF);
+
+    if (type(expected)->kind == TYPE_POINTER) {
+        expected = type(expected)->as_ref.pointee;
+    } else {
+        expected = TYPE_UNKNOWN;
+    }
+
+    SemaNode* subexpr = check_expr(an, scope, pn->unop.sub, expected);
+
+    UNREACHABLE;
 }
 
 SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
@@ -297,6 +350,7 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn) {
         sn_entity->entity = ent;
         sn_entity->type = ent->type;
         sn_entity->mutable = ent->mutable;
+        sn_entity->addressable = true;
         return sn_entity;
     }
     UNREACHABLE;
@@ -350,10 +404,11 @@ SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     // indexer must be an integer of some kind
     bool is_integer = type_is_integer(type_unwrap_distinct(indexer->type));
     if (!is_integer) {
-        report_pnode(true ,pn->binop.rhs, "cannot index by non-integer");
+        report_pnode(true, pn->binop.rhs, "cannot index by non-integer");
     }
     access->binop.lhs = indexee;
     access->binop.rhs = indexer;
+    access->addressable = indexer->addressable;
 
     return access;
 }
@@ -391,6 +446,10 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_MUL:
     case PN_EXPR_DIV:
     case PN_EXPR_MOD:
+    case PN_EXPR_LESS:
+    case PN_EXPR_LESS_EQ:
+    case PN_EXPR_GREATER:
+    case PN_EXPR_GREATER_EQ:
         expr = check_expr_arith_binop(an, pn->base.kind, scope, pn, expected);
         break;
     case PN_EXPR_INDEX:
@@ -398,6 +457,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         break;
     case PN_EXPR_DEREF:
         expr = check_expr_deref(an, scope, pn, expected);
+        break;
+    case PN_EXPR_ADDR:
+        expr = check_expr_addrof(an, scope, pn, expected);
         break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");
@@ -785,8 +847,33 @@ SemaNode* check_stmt_assign(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return assign_stmt;
 }
 
+SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* if_stmt = new_node(an, pstmt, SN_STMT_IF);
+    
+    SemaNode* cond = check_expr(an, scope, pstmt->ternary.cond, TYPE_BOOL);
+    if (type_can_implicit_cast(cond->type, TYPE_BOOL)) {
+        cond = insert_implicit_cast(an, cond, TYPE_BOOL);
+    } else {
+        string cond_type_str = type_gen_string(cond->type, true);
+        report_pnode(true, cond->pnode, "condition must be 'bool', not '"str_fmt"'", 
+            str_arg(cond_type_str)
+        );
+    }
+    if_stmt->if_stmt.cond = cond;
+    
+    EntityTable* if_true_scope = etbl_new(scope);
+    if_stmt->if_stmt.if_true = check_stmt(an, if_true_scope, pstmt->ternary.if_true);
+    if (pstmt->ternary.if_false) {
+        EntityTable* if_false_scope = etbl_new(scope);
+        if_stmt->if_stmt.if_false = check_stmt(an, if_false_scope, pstmt->ternary.if_false);
+    }
+    return if_stmt;
+}
+
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
+    case PN_LIST:
+        return check_block(an, scope, pstmt, false);
     case PN_STMT_DECL:
         return check_var_decl(an, scope, pstmt);
     case PN_STMT_FN_DECL:
@@ -795,6 +882,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_stmt_return(an, scope, pstmt);
     case PN_STMT_ASSIGN:
         return check_stmt_assign(an, scope, pstmt);
+    case PN_STMT_IF:
+        return check_stmt_if(an, scope, pstmt);
     default:
         report_pnode(true, pstmt, "expected statement %d", pstmt->base.kind);
         return NULL;

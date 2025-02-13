@@ -5,6 +5,7 @@
 #include "orbit/vec.h"
 
 typedef struct Module Module;
+typedef struct Entity Entity;
 
 typedef u32 Type; // handle
 
@@ -46,7 +47,10 @@ enum TypeKind {
     TYPE_SLICE,
     TYPE_DISTINCT,
 
-    TYPE_TUPLE, // apparently not implemented yet?? lmao
+    TYPE__TEMP_ALIAS, 
+    // temporary type node for circular structure resolution
+    // after the type is constructed and the declaration is finished
+    // these should be resolved
 };
 
 typedef struct TypeRecordField {
@@ -100,6 +104,9 @@ typedef struct TNode {
             usize len;
             Type underlying;
         } as_enum;
+        struct {
+            Entity* ent;
+        } as_temp_alias;
     };
 } TNode;
 
@@ -162,6 +169,7 @@ typedef struct ConstVal ConstVal;
 typedef struct ConstVal {
     Type type;
     union {
+        bool bool;
         u8  u8;
         u16 u16;
         u32 u32;
@@ -248,6 +256,13 @@ enum SemaNodeKind {
     SN_MUL, // binop
     SN_DIV, // binop
     SN_MOD, // binop
+
+
+    SN_LESS, // binop
+    SN_LESS_EQ, // binop
+    SN_GREATER, // binop
+    SN_GREATER_EQ, // binop
+
     SN_IMPLICIT_CAST, // unop
     
     SN_ARRAY_INDEX, // binop
@@ -255,10 +270,13 @@ enum SemaNodeKind {
     SN_BOUNDLESS_SLICE_INDEX, // binop
 
     SN_DEREF, // unop
+    SN_ADDR_OF, // unop
 
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
     SN_STMT_ASSIGN,
+
+    SN_STMT_IF,
 
     SN_VAR_DECL,
 
@@ -267,7 +285,8 @@ enum SemaNodeKind {
 
 typedef struct SemaNode {
     u8 kind;
-    bool mutable;
+    bool mutable : 1; // can it be modified?
+    bool addressable : 1; // can its pointer be taken?
     Type type;
     PNode* pnode;
     union {
@@ -303,6 +322,12 @@ typedef struct SemaNode {
             u32 len;
             u32 cap;
         } list;
+
+        struct {
+            SemaNode* cond;
+            SemaNode* if_true;
+            SemaNode* if_false;
+        } if_stmt;
 
         // better to abstract this more
         // when anonymous functions come into play
