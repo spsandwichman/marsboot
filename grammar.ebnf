@@ -14,8 +14,8 @@ assignop =
     ;
 
 simple_stmt =
-    | ('let' | 'mut' | 'def') ident [':' expr] ['=' expr]
-    (* | ('let' | 'mut' | 'def') expr [':' expr] ['=' expr] *)
+    | ('let' | 'mut' | 'def') ident [':' unary_expr] ['=' expr]
+    (* | ('let' | 'mut' | 'def') expr [':' unary_expr] ['=' expr] *)
     (* ^^^ PROPOSED *)
     | expr assignop expr
     | expr
@@ -38,7 +38,7 @@ stmt =
     | 'when' expr do_block [when_else]
     (* | 'when ' expr ';' *)
     | 'for' simple_stmt ';' expr ';' simple_stmt do_block
-    | 'for' ('let' | 'mut') ident [':' type] 'in' expr do_block
+    | 'for' ident [':' unary_expr] 'in' expr do_block
     | 'extern' [expr] (extern_decl | '{' {extern_decl} '}')
     | 'defer' stmt
     | 'break' [ident] ';'
@@ -80,9 +80,7 @@ binop =
     ;
 
 fnproto = 
-    | 'fn' [ident] '(' list<item> ')' ['->' (expr | '(' list<item> ')'))]
-    (* | 'fn' [ident] '(' list<item> ')' [expr] *)
-    (* ^^^ PROPOSED *)
+    | 'fun' [ident] '(' list<item> ')' [':' (expr | '(' list<item> ')'))]
     ;
 
 case_expr = 'case' list<expr> ':' expr;

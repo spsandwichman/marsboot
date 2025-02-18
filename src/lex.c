@@ -181,7 +181,6 @@ static u8 identify_keyword(char* s, size_t len) {
         break;
     case 2:
         return_if_eq("do", TOK_KEYWORD_DO);
-        return_if_eq("fn", TOK_KEYWORD_FN);
         return_if_eq("if", TOK_KEYWORD_IF);
         return_if_eq("in", TOK_KEYWORD_IN);
         return_if_eq("i8", TOK_KEYWORD_I8);
@@ -190,8 +189,9 @@ static u8 identify_keyword(char* s, size_t len) {
     case 3:
         return_if_eq("let", TOK_KEYWORD_LET);
         return_if_eq("mut", TOK_KEYWORD_MUT);
-        return_if_eq("asm", TOK_KEYWORD_ASM);
+        return_if_eq("fun", TOK_KEYWORD_FUN);
         return_if_eq("def", TOK_KEYWORD_DEF);
+        return_if_eq("asm", TOK_KEYWORD_ASM);
         return_if_eq("dyn", TOK_KEYWORD_DYN);
         return_if_eq("for", TOK_KEYWORD_FOR);
         return_if_eq("int", TOK_KEYWORD_INT);

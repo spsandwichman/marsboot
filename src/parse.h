@@ -85,41 +85,41 @@ typedef da(Token) TokenBuf;
 \
     TOKEN(_TOK_BEGIN_KEYWORDS, "")\
 \
-    TOKEN(TOK_KEYWORD_LET,   "let") \
-    TOKEN(TOK_KEYWORD_MUT,   "mut") \
+    TOKEN(TOK_KEYWORD_LET, "let") \
+    TOKEN(TOK_KEYWORD_MUT, "mut") \
+    TOKEN(TOK_KEYWORD_FUN, "fun") \
+    TOKEN(TOK_KEYWORD_DEF, "def") \
 \
-    TOKEN(TOK_KEYWORD_ASM,       "asm") \
-    TOKEN(TOK_KEYWORD_BITCAST,   "bitcast") \
-    TOKEN(TOK_KEYWORD_BREAK,     "break") \
-    TOKEN(TOK_KEYWORD_CASE,      "case") \
-    TOKEN(TOK_KEYWORD_CAST,      "cast") \
-    TOKEN(TOK_KEYWORD_CONTINUE,  "continue") \
-    TOKEN(TOK_KEYWORD_DEFER,     "defer") \
-    TOKEN(TOK_KEYWORD_DEF,       "def") \
-    TOKEN(TOK_KEYWORD_DISTINCT,  "distinct") \
-    TOKEN(TOK_KEYWORD_DO,        "do") \
-    TOKEN(TOK_KEYWORD_ENUM,      "enum") \
-    TOKEN(TOK_KEYWORD_ELSE,      "else") \
-    TOKEN(TOK_KEYWORD_EXTERN,    "extern") \
-    TOKEN(TOK_KEYWORD_FALLTHROUGH,"fallthrough") \
-    TOKEN(TOK_KEYWORD_FOR,       "for") \
-    TOKEN(TOK_KEYWORD_FN,        "fn") \
-    TOKEN(TOK_KEYWORD_IF,        "if") \
-    TOKEN(TOK_KEYWORD_IN,        "in") \
-    TOKEN(TOK_KEYWORD_WHEN,      "when") \
-    TOKEN(TOK_KEYWORD_WHICH,     "which") \
-    TOKEN(TOK_KEYWORD_IMPORT,    "import") \
-    TOKEN(TOK_KEYWORD_MODULE,    "module") \
-    TOKEN(TOK_KEYWORD_RETURN,    "return") \
-    TOKEN(TOK_KEYWORD_STRUCT,    "struct") \
-    TOKEN(TOK_KEYWORD_SWITCH,    "switch") \
-    TOKEN(TOK_KEYWORD_UNION,     "union") \
-    TOKEN(TOK_KEYWORD_WHILE,     "while") \
+    TOKEN(TOK_KEYWORD_ASM,         "asm") \
+    TOKEN(TOK_KEYWORD_BITCAST,     "bitcast") \
+    TOKEN(TOK_KEYWORD_BREAK,       "break") \
+    TOKEN(TOK_KEYWORD_CASE,        "case") \
+    TOKEN(TOK_KEYWORD_CAST,        "cast") \
+    TOKEN(TOK_KEYWORD_CONTINUE,    "continue") \
+    TOKEN(TOK_KEYWORD_DEFER,       "defer") \
+    TOKEN(TOK_KEYWORD_DISTINCT,    "distinct") \
+    TOKEN(TOK_KEYWORD_DO,          "do") \
+    TOKEN(TOK_KEYWORD_ENUM,        "enum") \
+    TOKEN(TOK_KEYWORD_ELSE,        "else") \
+    TOKEN(TOK_KEYWORD_EXTERN,      "extern") \
+    TOKEN(TOK_KEYWORD_FALLTHROUGH, "fallthrough") \
+    TOKEN(TOK_KEYWORD_FOR,         "for") \
+    TOKEN(TOK_KEYWORD_IF,          "if") \
+    TOKEN(TOK_KEYWORD_IN,          "in") \
+    TOKEN(TOK_KEYWORD_WHEN,        "when") \
+    TOKEN(TOK_KEYWORD_WHICH,       "which") \
+    TOKEN(TOK_KEYWORD_IMPORT,      "import") \
+    TOKEN(TOK_KEYWORD_MODULE,      "module") \
+    TOKEN(TOK_KEYWORD_RETURN,      "return") \
+    TOKEN(TOK_KEYWORD_STRUCT,      "struct") \
+    TOKEN(TOK_KEYWORD_SWITCH,      "switch") \
+    TOKEN(TOK_KEYWORD_UNION,       "union") \
+    TOKEN(TOK_KEYWORD_WHILE,       "while") \
 \
-    TOKEN(TOK_KEYWORD_TYPEOF,    "typeof") \
-    TOKEN(TOK_KEYWORD_SIZEOF,    "sizeof") \
-    TOKEN(TOK_KEYWORD_ALIGNOF,   "alignof") \
-    TOKEN(TOK_KEYWORD_OFFSETOF,  "offsetof") \
+    TOKEN(TOK_KEYWORD_TYPEOF,      "typeof") \
+    TOKEN(TOK_KEYWORD_SIZEOF,      "sizeof") \
+    TOKEN(TOK_KEYWORD_ALIGNOF,     "alignof") \
+    TOKEN(TOK_KEYWORD_OFFSETOF,    "offsetof") \
 \
     TOKEN(TOK_KEYWORD_INT,  "int") \
     TOKEN(TOK_KEYWORD_I8,   "i8") \
@@ -177,7 +177,6 @@ enum PNodeKind {
     PN_STMT_ASSIGN_MUL,
     PN_STMT_ASSIGN_DIV,
     PN_STMT_ASSIGN_MOD,
-    PN_STMT_ASSIGN_FLOORMOD,
     PN_STMT_ASSIGN_BIT_AND,
     PN_STMT_ASSIGN_BIT_OR,
     PN_STMT_ASSIGN_NOR,
@@ -417,7 +416,8 @@ typedef struct PNode {
             PNode* block;
         } for_cstyle;
         struct {
-            PNode* decl;
+            PNode* ident;
+            PNode* type;
             PNode* range;
             PNode* block;
         } for_ranged;
@@ -439,5 +439,6 @@ PNode* parse_string();
 PNode* parse_stmt();
 
 PNode* parse_expr();
+PNode* parse_unary();
 
 #endif // PARSE_H

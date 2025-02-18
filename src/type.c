@@ -496,6 +496,18 @@ bool type_is_float(Type t) {
     return t == TYPE_UNTYPED_FLOAT || type_is_solid_float(t);
 }
 
+bool type_is_unsigned_integer(Type t) {
+    switch (type(t)->kind) {
+    case TYPE_U8:
+    case TYPE_U16:
+    case TYPE_U32:
+    case TYPE_U64:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool type_is_signed_integer(Type t) {
     switch (type(t)->kind) {
     case TYPE_I8:
@@ -590,7 +602,16 @@ bool type_is_untyped(Type t) {
     }
 }
 
+Type type_unwrap_alias(Type t) {
+    if (t >= _TYPE_SIMPLE_END && type(t)->kind < _TYPE_SIMPLE_END) {
+        t = type(t)->kind;
+    }
+    return t;
+}
+
 bool type_can_implicit_cast(Type from, Type to) {
+    from = type_unwrap_alias(from);
+    to   = type_unwrap_alias(to);
     if (from == to) return true;
     
     Type to_indistinct = type_unwrap_distinct(to);

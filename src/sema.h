@@ -134,9 +134,10 @@ TNode* type(Type t);
 
 bool type_is_numeric(Type t);
 bool type_is_signed_integer(Type t);
+bool type_is_unsigned_integer(Type t);
+bool type_is_solid_integer(Type t);
 bool type_is_solid_float(Type t);
 bool type_is_float(Type t);
-bool type_is_solid_integer(Type t);
 bool type_is_integer(Type t);
 bool type_is_untyped(Type t);
 
@@ -168,6 +169,7 @@ typedef struct ConstVal ConstVal;
 
 typedef struct ConstVal {
     Type type;
+    bool is_string;
     union {
         bool bool;
         u8  u8;
@@ -182,6 +184,7 @@ typedef struct ConstVal {
         f32 f32;
         f64 f64;
         Type typeid;
+        string string;
 
         struct {
             ConstVal* at;
@@ -251,12 +254,14 @@ enum SemaNodeKind {
     SN_CONSTVAL,
     SN_ENTITY,
 
+    SN_RANGE_LESS, // binop
+    SN_RANGE_EQ, // binop
+
     SN_ADD, // binop
     SN_SUB, // binop
     SN_MUL, // binop
     SN_DIV, // binop
     SN_MOD, // binop
-
 
     SN_LESS, // binop
     SN_LESS_EQ, // binop
@@ -272,14 +277,28 @@ enum SemaNodeKind {
     SN_DEREF, // unop
     SN_ADDR_OF, // unop
 
+    SN_IN_RANGE_LESS,
+    SN_IN_RANGE_EQ,
+
+    SN_SLICE_SELECTOR_RAW, // unop
+    SN_SLICE_SELECTOR_LEN, // unop
+
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
     SN_STMT_ASSIGN,
 
+    // SN_STMT_ASSIGN_ADD,
+    // SN_STMT_ASSIGN_SUB,
+    // SN_STMT_ASSIGN_MUL,
+    // SN_STMT_ASSIGN_DIV,
+    // SN_STMT_ASSIGN_MOD,
+
     SN_STMT_IF,
+    SN_STMT_WHILE,
+    SN_STMT_FOR_RANGE,
+    SN_STMT_FOR_CSTYLE,
 
     SN_VAR_DECL,
-
     SN_FN_DECL,
 };
 
@@ -324,10 +343,33 @@ typedef struct SemaNode {
         } list;
 
         struct {
+            SemaNode* value;
+            SemaNode* range;
+        } in_range;
+
+        struct {
             SemaNode* cond;
             SemaNode* if_true;
             SemaNode* if_false;
         } if_stmt;
+
+        struct {
+            SemaNode* cond;
+            SemaNode* body;
+        } while_loop;
+
+        struct {
+            Entity* iter_var;
+            SemaNode* range;
+            SemaNode* body;
+        } for_range;
+
+        struct {
+            SemaNode* init;
+            SemaNode* cond;
+            SemaNode* post;
+            SemaNode* body;
+        } for_cstyle;
 
         // better to abstract this more
         // when anonymous functions come into play

@@ -108,6 +108,8 @@ static PNode* list_solidify(PNodeList l) {
     return block;
 }
 
+#define parse_type parse_unary
+
 PNode* parse_module_decl() {
     expect(TOK_KEYWORD_MODULE);
     PNode* decl = new_node(module_decl, PN_STMT_MODULE_DECL);
@@ -131,7 +133,7 @@ PNode* parse_import_decl() {
 }
 
 
-// ('let' | 'mut') list<ident> [':' expr] ['=' expr]
+// ('let' | 'mut') list<ident> [':' unary_expr] ['=' expr]
 PNode* parse_var_decl(bool is_extern) {
     PNode* decl = new_node(decl, PN_STMT_DECL);
     switch (current()->kind) {
@@ -178,7 +180,7 @@ PNode* parse_var_decl(bool is_extern) {
 
     if (match(TOK_COLON)) {
         advance();
-        decl->decl.type = parse_expr();
+        decl->decl.type = parse_type();
     } else if (is_extern) {
         report_token(true, "extern declaration requires type");
     }
@@ -206,7 +208,7 @@ PNode* parse_var_decl(bool is_extern) {
 PNode* parse_item_list(u8 terminator) {
     PNodeList items = list_new(8);
     while (!match(terminator)) {
-        // ident [',' ident] ':' expr
+        // ident [',' ident] ':' unary_expr
         PNode* item = new_node(item, PN_ITEM);
         PNodeList identifiers = list_new(1);
         if (!match(TOK_IDENTIFIER) && !match(TOK_IDENTIFIER_DISCARD)) {
@@ -231,7 +233,7 @@ PNode* parse_item_list(u8 terminator) {
         } else {
             item->item.ident = list_solidify(identifiers);
         }
-        item->item.type = parse_expr();
+        item->item.type = parse_type();
         da_append(&items, item);
         if (match(TOK_COMMA)) {
             advance();
@@ -254,9 +256,9 @@ PNode* parse_fn_prototype() {
     proto->fnproto.param_list = parse_item_list(TOK_CLOSE_PAREN);
     expect(TOK_CLOSE_PAREN);
     advance();
-    if (match(TOK_ARROW_RIGHT)) {
+    if (match(TOK_COLON)) {
         advance();
-        proto->fnproto.ret_type = parse_expr();
+        proto->fnproto.ret_type = parse_type();
     }
     return proto;
 }
@@ -388,21 +390,26 @@ PNode* parse_simple_stmt() {
 
 PNode* parse_for_stmt() {
     expect(TOK_KEYWORD_FOR);
-    advance();
     Token* begin = current();
-    PNode* left = parse_simple_stmt();
-    if (current()->kind == TOK_KEYWORD_IN) {
-        // parse ranged for loop
-        PNode* fl = new_node(for_ranged, PN_STMT_FOR_RANGED);
+    advance();
+    if (match(TOK_IDENTIFIER) && (peek(1)->kind == TOK_KEYWORD_IN || peek(1)->kind == TOK_COLON)) {
+
+        // parse cstyle loop
+        PNode* fl = new_node(for_cstyle, PN_STMT_FOR_RANGED);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
 
-        fl->for_ranged.decl = left;
+        fl->for_ranged.ident = parse_ident();
+        if (match(TOK_COLON)) {
+            advance();
+            fl->for_ranged.type = parse_type();
+        }
+
         expect(TOK_KEYWORD_IN);
         advance();
         fl->for_ranged.range = parse_expr();
-        fl->for_ranged.block = parse_do_group();
+        fl->for_cstyle.block = parse_do_group();
         return fl;
     } else {
         // parse cstyle loop
@@ -411,7 +418,7 @@ PNode* parse_for_stmt() {
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
 
-        fl->for_cstyle.init = left;
+        fl->for_cstyle.init = parse_simple_stmt();
         expect(TOK_SEMICOLON);
         advance();
         if (!match(TOK_SEMICOLON)) {
@@ -432,7 +439,7 @@ PNode* parse_extern_decl() {
     advance();
 
     switch (current()->kind) {
-    case TOK_KEYWORD_FN:
+    case TOK_KEYWORD_FUN:
         stmt->unop.sub = parse_fn_prototype();
         break;
     case TOK_KEYWORD_LET:
@@ -460,7 +467,7 @@ PNode* parse_stmt() {
         stmt = new_node(_, PN_STMT_EMPTY);
         advance();
         break;
-    case TOK_KEYWORD_FN:
+    case TOK_KEYWORD_FUN:
         stmt = new_node(fn_decl, PN_STMT_FN_DECL);
         stmt->fn_decl.proto = parse_fn_prototype();
         stmt->fn_decl.stmts = parse_stmt_group(true);
@@ -699,7 +706,7 @@ PNode* parse_atom_terminal(bool allow_none) {
         expect(TOK_CLOSE_BRACE);
         advance();
         break;
-    case TOK_KEYWORD_FN:
+    case TOK_KEYWORD_FUN:
         term = parse_fn_prototype();
         if (match(TOK_OPEN_BRACE)) {
             PNode* fn = new_node(fn_decl, PN_EXPR_ANON_FN);

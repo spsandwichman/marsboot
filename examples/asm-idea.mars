@@ -3,7 +3,7 @@ module syscall;
 when builtin::arch == .x86_64;
 when builtin::system == .linux;
 
-fn read(fd: int, buf: []let u8) -> int {
+fun read(fd: int, buf: []let u8): int {
     mut retval: int;
    
     let ptr = buf.raw;
