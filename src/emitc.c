@@ -630,7 +630,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         emit_indent();
         sb_append_c(sb, "}\n");
         break;
-    case SN_STMT_FOR_RANGE:
+    case SN_STMT_FOR_IN:
         emit_indent();
         sb_append_c(sb, "{\n");
         indent_level++;

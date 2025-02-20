@@ -106,6 +106,7 @@ typedef struct TNode {
         } as_enum;
         struct {
             Entity* ent;
+            PNode* use; // where to report the error if this isnt a type
         } as_temp_alias;
     };
 } TNode;
@@ -152,11 +153,13 @@ string type_gen_string(Type t, bool use_names);
 u64 type_gen_typeid(Type t);
 
 Type type_unwrap_distinct(Type t);
+Type type_unwrap_alias(Type t);
 bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct);
 isize type_binary_implicit_cast_priority(Type t);
 bool type_can_implicit_cast(Type from, Type to);
 bool type_can_explicit_cast(Type from, Type to);
 
+void type_print_graph();
 
 // ---------------------------------------------------------
 
@@ -208,7 +211,7 @@ enum EntityCheckStatus {
     ENT_CHECK_NONE, // has not been checked yet
     ENT_CHECK_IN_PROGRESS, // currently being checked. value references to this entity are invalid
     ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE,
-    ENT_CHECK_DONE,
+    ENT_CHECK_COMPLETE,
 };
 
 typedef struct Entity {
@@ -295,7 +298,7 @@ enum SemaNodeKind {
 
     SN_STMT_IF,
     SN_STMT_WHILE,
-    SN_STMT_FOR_RANGE,
+    SN_STMT_FOR_IN,
     SN_STMT_FOR_CSTYLE,
 
     SN_VAR_DECL,

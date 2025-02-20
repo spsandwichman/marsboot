@@ -394,22 +394,22 @@ PNode* parse_for_stmt() {
     advance();
     if (match(TOK_IDENTIFIER) && (peek(1)->kind == TOK_KEYWORD_IN || peek(1)->kind == TOK_COLON)) {
 
-        // parse cstyle loop
-        PNode* fl = new_node(for_cstyle, PN_STMT_FOR_RANGED);
+        // parse for-in loop
+        PNode* fl = new_node(for_cstyle, PN_STMT_FOR_IND);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;
 
-        fl->for_ranged.ident = parse_ident();
+        fl->for_in.ident = parse_ident();
         if (match(TOK_COLON)) {
             advance();
-            fl->for_ranged.type = parse_type();
+            fl->for_in.type = parse_type();
         }
 
         expect(TOK_KEYWORD_IN);
         advance();
-        fl->for_ranged.range = parse_expr();
-        fl->for_cstyle.block = parse_do_group();
+        fl->for_in.range = parse_expr();
+        fl->for_in.block = parse_do_group();
         return fl;
     } else {
         // parse cstyle loop
@@ -990,8 +990,8 @@ static isize bin_precedence(u8 kind) {
     case TOK_RANGE_EQ:
     case TOK_RANGE_LESS:
         return 5;
-    case TOK_KEYWORD_IN:
-        return 4;
+    // case TOK_KEYWORD_IN:
+        // return 4;
     case TOK_AND_AND:
         return 3;
     case TOK_OR_OR:
@@ -1022,7 +1022,7 @@ static u8 bin_kind[_TOK_COUNT] = {
     [TOK_GREATER_EQUAL] = PN_EXPR_GREATER_EQ,
     [TOK_RANGE_EQ] = PN_EXPR_RANGE_EQ,
     [TOK_RANGE_LESS] = PN_EXPR_RANGE_LESS,
-    [TOK_KEYWORD_IN] = PN_EXPR_IN,
+    // [TOK_KEYWORD_IN] = PN_EXPR_IN,
 };
 
 PNode* parse_case_expr() {

@@ -97,10 +97,10 @@ void type_print_graph() {
     ptrmap_init(&has_printed, 128);
     for_n(t, 0, tg.handles.len) {
         TNode* type_node = type(t);
-        if (ptrmap_get(&has_printed, type_node) != PTRMAP_NOT_FOUND) {
-            continue;
-        }
-        ptrmap_put(&has_printed, type_node, (void*)1234);
+        // if (ptrmap_get(&has_printed, type_node) != PTRMAP_NOT_FOUND) {
+        //     // continue;
+        // }
+        // ptrmap_put(&has_printed, type_node, (void*)1234);
 
         printf("(%d, %d) (%6x) % 3d : ", type(t)->num_a, type(t)->num_b, type(t), t);
         switch(type(t)->kind) {
@@ -132,16 +132,17 @@ void type_print_graph() {
             break;
         case TYPE_DISTINCT:
             printf("distinct %d", type(t)->as_distinct);
-
+            break;
+        case TYPE__TEMP_ALIAS:
+            printf("temp alias");
+            break;
+        case TYPE_FUNCTION:
+            break;
         default:
-            crash("cannot print type");
+            crash("cannot print type %d", type(t)->kind);
         }
         printf("\n");
     }
-}
-
-static usize inc(usize n) {
-    return n ? (n + 1) : 0;
 }
 
 static void set(Type a, Type b, usize num) {
@@ -182,6 +183,9 @@ bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct) {
 }
 
 static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, bool ignore_distinct) {
+    a = type_unwrap_alias(a);
+    b = type_unwrap_alias(b);
+    
     if (ignore_distinct) {
         a = type_unwrap_distinct(a);
         b = type_unwrap_distinct(b);
@@ -213,7 +217,7 @@ static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, boo
         bool eq = type_equal_internal(
             type(a)->as_ref.pointee,
             type(b)->as_ref.pointee, 
-            inc(n), 
+            n+1, 
             ignore_idents, ignore_distinct
         );
         set(a, b, 0);
@@ -226,7 +230,7 @@ static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, boo
         eq = type_equal_internal(
             type(a)->as_array.sub,
             type(b)->as_array.sub, 
-            inc(n), 
+            n+1, 
             ignore_idents, ignore_distinct
         );
         set(a, b, 0);
@@ -395,7 +399,11 @@ static void type_gen_string_internal(StringBuilder* sb, Type t, bool use_names, 
         sb_append_c(sb, "distinct ");
         type_gen_string_internal(sb, type(t)->as_distinct, use_names, rec_num);
         break;
+    case TYPE_UNKNOWN:
+        sb_append_c(sb, "!UNKNOWN!");
+        break;
     default:
+        printf("unable %d\n", type(t)->kind);
         UNREACHABLE;
     }
 
@@ -613,6 +621,10 @@ bool type_can_implicit_cast(Type from, Type to) {
     from = type_unwrap_alias(from);
     to   = type_unwrap_alias(to);
     if (from == to) return true;
+
+    if (type_equal(from, to, false, false)) {
+        return true;
+    }
     
     Type to_indistinct = type_unwrap_distinct(to);
     

@@ -185,7 +185,7 @@ enum PNodeKind {
     PN_STMT_ASSIGN_RSHIFT,
 
     PN_STMT_FOR_CSTYLE,
-    PN_STMT_FOR_RANGED,
+    PN_STMT_FOR_IND,
     PN_STMT_WHILE,
     PN_STMT_IF,
     PN_STMT_WHEN,
@@ -233,7 +233,7 @@ enum PNodeKind {
     PN_EXPR_GREATER_EQ,
     PN_EXPR_RANGE_LESS,
     PN_EXPR_RANGE_EQ,
-    PN_EXPR_IN,
+    // PN_EXPR_IN,
 
     // unop
     PN_EXPR_ADDR,
@@ -420,7 +420,7 @@ typedef struct PNode {
             PNode* type;
             PNode* range;
             PNode* block;
-        } for_ranged;
+        } for_in;
         struct {
             PNode* fields;
         } record_type;

@@ -1,19 +1,17 @@
 module test;
 
-def string = []let u8;
+// fun sum_array(array: []let int): int {
+//     mut sum = 0;
+//     for i in 0 ..< array.len {
+//         sum += array[i];
+//     }
+//     return sum;
+// }
 
-// def Bar = struct {
-//     arr: [10]string,
-//     integer: int,
-// };
+def Ptr = ^let Ptr;
 
-def SOME_CONSTANT = 100;
-mut foo: [SOME_CONSTANT]int;
+def Bar = Ptr;
 
-fun sum_array(array: []let int): int {
-    mut sum = 0;
-    for i in 0 ..< array.len {
-        sum += array[i];
-    }
-    return sum;
+fun deref(p: Ptr): Ptr {
+    return p^^^^^^;
 }
