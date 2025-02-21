@@ -395,7 +395,7 @@ PNode* parse_for_stmt() {
     if (match(TOK_IDENTIFIER) && (peek(1)->kind == TOK_KEYWORD_IN || peek(1)->kind == TOK_COLON)) {
 
         // parse for-in loop
-        PNode* fl = new_node(for_cstyle, PN_STMT_FOR_IND);
+        PNode* fl = new_node(for_cstyle, PN_STMT_FOR_IN);
         // copy span
         fl->base.raw = begin->raw;
         fl->base.len = begin->len;

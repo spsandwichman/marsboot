@@ -440,7 +440,14 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
         SemaNode* decl = check_var_decl(an, ent->tbl, ent->decl_pnode);
     } else if (ent->check_status == ENT_CHECK_IN_PROGRESS || 
                ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
-        report_pnode(true, pn, "cannot define '"str_fmt"' in terms of itself", str_arg(ident));
+        if (ent->type == TYPE_TYPEID && ent->decl_pnode->decl.kind == DECLKIND_DEF) {
+            SemaNode* cv = new_node(an, pn, SN_CONSTVAL);
+            cv->constval.typeid = ingest_type(an, scope, pn);
+            cv->type = cv->constval.type = TYPE_TYPEID;
+            return cv;
+        } else {
+            report_pnode(true, pn, "cannot define '"str_fmt"' in terms of itself", str_arg(ident));
+        }
     }
 
     // if storage is comptime, return the value as a SN_CONSTVAL
@@ -764,18 +771,19 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
         }
         // this entitiy is global, but hasnt been checked yet. lets go do that
         if (ent->check_status == ENT_CHECK_NONE) {
-            SemaNode* decl = check_var_decl(an, ent->tbl, ent->decl_pnode);
-        } else if (ent->check_status == ENT_CHECK_COMPLETE) {
-            SemaNode* snode = check_expr_ident(an, scope, pn, TYPE_UNKNOWN);
-            if (snode->kind != SN_CONSTVAL) {
+            if (ent->decl_pnode->decl.kind != DECLKIND_DEF) {
                 report_pnode(true, pn, "symbol is not a compile-time constant");
             }
+            SemaNode* decl = check_var_decl(an, ent->tbl, ent->decl_pnode);
+        }
+        if (ent->check_status == ENT_CHECK_COMPLETE) {
+            SemaNode* snode = check_expr_ident(an, scope, pn, TYPE_UNKNOWN);
             if (snode->type != TYPE_TYPEID) {
                 report_pnode(true, pn, "symbol is not a typeid");
             }
             return snode->constval.typeid;
         }
-        
+
         // create temporary alias node
         Type alias = type_new(an->m, TYPE__TEMP_ALIAS);
         type(alias)->as_temp_alias.ent = ent;
@@ -789,30 +797,16 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
     return TYPE_UNKNOWN;
 }
 
-static void resolve_temp_aliases(Type t) {
-    switch (type(t)->kind) {
-    case TYPE_POINTER:
-    case TYPE_BOUNDLESS_SLICE:
-    case TYPE_SLICE:
-        resolve_temp_aliases(type(t)->as_ref.pointee);
-        break;
-    case TYPE_ARRAY:
-        resolve_temp_aliases(type(t)->as_array.sub);
-        break;
-    case TYPE__TEMP_ALIAS:
-        Entity* ent = type(t)->as_temp_alias.ent;
-        if (ent->check_status != ENT_CHECK_COMPLETE) {
-            break;
+static void resolve_temp_aliases(Entity* ent, bool is_const_type) {
+    for_n(i, _TYPE_SIMPLE_END, tg.handles.len) {
+        if (type(i)->kind != TYPE__TEMP_ALIAS) continue;
+        if (type(i)->as_temp_alias.ent != ent) continue;
+        if (is_const_type) {
+            TNode* target = type(ent->constval.typeid);
+            tg.handles.at[i] = target;
+        } else {
+            report_pnode(true, type(i)->as_temp_alias.use, "symbol is not a compile-time constant typeid");
         }
-        PNode* use = type(t)->as_temp_alias.use;
-        if (ent->type != TYPE_TYPEID) {
-            report_pnode(true, use, "symbol is not a typeid");
-        }
-        if (ent->storage != STORAGE_COMPTIME) {
-            report_pnode(true, use, "symbol is not a compile-time constant");
-        }
-        tg.handles.at[t] = type(ent->constval.typeid);
-        break;
     }
 }
 
@@ -821,7 +815,78 @@ static bool can_global_decl_value(SemaNode* n) {
     return false;
 }
 
+static bool maybe_type(PNode* pn) {
+    u8 kind = pn->base.kind;
+    return (PN_TYPE_TYPEOF <= kind && kind <= PN_TYPE_TYPEID);
+}
+
+SemaNode* check_def_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+
+    assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
+    string name = pnode_span(pstmt->decl.ident);
+
+    bool is_global_decl = scope == an->m->global;
+
+    Entity* ent = etbl_search(scope, name);
+    if (is_global_decl) {
+        if (ent->check_status == ENT_CHECK_COMPLETE && ent->decl_pnode == pstmt) {
+            return ent->decl;
+        }
+    }
+
+    if ((is_global_decl && ent->decl_pnode != pstmt) || (scope != an->m->global && ent != NULL)) {
+        report_pnode(true, pstmt->decl.ident, "name already declared");
+    } else if (!is_global_decl) {
+        ent = etbl_put(scope, name);
+    }
+
+    ent->check_status = ENT_CHECK_IN_PROGRESS;
+    ent->decl_pnode = pstmt;
+    ent->type = TYPE_UNKNOWN;
+    ent->storage = STORAGE_COMPTIME;
+
+    if (pstmt->decl.type) {
+        ent->type = ingest_type(an, scope, pstmt->decl.type);
+        ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
+    }
+
+    if (pstmt->decl.value == NULL || pstmt->decl.value->base.kind == PN_UNINIT) {
+        report_pnode(true, pstmt, "compile-time variable must have a value");
+    }
+
+    if (maybe_type(pstmt->decl.value)) {
+        ent->type = TYPE_TYPEID;
+    }
+
+    SemaNode* value = check_expr(an, scope, pstmt->decl.value, TYPE_UNKNOWN);
+    if (value->kind != SN_CONSTVAL) {
+        report_pnode(true, pstmt->decl.value, "value must be compile-time constant");
+    }
+
+    assert((value->type == TYPE_TYPEID) == (value->constval.type == TYPE_TYPEID));
+
+
+    SemaNode* decl = new_node(an, pstmt, SN_DEF_DECL);
+    decl->decl.entity = ent;
+    decl->decl.value = value;
+
+    ent->decl = decl;
+    ent->constval = value->constval;
+    ent->check_status = ENT_CHECK_COMPLETE;
+    ent->type = value->type;
+
+    resolve_temp_aliases(ent, value->type == TYPE_TYPEID);
+
+    // UNREACHABLE;
+
+    return decl;
+}
+
 SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+
+    if (pstmt->decl.kind == DECLKIND_DEF) {
+        return check_def_decl(an, scope, pstmt);
+    }
 
     assert(pstmt->decl.ident->base.kind == PN_IDENT); // no lists of decls yet!
     string name = pnode_span(pstmt->decl.ident);
@@ -848,16 +913,10 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ent->mutable = pstmt->decl.kind == DECLKIND_MUT;
     ent->decl_pnode = pstmt;
     ent->type = TYPE_UNKNOWN;
-    switch (pstmt->decl.kind) {
-    case DECLKIND_DEF: ent->storage = STORAGE_COMPTIME; break;
-    case DECLKIND_LET:
-    case DECLKIND_MUT:
-        if (is_global_decl) {
-            ent->storage = STORAGE_GLOBAL;
-        } else {
-            ent->storage = STORAGE_LOCAL;
-        }
-        break;
+    if (is_global_decl) {
+        ent->storage = STORAGE_GLOBAL;
+    } else {
+        ent->storage = STORAGE_LOCAL;
     }
 
     if (pstmt->decl.type) {
@@ -871,29 +930,19 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ent->decl = decl;
 
     // uninitalized value
-    if (pstmt->decl.value == NULL || pstmt->decl.value->base.kind == PN_UNINIT) {
+    if (pstmt->decl.value == NULL) {
         if (ent->type == TYPE_UNKNOWN) {
             report_pnode(true, decl->pnode, "uninitialized variable must have a type");
         }
-        if (pstmt->decl.kind != DECLKIND_MUT) {
+        if (pstmt->decl.kind == DECLKIND_LET) {
             report_pnode(true, pstmt, "immutable variable must be initialized");
         }
-        ent->uninit = pstmt->decl.value != NULL && pstmt->decl.value->base.kind == PN_UNINIT;
+        ent->uninit = (pstmt->decl.value != NULL && pstmt->decl.value->base.kind == PN_UNINIT);
     } else if (pstmt->decl.value != NULL) {
         SemaNode* value = check_expr(an, scope, pstmt->decl.value, ent->type);
         decl->decl.value = value;
 
-        if (ent->storage == STORAGE_COMPTIME && value->kind == SN_CONSTVAL && value->type == TYPE_TYPEID) {
-            // this is actually a type declaration!!
-            ent->check_status = ENT_CHECK_COMPLETE;
-            ent->type = TYPE_TYPEID;
-            Type alias = type_new_alias(an->m, value->constval.typeid);
-            type_attach_name(alias, name);
-            value->constval.typeid = alias;
-            ent->constval = value->constval;
-            type_print_graph(); printf("\n");
-            resolve_temp_aliases(alias);
-        }
+        resolve_temp_aliases(ent, false);
 
         if (ent->type == TYPE_UNKNOWN) {
             ent->type = normalize_untyped(an->m, value->type);
@@ -912,13 +961,6 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         // only certain things are allowed in global decls
         if (is_global_decl && !can_global_decl_value(value)) {
             report_pnode(true, value->pnode, "expression is not constant at load-time");
-        }
-        // if it is constant, we need to store the constant in the entity as well
-        if (value->kind == SN_CONSTVAL) {
-            ent->constval = value->constval;
-        }
-        if (ent->storage == STORAGE_COMPTIME && value->kind != SN_CONSTVAL) {
-            report_pnode(true, value->pnode, "def expression must be a compile-time constant");
         }
     } else if (ent->type == TYPE_UNKNOWN) {
         report_pnode(true, decl->pnode, "declaration must have a type, a value, or both");
@@ -1076,7 +1118,6 @@ SemaNode* check_stmt_return(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         if (type_can_implicit_cast(ret_expr->type, an->return_type)) {
             ret_expr = insert_implicit_cast(an, ret_expr, an->return_type);
         } else {
-            type_print_graph();
             string ret_type_str = type_gen_string(an->return_type, true);
             string value_type_str = type_gen_string(ret_expr->type, true);
             report_pnode(true, ret_expr->pnode, "cannot coerce from '"str_fmt"' to '"str_fmt"'", 
@@ -1290,7 +1331,7 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_stmt_if(an, scope, pstmt);
     case PN_STMT_WHILE:
         return check_stmt_while(an, scope, pstmt);
-    case PN_STMT_FOR_IND:
+    case PN_STMT_FOR_IN:
         return check_stmt_for_in(an, scope, pstmt);
     case PN_STMT_FOR_CSTYLE:
         return check_stmt_for_cstyle(an, scope, pstmt);

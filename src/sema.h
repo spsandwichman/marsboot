@@ -164,7 +164,6 @@ void type_print_graph();
 // ---------------------------------------------------------
 
 typedef struct SemaNode SemaNode;
-typedef struct Entity Entity;
 typedef struct EntityTable EntityTable;
 typedef struct ConstVal ConstVal;
 
@@ -302,6 +301,7 @@ enum SemaNodeKind {
     SN_STMT_FOR_CSTYLE,
 
     SN_VAR_DECL,
+    SN_DEF_DECL,
     SN_FN_DECL,
 };
 

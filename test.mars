@@ -1,17 +1,7 @@
 module test;
 
-// fun sum_array(array: []let int): int {
-//     mut sum = 0;
-//     for i in 0 ..< array.len {
-//         sum += array[i];
-//     }
-//     return sum;
-// }
+def SelfPointer = ^let SelfPointer;
 
-def Ptr = ^let Ptr;
-
-def Bar = Ptr;
-
-fun deref(p: Ptr): Ptr {
-    return p^^^^^^;
+fun never_do_this_lmao(x: SelfPointer): SelfPointer {
+    // return x^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^;
 }
