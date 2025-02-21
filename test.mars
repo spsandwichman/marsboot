@@ -1,12 +1,7 @@
 module test;
 
-def SelfPointer = ^let SelfPointer;
+def SelfPointer = []let SelfPointer;
 
 fun never_do_this_lmao(x: SelfPointer): SelfPointer {
-
-    def sptr = ^let sptr;
-
-    mut y: sptr = x;
-
-    return y^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^;
+    return x;
 }
