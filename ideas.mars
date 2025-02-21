@@ -1,0 +1,24 @@
+ideas for the future of mars:
+
+// member functions
+def Complex = struct {
+    real: f32,
+    imag: f32,
+
+    fun hadamard(a, b: Complex): Complex {
+        return .{
+            a.real * b.real,
+            a.imag * b.imag,
+        };
+    }
+};
+
+// generics
+where [T: typeid] fun add(x, y: T): T {
+    return x + y;
+}
+
+// traits/interfaces
+def Foo = interface {
+    fun bar(a: int): int;
+};

@@ -211,7 +211,8 @@ void emit_typedef(Module* m, TNode* t) {
             sb_append(sb, f.name);
             sb_append_c(sb, ";\n");
         }
-        sb_append_c(sb, "}");
+        sb_append_c(sb, "} ");
+        emit_typename(t);
         break;
     case TYPE_UNION:
         sb_append_c(sb, "union ");
@@ -225,7 +226,8 @@ void emit_typedef(Module* m, TNode* t) {
             sb_append(sb, f.name);
             sb_append_c(sb, ";\n");
         }
-        sb_append_c(sb, "}");
+        sb_append_c(sb, "} ");
+        emit_typename(t);
         break;
     case TYPE_ARRAY:
         sb_append_c(sb, "struct ");
@@ -321,34 +323,6 @@ void c_emit_constval(ConstVal cv) {
 // god fucking dammit
 void c_emit_constval_zero(Type t) {
     sb_append_c(sb, "{0}");
-    // t = type_unwrap_distinct(t);
-
-    // switch (type(t)->kind) {
-    // case TYPE_I8:
-    // case TYPE_I16:
-    // case TYPE_I32:
-    // case TYPE_UNTYPED_INT:
-    // case TYPE_I64: sb_append_c(sb, "0ll"); break;
-    // case TYPE_U8:
-    // case TYPE_U16:
-    // case TYPE_U32:
-    // case TYPE_U64: sb_append_c(sb, "0ull"); break;
-    // case TYPE_POINTER:
-    // case TYPE_BOUNDLESS_SLICE:
-    //     sb_append_c(sb, "((Ptr)0)");
-    //     break;
-    // case TYPE_UNION:
-    // case TYPE_STRUCT:
-    // case TYPE_ARRAY:
-    // case TYPE_SLICE:
-    // case TYPE_DYN:
-    //     sb_append_c(sb, "(");
-    //     emit_typename(type(t));
-    //     sb_append_c(sb, "){}");
-    //     break;
-    // default:
-    //     UNREACHABLE;
-    // }
 }
 
 void emit_indent() {
@@ -434,6 +408,24 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         sb_append_c(sb, "]");
         sb_append_c(sb, ";\n");
         break;
+    case SN_SELECTOR:
+        Type aggregate = expr->selector.selectee->type;
+        if (expr->selector.through_pointer) {
+            aggregate = type(aggregate)->as_ref.pointee;
+            c_calculate_expr(m, expr->selector.selectee);
+        } else {
+            c_calculate_expr_ptr(m, expr->selector.selectee);
+        }
+        ptr_decl_begin(expr);
+
+        sb_append_c(sb, "((");
+        emit_typename(type(aggregate));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->selector.selectee);
+        sb_append_c(sb, ")->");
+        sb_append(sb, type(aggregate)->as_record.at[expr->selector.field].name);
+        sb_append_c(sb, ";\n");
+        break;
     default:
         UNREACHABLE;
     }
@@ -447,12 +439,15 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
     switch (expr->kind) {
     case SN_ADD: case SN_SUB: case SN_MUL: case SN_DIV: case SN_MOD:
     case SN_LESS: case SN_LESS_EQ: case SN_GREATER: case SN_GREATER_EQ:
+    case SN_EQ: case SN_NEQ:
         c_calculate_expr(m, expr->binop.lhs);
         c_calculate_expr(m, expr->binop.rhs);
 
         decl_begin(expr);
         c_emit_expr_id(expr->binop.lhs);
         switch (expr->kind) {
+        case SN_EQ:  sb_append_c(sb, " == "); break;
+        case SN_NEQ: sb_append_c(sb, " != "); break;
         case SN_ADD: sb_append_c(sb, " + "); break;
         case SN_SUB: sb_append_c(sb, " - "); break;
         case SN_MUL: sb_append_c(sb, " * "); break;
@@ -468,14 +463,70 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         c_emit_expr_id(expr->binop.rhs);
         sb_append_c(sb, ";\n");
         break;
+    case SN_BOOL_OR:
+    case SN_BOOL_AND:
+        /*
+        bool _1 = a;
+        if ( [!] _1) {
+            _1 = b;
+        }
+        */
+        c_calculate_expr(m, expr->binop.lhs);
+        decl_begin(expr);
+        c_emit_expr_id(expr->binop.lhs);
+        sb_append_c(sb, ";\n");
+
+        emit_indent();
+        sb_append_c(sb, "if (");
+        if (expr->kind == SN_BOOL_OR) {
+            sb_append_c(sb, "!");
+        }
+        c_emit_expr_id(expr->binop.lhs);
+        sb_append_c(sb, ") {\n");
+        indent_level++;
+        c_calculate_expr(m, expr->binop.rhs);
+
+        emit_indent();
+        c_emit_expr_id(expr);
+        sb_append_c(sb, " = ");
+        c_emit_expr_id(expr->binop.rhs);
+        sb_append_c(sb, ";\n");
+        indent_level--;
+        emit_indent();
+        sb_append_c(sb, "}\n");
+
+        break;
     case SN_SLICE_SELECTOR_RAW:
     case SN_SLICE_SELECTOR_LEN:
-        c_calculate_expr(m, expr->unop.sub);
-
+        c_calculate_expr(m, expr->selector.selectee);
+        decl_begin(expr);
+        if (expr->selector.through_pointer) {
+            sb_append_c(sb, "((Slice*)");
+            c_emit_expr_id(expr->selector.selectee);
+            sb_append_c(sb, ")");
+        } else {
+            c_emit_expr_id(expr->selector.selectee);
+        }
+        sb_append_c(sb, expr->selector.through_pointer ? "->" : ".");
+        sb_append_c(sb, expr->kind == SN_SLICE_SELECTOR_LEN ? "len;\n" : "raw;\n");
+        break;
+    case SN_SELECTOR:
+        Type aggregate = expr->selector.selectee->type;
+        if (expr->selector.through_pointer) {
+            aggregate = type(aggregate)->as_ref.pointee;
+            c_calculate_expr(m, expr->selector.selectee);
+        } else {
+            c_calculate_expr_ptr(m, expr->selector.selectee);
+        }
         decl_begin(expr);
 
-        c_emit_expr_id(expr->unop.sub);
-        sb_append_c(sb, expr->kind == SN_SLICE_SELECTOR_LEN ? ".len;\n" : ".raw;\n");
+        sb_append_c(sb, "((");
+        emit_typename(type(aggregate));
+        sb_append_c(sb, "*)");
+        c_emit_expr_id(expr->selector.selectee);
+        sb_append_c(sb, ")->");
+        sb_append(sb, type(aggregate)->as_record.at[expr->selector.field].name);
+        sb_append_c(sb, ";\n");
         break;
     case SN_IN_RANGE_EQ:
     case SN_IN_RANGE_LESS:
@@ -498,12 +549,22 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
     case SN_IMPLICIT_CAST:
         c_calculate_expr(m, expr->unop.sub);
 
+        bool require_ptr_cast = type(expr->type)->kind == TYPE_STRUCT;
+
         decl_begin(expr);
-        sb_append_c(sb, "(");
-        emit_typename(type(expr->type));
-        sb_append_c(sb, ")");
-        c_emit_expr_id(expr->unop.sub);
-        sb_append_c(sb, ";\n");
+        if (require_ptr_cast) {
+            sb_append_c(sb, "*(");
+            emit_typename(type(expr->type));
+            sb_append_c(sb, "*)");
+            c_emit_expr_id(expr->unop.sub);
+            sb_append_c(sb, ";\n");
+        } else {
+            sb_append_c(sb, "(");
+            emit_typename(type(expr->type));
+            sb_append_c(sb, ")");
+            c_emit_expr_id(expr->unop.sub);
+            sb_append_c(sb, ";\n");
+        }
         
         break;
     case SN_ADDR_OF:    
@@ -808,7 +869,7 @@ string c_gen(Module* m) {
         sb_append_c(sb, ";\n");
     }
 
-    sb_append_c(sb, "\n");
+    // sb_append_c(sb, "\n");
 
     // emit extern fn decls
     for_n (i, 0, m->global->len) {
@@ -830,7 +891,7 @@ string c_gen(Module* m) {
         sb_append_c(sb, ");\n");
     }
 
-    sb_append_c(sb, "\n");
+    // sb_append_c(sb, "\n");
 
     // emit actual variable decls
     for_n (i, 0, m->global->len) {
@@ -871,6 +932,7 @@ string c_gen(Module* m) {
         }
         sb_append_c(sb, ") ");
         c_emit_stmt(m, e->decl->fn_decl.body);
+        sb_append_c(sb, "\n");
     }
 
     string s = string_alloc(sb->len);

@@ -158,6 +158,7 @@ bool type_equal(Type a, Type b, bool ignore_idents, bool ignore_distinct);
 isize type_binary_implicit_cast_priority(Type t);
 bool type_can_implicit_cast(Type from, Type to);
 bool type_can_explicit_cast(Type from, Type to);
+bool type_is_equalable(Type t);
 
 void type_print_graph();
 
@@ -265,10 +266,16 @@ enum SemaNodeKind {
     SN_DIV, // binop
     SN_MOD, // binop
 
+    SN_BOOL_OR, // binop
+    SN_BOOL_AND, // binop
+
     SN_LESS, // binop
     SN_LESS_EQ, // binop
     SN_GREATER, // binop
     SN_GREATER_EQ, // binop
+
+    SN_EQ, // binop
+    SN_NEQ, // binop
 
     SN_IMPLICIT_CAST, // unop
     
@@ -284,16 +291,11 @@ enum SemaNodeKind {
 
     SN_SLICE_SELECTOR_RAW, // unop
     SN_SLICE_SELECTOR_LEN, // unop
+    SN_SELECTOR,
 
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
     SN_STMT_ASSIGN,
-
-    // SN_STMT_ASSIGN_ADD,
-    // SN_STMT_ASSIGN_SUB,
-    // SN_STMT_ASSIGN_MUL,
-    // SN_STMT_ASSIGN_DIV,
-    // SN_STMT_ASSIGN_MOD,
 
     SN_STMT_IF,
     SN_STMT_WHILE,
@@ -349,6 +351,12 @@ typedef struct SemaNode {
             SemaNode* value;
             SemaNode* range;
         } in_range;
+
+        struct {
+            SemaNode* selectee;
+            usize field;
+            bool through_pointer;
+        } selector;
 
         struct {
             SemaNode* cond;

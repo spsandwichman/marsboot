@@ -235,6 +235,31 @@ static bool type_equal_internal(Type a, Type b, usize n, bool ignore_idents, boo
         );
         set(a, b, 0);
         return eq;
+    case TYPE_STRUCT:
+        if (type(a)->as_record.len != type(b)->as_record.len) {
+            return false;
+        }
+        if (!ignore_idents) for_n (i, 0, type(a)->as_record.len) {
+            TypeRecordField rf_a = type(a)->as_record.at[i];
+            TypeRecordField rf_b = type(b)->as_record.at[i];
+            if (!string_eq(rf_a.name, rf_b.name)) {
+                return false;
+            }
+        }
+        set(a, b, n);
+        eq = true;
+        for_n (i, 0, type(a)->as_record.len) {
+            TypeRecordField rf_a = type(a)->as_record.at[i];
+            TypeRecordField rf_b = type(b)->as_record.at[i];
+            eq = eq && type_equal_internal(
+                rf_a.type,
+                rf_b.type, 
+                n+1, 
+                ignore_idents, ignore_distinct
+            );
+        }
+        set(a, b, 0);
+        return eq;
     default:
         return false;
     }
@@ -574,6 +599,30 @@ static bool is_kind(Type t, u8 kind) {
 
 static Type pointee(Type t) {
     return type(t)->as_ref.pointee;
+}
+
+bool type_is_equalable(Type t) {
+    switch (type(t)->kind) {
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
+    case TYPE_TYPEID:
+    case TYPE_I8:
+    case TYPE_U8:
+    case TYPE_I16:
+    case TYPE_U16:
+    case TYPE_I32:
+    case TYPE_U32:
+    case TYPE_I64:
+    case TYPE_U64:
+    case TYPE_F16:
+    case TYPE_F32:
+    case TYPE_F64:
+    case TYPE_UNTYPED_INT:
+    case TYPE_UNTYPED_FLOAT:
+        return true;
+    default:
+        return false;
+    }
 }
 
 bool type_is_numeric(Type t) {

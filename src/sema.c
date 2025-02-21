@@ -283,9 +283,60 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     return impl_cast;
 }
 
+
+// ==, !=
+SemaNode* check_expr_equality(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
+
+    SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
+    SemaNode* binop = new_node(an, pn, SN_EQ);
+    switch (kind) {
+    case PN_EXPR_EQ:  binop->kind = SN_EQ; break;
+    case PN_EXPR_NEQ: binop->kind = SN_NEQ; break;
+    }
+
+    if (!type_is_equalable(lhs->type)) {
+        string lhs_typestr = type_gen_string(lhs->type, true);
+        report_pnode(true, lhs->pnode, "cannot test equality on '"str_fmt"'", str_arg(lhs_typestr));
+    }
+    if (!type_is_equalable(rhs->type)) {
+        string rhs_typestr = type_gen_string(rhs->type, true);
+        report_pnode(true, rhs->pnode, "cannot test equality on '"str_fmt"'", str_arg(rhs_typestr));
+    }
+
+    if (!type_equal(lhs->type, rhs->type, false, false)) {
+        if (type_can_implicit_cast(lhs->type, rhs->type)) {
+            lhs = insert_implicit_cast(an, lhs, rhs->type);
+            binop->type = rhs->type;
+        } else if (type_can_implicit_cast(rhs->type, lhs->type)) {
+            rhs = insert_implicit_cast(an, rhs, lhs->type);
+            binop->type = lhs->type;
+        }
+    } else {
+        binop->type = rhs->type;
+    }
+
+    binop->binop.lhs = lhs;
+    binop->binop.rhs = rhs;
+
+    if (binop->type == TYPE_UNKNOWN) {
+        string lhs_typestr = type_gen_string(lhs->type, true);
+        string rhs_typestr = type_gen_string(rhs->type, true);
+        report_pnode(true, pn, "type mismatch: '"str_fmt"' and '"str_fmt"'", 
+            str_arg(lhs_typestr), str_arg(rhs_typestr));
+    }
+
+    if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
+        apply_bool_binop(binop->constval, binop->type, lhs->constval, ==, rhs->constval);
+    }
+
+    binop->type = TYPE_BOOL;
+
+    return binop;
+}
+
 // <, >, <=, >=
 SemaNode* check_expr_comparison(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
-    
 
     SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
     SemaNode* rhs = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
@@ -336,6 +387,49 @@ SemaNode* check_expr_comparison(Analyzer* an, u8 kind, EntityTable* scope, PNode
 }
 
 
+SemaNode* check_expr_boolean_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
+    SemaNode* rhs = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
+    SemaNode* binop = new_node(an, pn, SN_BOOL_AND);
+    if (kind == PN_EXPR_BOOL_OR) {
+        binop->kind = SN_BOOL_OR;
+    }
+
+    if (type_unwrap_distinct(lhs->type) != TYPE_BOOL) {
+        string lhs_typestr = type_gen_string(lhs->type, true);
+        report_pnode(true, lhs->pnode, "expected bool, not '"str_fmt"'", str_arg(lhs_typestr));
+    }
+    
+    if (type_unwrap_distinct(rhs->type) != TYPE_BOOL) {
+        string rhs_typestr = type_gen_string(rhs->type, true);
+        report_pnode(true, rhs->pnode, "expected bool, not '"str_fmt"'", str_arg(rhs_typestr));
+    }
+
+    binop->binop.lhs = lhs;
+    binop->binop.rhs = rhs;
+    binop->type = TYPE_BOOL;
+    
+    if (lhs->type == rhs->type) {
+        binop->type = lhs->type;
+    }
+
+    if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
+        switch (kind) {
+        case SN_BOOL_AND: 
+            binop->constval.bool = lhs->constval.bool & rhs->constval.bool;
+            break;
+        case SN_BOOL_OR: 
+            binop->constval.bool = lhs->constval.bool | rhs->constval.bool;
+            break;
+        default:
+            UNREACHABLE;
+        }
+        binop->kind = SN_CONSTVAL;
+    }
+
+    return binop;
+}
+
 // +, -, *, /, %, <, >, <=, >=
 SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
@@ -352,10 +446,12 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     }
 
     if (!type_is_numeric(lhs->type)) {
-        report_pnode(true, lhs->pnode, "expression type is not numeric");
+        string lhs_typestr = type_gen_string(lhs->type, true);
+        report_pnode(true, lhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(lhs_typestr));
     }
     if (!type_is_numeric(rhs->type)) {
-        report_pnode(true, rhs->pnode, "expression type is not numeric");
+        string rhs_typestr = type_gen_string(rhs->type, true);
+        report_pnode(true, rhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(rhs_typestr));
     }
 
     // Type ptr_operation = TYPE_UNKNOWN;
@@ -615,12 +711,22 @@ SemaNode* check_expr_in(Analyzer* an, EntityTable* scope, PNode* pn, Type expect
     return in_range;
 }
 SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
-    SemaNode* expr = new_node(an, pn, SN_INVALID);
+    SemaNode* expr = new_node(an, pn, SN_SELECTOR);
 
     SemaNode* selectee = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
 
-    if (type(selectee->type)->kind == TYPE_SLICE) {
-        string selector = pnode_span(pn->binop.rhs);
+    Type t = selectee->type;
+    expr->mutable = selectee->mutable;
+    if (type(t)->kind == TYPE_POINTER) {
+        expr->selector.through_pointer = true;
+        expr->mutable = type(t)->as_ref.mutable;
+        t = type(t)->as_ref.pointee;
+    }
+
+    string selector = pnode_span(pn->binop.rhs);
+
+    switch (type(t)->kind) {
+    case TYPE_SLICE:
         if (string_eq(selector, constr("len"))) {
             expr->kind = SN_SLICE_SELECTOR_LEN;
             expr->type = TYPE_U64;
@@ -631,11 +737,27 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
         } else {
             report_pnode(true, pn->binop.rhs, "slice has no field '"str_fmt"'", str_arg(selector));
         }
-    } else {
+        break;
+    case TYPE_STRUCT:
+        expr->selector.field = UINT64_MAX;
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField rf = type(t)->as_record.at[i];
+            if (string_eq(rf.name, selector)) {
+                expr->selector.field = i;
+                expr->type = rf.type;
+                break;
+            }
+        }
+        if (expr->selector.field == UINT64_MAX) {
+            report_pnode(true, pn->binop.rhs, "struct has no field '"str_fmt"'", str_arg(selector));
+        }
+        break;
+    default:
         UNREACHABLE;
     }
 
-    expr->unop.sub = selectee;
+    expr->addressable = true;
+    expr->selector.selectee = selectee;
     return expr;
 }
 
@@ -684,11 +806,19 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_MOD:
         expr = check_expr_arith_binop(an, pn->base.kind, scope, pn, expected);
         break;
+    case PN_EXPR_BOOL_AND:
+    case PN_EXPR_BOOL_OR:
+        expr = check_expr_boolean_binop(an, pn->base.kind, scope, pn, expected);
+        break;
     case PN_EXPR_LESS:
     case PN_EXPR_LESS_EQ:
     case PN_EXPR_GREATER:
     case PN_EXPR_GREATER_EQ:
         expr = check_expr_comparison(an, pn->base.kind, scope, pn, expected);
+        break;
+    case PN_EXPR_EQ:
+    case PN_EXPR_NEQ:
+        expr = check_expr_equality(an, pn->base.kind, scope, pn, expected);
         break;
     case PN_EXPR_INDEX:
         expr = check_expr_index(an, scope, pn, expected);
@@ -713,6 +843,15 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     // string typename = type_gen_string(expr->type, true);
     // report_pnode(false, pn, "type: "str_fmt" value: %d", str_arg(typename), expr->constval.i64);
     return expr;
+}
+
+bool check_record_name_already_exists(Type t, string ident, usize current_len) {
+    for_n(i, 0, current_len) {
+        if (string_eq(type(t)->as_record.at[i].name, ident)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
@@ -790,8 +929,50 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
         type(alias)->as_temp_alias.use = pn;
         return alias;
     }
+    case PN_TYPE_STRUCT: {
+        usize num_fields = 0;
+        for_n(i, 0, pn->record_type.fields->list.len) {
+            PNode* item = pn->record_type.fields->list.at[i];
+            if (item->item.ident->base.kind == PN_LIST) {
+                num_fields += item->item.ident->list.len;
+            } else {
+                num_fields += 1;
+            }
+        }
+        // printf("num fields %d\n", num_fields);
+        Type record = type_new_record(an->m, TYPE_STRUCT, num_fields);
+
+        usize field = 0;
+        for_n(i, 0, pn->record_type.fields->list.len) {
+            PNode* item = pn->record_type.fields->list.at[i];
+            if (item->item.ident->base.kind == PN_LIST) {
+                Type field_type = ingest_type(an, scope, item->item.type);
+                for_n(j, 0, item->item.ident->list.len) {
+                    PNode* pnode = item->item.ident->list.at[j];
+                    string ident = pnode_span(pnode);
+                    if (check_record_name_already_exists(record, ident, field)) {
+                        report_pnode(true, pnode, "field name already exists");
+                    }
+                    type(record)->as_record.at[field].name = ident;
+                    type(record)->as_record.at[field].type = field_type;
+                    field++;
+                }
+            } else {
+                string ident = pnode_span(item);
+                if (check_record_name_already_exists(record, ident, field)) {
+                    report_pnode(true, item, "field name already exists");
+                }
+                Type field_type = ingest_type(an, scope, item->item.type);
+                type(record)->as_record.at[field].name = ident;
+                type(record)->as_record.at[field].type = field_type;
+                field++;
+            }
+        }
+
+        return record;
+    }
     default:
-        report_pnode(true, pn, "expected type");
+        report_pnode(false, pn, "expected compile-time constant typeid");
         UNREACHABLE;
     }
     return TYPE_UNKNOWN;
@@ -977,19 +1158,31 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
     vec_init(&list->list, 8);
 
     bool seen_return = false;
+    bool warned_dead_code = false;
     for_n (i, 0, pbody->list.len) {
         PNode* pstmt = pbody->list.at[i];
+        if (seen_return && !warned_dead_code) {
+            report_pnode(false, pstmt, "dead code");
+            warned_dead_code = true;
+        }
         SemaNode* stmt = check_stmt(an, scope, pstmt);
         if (pstmt->base.kind == PN_STMT_RETURN) {
             seen_return = true;
         }
         vec_append(&list->list, stmt);
     }
+    if (!seen_return && must_return) {
+        PNode* pstmt = pbody;
+        if (pbody->list.len != 0) {
+            pstmt = pbody->list.at[pbody->list.len - 1];
+        }
+        report_pnode(true, pstmt, "function with value must return explicitly");
+    }
     return list;
 }
 
 SemaNode* check_fn_body(Analyzer* an, EntityTable* scope, PNode* pbody, Type ret_type) {
-    return check_block(an, scope, pbody, true);
+    return check_block(an, scope, pbody, ret_type != TYPE_VOID);
 }
 
 Vec_typedef(TypeFnParam);
