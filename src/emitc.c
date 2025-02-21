@@ -586,6 +586,8 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
 
 void c_emit_stmt(Module* m, SemaNode* stmt) {
     switch (stmt->kind) {
+    case SN_DEF_DECL:
+        break;
     case SN_STMT_IF:
         c_calculate_expr(m, stmt->if_stmt.cond);
         emit_indent();
