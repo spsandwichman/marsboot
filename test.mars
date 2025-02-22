@@ -7,16 +7,16 @@ def LLNode = struct {
     prev: ^mut LLNode,
 };
 
-fun new_node(data: int): ^mut LLNode {
+fun malloc(size: uint): ^mut {
     return null;
 }
 
 fun append_back(list, new: ^mut LLNode) {
-    if list == null || new == null {
+    if list?! || new?! {
         return;
     }
     mut end = list;
-    while end.prev != null {
+    while end.prev? {
         end = end.prev;
     }
     end.prev = new;

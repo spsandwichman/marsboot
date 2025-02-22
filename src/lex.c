@@ -317,10 +317,6 @@ static void tokenize(Lexer* l) {
                 push_token(TOK_MUL_EQUAL, 2);
             push_simple_token(TOK_MUL);
         case '~':
-            if (peek(l, 1) == '|' && peek(l, 2) == '=')
-                push_token(TOK_NOR_EQUAL, 3);
-            if (peek(l, 1) == '|')
-                push_token(TOK_NOR, 2);
             if (peek(l, 1) == '=')
                 push_token(TOK_XOR_EQUAL, 2);
             push_simple_token(TOK_TILDE);

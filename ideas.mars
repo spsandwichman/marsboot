@@ -1,24 +1,44 @@
-ideas for the future of mars:
+// ideas for the future of mars:
 
 // member functions
 def Complex = struct {
     real: f32,
     imag: f32,
 
-    fun hadamard(a, b: Complex): Complex {
+    // self keyword as parameter AND a type
+    // can be self, ^let self, or ^mut self
+    fun hadamard(self, x: self): Complex {
         return .{
-            a.real * b.real,
-            a.imag * b.imag,
+            self.real * x.real,
+            self.imag * x.imag,
         };
     }
 };
 
 // generics
-where [T: typeid] fun add(x, y: T): T {
+fun add[T: typeid] (x, y: T): T {
     return x + y;
 }
 
 // traits/interfaces
 def Foo = interface {
     fun bar(a: int): int;
+};
+
+def Eq = interface {
+    fun eq(self, other: self): bool;
+};
+
+impl Eq for Complex {
+    fun eq(self, other: self): bool {
+        return self.real == other.real && self.imag == other.imag;
+    }
+}
+
+def Cast = interface [T: typeid] {
+    fun cast_to(self): T;
+};
+
+def ImplicitCast = interface [T: typeid] {
+    fun implicit_cast_to(self): T;
 };

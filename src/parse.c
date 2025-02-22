@@ -356,7 +356,6 @@ static u8 assign_kind[_TOK_COUNT] = {
     [TOK_MOD_EQUAL] = PN_STMT_ASSIGN_MOD,
     [TOK_AND_EQUAL] = PN_STMT_ASSIGN_BIT_AND,
     [TOK_OR_EQUAL] = PN_STMT_ASSIGN_BIT_OR,
-    [TOK_NOR_EQUAL] = PN_STMT_ASSIGN_NOR,
     [TOK_XOR_EQUAL] = PN_STMT_ASSIGN_XOR,
     [TOK_LSHIFT_EQUAL] = PN_STMT_ASSIGN_LSHIFT,
     [TOK_RSHIFT_EQUAL] = PN_STMT_ASSIGN_RSHIFT,
@@ -887,6 +886,20 @@ PNode* parse_atom() {
             advance();
             span_extend(atom, -1);
             break;
+        case TOK_QUESTION:
+            atom = new_node(unop, PN_EXPR_BOOL_COERCE);
+            atom->unop.sub = left;
+            span_copy(atom, left);
+            advance();
+            span_extend(atom, -1);
+            break;
+        case TOK_EXCLAM:
+            atom = new_node(unop, PN_EXPR_BOOL_NOT);
+            atom->unop.sub = left;
+            span_copy(atom, left);
+            advance();
+            span_extend(atom, -1);
+            break;
         case TOK_OPEN_BRACKET:
             advance();
             PNode* left_indexer = NULL;
@@ -944,8 +957,8 @@ PNode* parse_unary() {
     // this should be turned into a table, dont care rn tho
     case TOK_AND: kind = PN_EXPR_ADDR; break;
     case TOK_KEYWORD_OFFSETOF: kind = PN_EXPR_OFFSETOF; break;
-    case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
-    case TOK_QUESTION: kind = PN_EXPR_BOOL_COERCE; break;
+    // case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
+    // case TOK_QUESTION: kind = PN_EXPR_BOOL_COERCE; break;
     case TOK_TILDE: kind = PN_EXPR_BIT_NOT; break;
     case TOK_SUB: kind = PN_EXPR_NEG; break;
     case TOK_ADD: kind = PN_EXPR_POS; break; // does nothing lol
@@ -972,7 +985,6 @@ static isize bin_precedence(u8 kind) {
         return 9;
     case TOK_OR:
     case TOK_TILDE:
-    case TOK_NOR:
         return 8;
     case TOK_MUL:
     case TOK_DIV:
@@ -1008,7 +1020,6 @@ static u8 bin_kind[_TOK_COUNT] = {
     [TOK_MOD] = PN_EXPR_MOD,
     [TOK_AND] = PN_EXPR_BIT_AND,
     [TOK_OR] = PN_EXPR_BIT_OR,
-    [TOK_NOR] = PN_EXPR_NOR,
     [TOK_TILDE] = PN_EXPR_XOR,
     [TOK_LSHIFT] = PN_EXPR_LSHIFT,
     [TOK_RSHIFT] = PN_EXPR_RSHIFT,

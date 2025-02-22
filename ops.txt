@@ -21,7 +21,6 @@ operations:
 
     <T> & <T>  -> <T>       where T: IntLike
     <T> | <T>  -> <T>       where T: IntLike
-    <T> ~| <T> -> <T>       where T: IntLike
     <T> ~ <T>  -> <T>       where T: IntLike
 
     <T> == <T> -> <bool>    where T: Base
@@ -52,8 +51,8 @@ operations:
     +<T>    => <T>          where T: Numeric
     -<T>    => <T>          where T: Numeric
     ~<T>    => <T>          where T: IntLike
-    !<bool> => <bool>
-    ?<T>    => <bool>       where T: IntLike
+    <bool>! => <bool>
+    <T>?    => <bool>       where T: IntLike
 
     cast(A) <B>    => <A>
     bitcast(A) <B> => <A>   where sizeof A == sizeof B

@@ -363,6 +363,22 @@ static void type_gen_string_internal(StringBuilder* sb, Type t, bool use_names, 
     type(t)->num_a = rec_num++;
 
     switch (type(t)->kind) {
+    case TYPE_FUNCTION:
+        sb_append_c(sb, "fun (");
+        for_n(i, 0, type(t)->as_function.params.len) {
+            if (i != 0) sb_append_c(sb, ", ");
+
+            TypeFnParam* field = &type(t)->as_function.params.at[i];
+            sb_append(sb, field->name);
+            sb_append_c(sb, ": ");
+            type_gen_string_internal(sb, field->type, use_names, rec_num);
+        }
+        sb_append_c(sb, ")");
+        if (type(t)->as_function.ret_type != TYPE_VOID) {
+            sb_append_c(sb, ": ");
+            type_gen_string_internal(sb, type(t)->as_function.ret_type, use_names, rec_num);
+        }
+        break;
     case TYPE_STRUCT:
     case TYPE_UNION:
         if (type(t)->kind == TYPE_STRUCT) {

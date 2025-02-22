@@ -204,6 +204,7 @@ enum EntityStorageKind {
     STORAGE_GLOBAL,
     STORAGE_COMPTIME, // 'def' decl
 
+    STORAGE_EXTERN_FUNCTION,
     STORAGE_FUNCTION,
 };
 
@@ -266,6 +267,10 @@ enum SemaNodeKind {
     SN_DIV, // binop
     SN_MOD, // binop
 
+    SN_BIT_AND, // binop
+    SN_BIT_OR, // binop
+    SN_BIT_XOR, // binop
+
     SN_BOOL_OR, // binop
     SN_BOOL_AND, // binop
 
@@ -278,6 +283,7 @@ enum SemaNodeKind {
     SN_NEQ, // binop
 
     SN_IMPLICIT_CAST, // unop
+    SN_CAST, // unop
     
     SN_ARRAY_INDEX, // binop
     SN_SLICE_INDEX, // binop
@@ -292,6 +298,8 @@ enum SemaNodeKind {
     SN_SLICE_SELECTOR_RAW, // unop
     SN_SLICE_SELECTOR_LEN, // unop
     SN_SELECTOR,
+
+    SN_CALL,
 
     SN_STMT_BLOCK,
     SN_STMT_RETURN,
@@ -340,6 +348,13 @@ typedef struct SemaNode {
         struct {
             SemaNode* sub;
         } unop;
+
+        struct {
+            SemaNode* callee;
+
+            SemaNode** at;
+            u32 len;
+        } call;
 
         struct {
             SemaNode** at;
