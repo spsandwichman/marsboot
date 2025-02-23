@@ -161,6 +161,9 @@ bool type_can_implicit_cast(Type from, Type to);
 bool type_can_explicit_cast(Type from, Type to);
 bool type_is_equalable(Type t);
 
+isize type_calculate_size(Type t);
+isize type_calculate_align(Type t);
+
 void type_print_graph();
 
 // ---------------------------------------------------------
@@ -190,6 +193,8 @@ typedef struct ConstVal {
         f64 f64;
         Type typeid;
         string string;
+
+        ConstVal* slice_content;
 
         struct {
             ConstVal* at;
@@ -306,6 +311,10 @@ enum SemaNodeKind {
     SN_SLICE_SELECTOR_LEN, // unop
     SN_SELECTOR,
 
+    SN_SLICE_ARRAY,
+    SN_SLICE_SLICE,
+    SN_SLICE_BOUNDLESS_SLICE,
+
     SN_CALL,
 
     SN_STMT_BLOCK,
@@ -401,6 +410,12 @@ typedef struct SemaNode {
             SemaNode* range;
             SemaNode* body;
         } for_range;
+
+        struct {
+            SemaNode* sub;
+            SemaNode* upper_bound;
+            SemaNode* lower_bound;
+        } slice;
 
         struct {
             SemaNode* init;

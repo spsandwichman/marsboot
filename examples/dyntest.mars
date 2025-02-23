@@ -1,12 +1,9 @@
 module dyntest;
 
-fun pass_dyn(args: dyn) {}
+fun vararg_test(args: []let dyn) {}
 
 fun main() {
-    mut x = []mut int.{0, 1, 2};
-
-    // mut x: i8 = 2;
-    // mut ty = i8;
-
-    // pass_dyn(x);
+    mut x = 1;
+    mut y: u8 = 1;
+    vararg_test(.{&x, &y});
 }

@@ -286,7 +286,12 @@ void c_emit_constval(ConstVal cv) {
     emit_typename(type(cv.type));
     sb_append_c(sb, ")");
     if (cv.is_zero) {
-        sb_append_c(sb, "{0}");
+        if ((type(cv.type)->kind == TYPE_ARRAY && type(cv.type)->as_array.len == 0) ||
+            (type(cv.type)->kind == TYPE_STRUCT && type(cv.type)->as_record.len == 0)) {
+                sb_append_c(sb, "{}");
+        } else {
+            sb_append_c(sb, "{0}");
+        }
         return;
     }
     switch (type(cv.type)->kind) {
@@ -300,12 +305,12 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_U8:
     case TYPE_U16:
     case TYPE_U32:
-    case TYPE_U64: 
-    case TYPE_POINTER: 
-    case TYPE_BOUNDLESS_SLICE: 
+    case TYPE_U64:
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
         sb_printf(sb, "%llullu", cv.i64);
         break;
-    case TYPE_BOOL: 
+    case TYPE_BOOL:
         sb_append_char(sb, cv.bool ? '1' : '0');
         break;
     case TYPE_F16: sb_printf(sb, "%lf", (f64)cv.f16); break;
@@ -317,16 +322,12 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_STRUCT:
     case TYPE_ARRAY:
         sb_append_c(sb, "{");
-        for_n(i, 0, cv.compound.len) {
+        for_n (i, 0, cv.compound.len) {
             if (i != 0) sb_append_c(sb, ", ");
             c_emit_constval(cv.compound.at[i]);
         }
         sb_append_c(sb, "}");
         break;
-    case TYPE_SLICE:
-        if (cv.is_string != 0) {
-            UNREACHABLE;
-        }
     default:
         UNREACHABLE;
     }
@@ -588,8 +589,17 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
 
         // dyn boxing
         if (to == TYPE_DYN && from != TYPE_DYN) {
-            sb_append_c(sb, "{(void*)&");
-            emit_expr_id(expr);
+            isize from_size = type_calculate_size(from);
+            switch (from_size) {
+            case 1: sb_append_c(sb, "{(void*)*(uint8_t*)&"); break;
+            case 2: sb_append_c(sb, "{(void*)*(uint16_t*)&"); break;
+            case 4: sb_append_c(sb, "{(void*)*(uint32_t*)&"); break;
+            case 8: sb_append_c(sb, "{(void*)*(uint64_t*)&"); break;
+            default: sb_append_c(sb, "{(void*)&"); break; // box by reference
+            // TODO box by value with all sizes less than 8
+            }
+
+            emit_expr_id(expr->unop.sub);
             sb_append_c(sb, ", ");
             emit_typeid(from);
             sb_append_c(sb, "}");
@@ -695,10 +705,42 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
 
         decl_begin(expr);
         sb_append_c(sb, "{");
+        if (type(expr->type)->kind == TYPE_ARRAY) {
+            sb_append_c(sb, "._={");
+        }
         for_n(i, 0, expr->compound.len) {
             if (i != 0) sb_append_c(sb, ", ");
             emit_expr_id(expr->compound.at[i]);
         }
+        if (type(expr->type)->kind == TYPE_ARRAY) {
+            sb_append_c(sb, "}");
+        }
+        sb_append_c(sb, "}");
+        break;
+    case SN_SLICE_ARRAY:
+        c_calculate_expr(m, expr->slice.sub);
+        if (expr->slice.lower_bound) {
+            c_calculate_expr(m, expr->slice.lower_bound);
+        }
+        if (expr->slice.upper_bound) {
+            c_calculate_expr(m, expr->slice.upper_bound);
+        }
+        decl_begin(expr);
+        sb_append_c(sb, "{((Ptr)&");
+        emit_expr_id(expr->slice.sub);
+        sb_append_c(sb, ")");
+        if (expr->slice.lower_bound) {
+            sb_append_c(sb, " + ");
+            sb_printf(sb, "%llu * ", type_calculate_size(type(expr->slice.sub->type)->as_array.sub));
+            emit_expr_id(expr->slice.lower_bound);
+        }
+        sb_append_c(sb, ", ");
+        if (expr->slice.upper_bound) {
+            emit_expr_id(expr->slice.upper_bound);
+        } else {
+            sb_printf(sb, "%llu", type(expr->slice.sub->type)->as_array.len);
+        }
+
         sb_append_c(sb, "}");
         break;
     default:

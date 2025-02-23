@@ -865,7 +865,11 @@ bool type_can_explicit_cast(Type from, Type to) {
     return false;
 }
 
-static void type_gen_typeid_internal(Hash* h, Type t) {
+static void type_gen_typeid_internal(Hash* h, Type t, u64 n) {
+    if (type(t)->num_a) {
+        hash_fnv1a_u64(h, (u64)type(t)->num_a);
+        return;
+    }
     switch (type(t)->kind) {
     case TYPE_I8:
     case TYPE_I16:
@@ -891,8 +895,15 @@ static void type_gen_typeid_internal(Hash* h, Type t) {
         // it shouldn't change based on import or analysis order.
         // but somehow needs to be unique from everything else.
         hash_fnv1a(h, "distinct", strlen("distinct"));
+        // maybe hash the module name as well?
         hash_fnv1a_u64(h, (u64)t);
         break;
+    case TYPE_POINTER:
+        hash_fnv1a(h, type(t)->as_ref.mutable ? "^mut" : "^let", 4);
+        type(t)->num_a = n;
+        type_gen_typeid_internal(h, type(t)->as_ref.pointee, n+1);
+        type(t)->num_a = 0;
+        return;
     default:
         UNREACHABLE;
     }
@@ -900,6 +911,30 @@ static void type_gen_typeid_internal(Hash* h, Type t) {
 
 u64 type_gen_typeid(Type t) {
     Hash h = hash_new();
-    type_gen_typeid_internal(&h, t);
+    type_gen_typeid_internal(&h, t, 1);
     return (u64) h;
+}
+
+// return -1 if unable to calculate
+isize type_calculate_size(Type t) {
+    switch (type(t)->kind) {
+    case TYPE_I8:  case TYPE_U8: return 1;
+    case TYPE_I16: case TYPE_U16: return 2;
+    case TYPE_I32: case TYPE_U32: return 4;
+
+    case TYPE_POINTER: case TYPE_BOUNDLESS_SLICE:
+    case TYPE_TYPEID:
+    case TYPE_I64: case TYPE_U64: return 8;
+
+    case TYPE_F16: return 2;
+    case TYPE_F32: return 4;
+    case TYPE_F64: return 8;
+    case TYPE_SLICE: case TYPE_DYN: return 16;
+    default:
+        UNREACHABLE;
+    }
+}
+
+isize type_calculate_align(Type t) {
+    UNREACHABLE;
 }

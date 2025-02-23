@@ -1030,14 +1030,26 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
     return expr;
 }
 
-SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
-    if (pn->compound.type) {
+#define copy_to_heap(V) memcpy(malloc(sizeof(V)), &V, sizeof(V))
+
+SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type expected, bool ignore_given_type) {
+    if (pn->compound.type && !ignore_given_type) {
         expected = ingest_type(an, scope, pn->compound.type, true);
     }
     Type undistinct_expected = type_unwrap_distinct(expected);
 
     if (undistinct_expected == TYPE_UNKNOWN) {
         report_pnode(true, pn, "cannot assume type for compound expression");
+    }
+
+    if (type(undistinct_expected)->kind == TYPE_SLICE) {
+        Type array_type = type_new_array_len_unknown(an->m, type(undistinct_expected)->as_ref.pointee);
+        SemaNode* array = check_expr_compound(an, scope, pn, array_type, true);
+        // UNREACHABLE;
+        SemaNode* slice = new_node(an, pn, SN_SLICE_ARRAY);
+        slice->type = expected;
+        slice->slice.sub = array;
+        return slice;
     }
 
     SemaNode* compound = new_node(an, pn, SN_COMPOUND);
@@ -1215,7 +1227,7 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         expr = check_expr_call(an, scope, pn, expected);
         break;
     case PN_EXPR_COMPOUND:
-        expr = check_expr_compound(an, scope, pn, expected);
+        expr = check_expr_compound(an, scope, pn, expected, false);
         break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");
