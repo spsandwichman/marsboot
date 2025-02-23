@@ -1,5 +1,0 @@
-module add;
-
-fun add_some_shit(x, y: int): int {
-    return x + y;
-}

@@ -324,32 +324,61 @@ void const_eval_expr_bit_binop(Analyzer* m, SemaNode* n, u8 kind) {
     }
 }
 
+#define cast(tag, cv, from_kind) \
+    switch (from_kind) {\
+    case TYPE_U8:  n.tag = (tag) (cv).u8;  break;\
+    case TYPE_U16: n.tag = (tag) (cv).u16; break;\
+    case TYPE_U32: n.tag = (tag) (cv).u32; break;\
+    case TYPE_U64: n.tag = (tag) (cv).u64; break;\
+    case TYPE_I8:  n.tag = (tag) (cv).i8;  break;\
+    case TYPE_I16: n.tag = (tag) (cv).i16; break;\
+    case TYPE_I32: n.tag = (tag) (cv).i32; break;\
+    case TYPE_UNTYPED_INT: \
+    case TYPE_POINTER: \
+    case TYPE_BOUNDLESS_SLICE: \
+    case TYPE_I64: n.tag = (tag) (cv).i64; break;\
+    case TYPE_F16: n.tag = (tag) (cv).f16; break;\
+    case TYPE_F32: n.tag = (tag) (cv).f32; break;\
+    case TYPE_F64: n.tag = (tag) (cv).i64; break;\
+    default: UNREACHABLE; \
+    }
+
+ConstVal constval_cast(ConstVal v, Type to) {
+    ConstVal n = {0};
+    n.type = to;
+    Type from = type_unwrap_distinct(v.type);
+
+    switch (to) {
+    case TYPE_I8:  cast(i8,  v, from); break;
+    case TYPE_I16: cast(i16, v, from); break;
+    case TYPE_I32: cast(i32, v, from); break;
+    case TYPE_UNTYPED_INT:
+    case TYPE_POINTER:
+    case TYPE_BOUNDLESS_SLICE:
+    case TYPE_I64: cast(i64, v, from); break;
+    case TYPE_U8:  cast(u8,  v, from); break;
+    case TYPE_U16: cast(u16, v, from); break;
+    case TYPE_U32: cast(u32, v, from); break;
+    case TYPE_U64: cast(u64, v, from); break;
+    case TYPE_F16: cast(f16, v, from); break;
+    case TYPE_F32: cast(f32, v, from); break;
+    case TYPE_F64: cast(f64, v, from); break;
+    default: UNREACHABLE;
+    }
+    return n;
+}
+
 SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     if (n->type == to || type(n->type) == type(to)) {
         return n;
     }
 
-    // if its a constant val, we can just change reassign the type
-    // TODO there might be more conversion to do here,
-    // probably separate that out into a different function
-    if (n->kind == SN_CONSTVAL) {
-        Type undistinct = type_unwrap_distinct(to);
-
-        // TODO ACTUALLY CHECK INTEGER BOUNDS STATICALLY LMAO
-        // if (type_is_integer(undistinct)) {
-        //     isize minimum = type_integer_min(undistinct);
-        //     isize maximum = type_integer_max(undistinct);
-        //     if (n->constval.i64 < minimum || n->constval.i64 > maximum) {
-        //         string typestr = type_gen_string(to, true);
-        //         report_pnode(false, n->pnode, "constant is out of range for '"str_fmt"'", str_arg(typestr));
-        //     }
-        // }
+    Type to_undistinct = type_unwrap_distinct(to);
+    if (n->kind == SN_CONSTVAL && to_undistinct != TYPE_DYN) {
         n->type = to;
-        n->constval.type = to;
+        n->constval = constval_cast(n->constval, to);
         return n;
     }
-
-    // printf("inserting implicit cast\n");
 
     SemaNode* impl_cast = new_node(an, NULL, SN_IMPLICIT_CAST);
     impl_cast->unop.sub = n;
@@ -357,6 +386,12 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
     return impl_cast;
 }
 
+ConstVal constval_zero(Type t) {
+    ConstVal cv = {0};
+    cv.type = t;
+    cv.is_zero = true;
+    return cv;
+}
 
 // ==, !=
 SemaNode* check_expr_equality(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
@@ -471,12 +506,12 @@ SemaNode* check_expr_boolean_binop(Analyzer* an, u8 kind, EntityTable* scope, PN
 
     if (type_unwrap_distinct(lhs->type) != TYPE_BOOL) {
         string lhs_typestr = type_gen_string(lhs->type, true);
-        report_pnode(true, lhs->pnode, "expected bool, not '"str_fmt"'", str_arg(lhs_typestr));
+        report_pnode(true, lhs->pnode, "expected bool, got '"str_fmt"'", str_arg(lhs_typestr));
     }
     
     if (type_unwrap_distinct(rhs->type) != TYPE_BOOL) {
         string rhs_typestr = type_gen_string(rhs->type, true);
-        report_pnode(true, rhs->pnode, "expected bool, not '"str_fmt"'", str_arg(rhs_typestr));
+        report_pnode(true, rhs->pnode, "expected bool, got '"str_fmt"'", str_arg(rhs_typestr));
     }
 
     binop->binop.lhs = lhs;
@@ -521,11 +556,11 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
 
     if (!type_is_numeric(lhs->type)) {
         string lhs_typestr = type_gen_string(lhs->type, true);
-        report_pnode(true, lhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(lhs_typestr));
+        report_pnode(true, lhs->pnode, "expected numeric type, got '"str_fmt"'", str_arg(lhs_typestr));
     }
     if (!type_is_numeric(rhs->type)) {
         string rhs_typestr = type_gen_string(rhs->type, true);
-        report_pnode(true, rhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(rhs_typestr));
+        report_pnode(true, rhs->pnode, "expected numeric type, got '"str_fmt"'", str_arg(rhs_typestr));
     }
 
     // Type ptr_operation = TYPE_UNKNOWN;
@@ -569,7 +604,6 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     return binop;
 }
 
-
 // &, |, ~, ~|
 SemaNode* check_expr_bitwise_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
@@ -585,11 +619,11 @@ SemaNode* check_expr_bitwise_binop(Analyzer* an, u8 kind, EntityTable* scope, PN
 
     if (!type_is_intlike(lhs->type)) {
         string lhs_typestr = type_gen_string(lhs->type, true);
-        report_pnode(true, lhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(lhs_typestr));
+        report_pnode(true, lhs->pnode, "expected numeric type, got '"str_fmt"'", str_arg(lhs_typestr));
     }
     if (!type_is_intlike(rhs->type)) {
         string rhs_typestr = type_gen_string(rhs->type, true);
-        report_pnode(true, rhs->pnode, "expected numeric type, not '"str_fmt"'", str_arg(rhs_typestr));
+        report_pnode(true, rhs->pnode, "expected numeric type, got '"str_fmt"'", str_arg(rhs_typestr));
     }
 
     if (kind == PN_EXPR_MOD && (type_is_float(lhs->type) || type_is_float(rhs->type))) {
@@ -634,22 +668,59 @@ SemaNode* check_expr_bool_coerce(Analyzer* an, EntityTable* scope, PNode* pn, Ty
     SemaNode* coerce = new_node(an, pn, SN_CAST);
     coerce->type = TYPE_BOOL;
 
-    if (type_can_explicit_cast(sub->type, TYPE_BOOL)) {
+    if (!type_can_explicit_cast(sub->type, TYPE_BOOL)) {
         string typestr = type_gen_string(sub->type, true);
         report_pnode(true, sub->pnode, "cannot coerce from '"str_fmt"' to bool", str_arg(typestr));
     }
     coerce->unop.sub = sub;
     if (sub->kind == SN_CONSTVAL) {
         apply_unop_bool(coerce->constval, sub->kind, sub->constval, (bool));
+        coerce->constval.type = TYPE_BOOL;
         coerce->kind = SN_CONSTVAL;
     }
 
     return coerce;
 }
 
-// SemaNode* check_expr_arith_unop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
+SemaNode* check_expr_bool_not(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    
+    SemaNode* sub = check_expr(an, scope, pn->unop.sub, expected);
+    SemaNode* not = new_node(an, pn, SN_BOOL_NOT);
+    not->type = TYPE_BOOL;
 
-// }
+    if (!type_can_implicit_cast(sub->type, TYPE_BOOL)) {
+        string typestr = type_gen_string(sub->type, true);
+        report_pnode(true, sub->pnode, "cannot coerce from '"str_fmt"' to bool", str_arg(typestr));
+    }
+    not->unop.sub = sub;
+    if (sub->kind == SN_CONSTVAL) {
+        not->constval.bool = !sub->constval.bool;
+        not->constval.type = TYPE_BOOL;
+        not->kind = SN_CONSTVAL;
+    }
+
+    return not;
+}
+
+SemaNode* check_expr_arith_neg(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* sub = check_expr(an, scope, pn->unop.sub, expected);
+    SemaNode* neg = new_node(an, pn, SN_NEG);
+    neg->type = sub->type;
+
+    if (!type_is_numeric(sub->type)) {
+        string typestr = type_gen_string(sub->type, true);
+        report_pnode(true, sub->pnode, "type '"str_fmt"' is not numeric", str_arg(typestr));
+    }
+    neg->unop.sub = sub;
+    if (sub->kind == SN_CONSTVAL) {
+        Type t = type_unwrap_distinct(neg->type);
+        apply_unop(neg->constval, t, sub->constval, -);
+        neg->constval.type = neg->type;
+        neg->kind = SN_CONSTVAL;
+    }
+
+    return neg;
+}
 
 SemaNode* check_expr_addrof(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* addrof = new_node(an, pn, SN_ADDR_OF);
@@ -686,7 +757,7 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
                ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
         if (ent->type == TYPE_TYPEID && ent->decl_pnode->decl.kind == DECLKIND_DEF) {
             SemaNode* cv = new_node(an, pn, SN_CONSTVAL);
-            cv->constval.typeid = ingest_type(an, scope, pn);
+            cv->constval.typeid = ingest_type(an, scope, pn, false);
             cv->type = cv->constval.type = TYPE_TYPEID;
             return cv;
         } else {
@@ -714,7 +785,6 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     }
     UNREACHABLE;
 }
-
 
 SemaNode* check_expr_deref(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* access = new_node(an, pn, SN_DEREF);
@@ -767,7 +837,32 @@ SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     }
     access->binop.lhs = indexee;
     access->binop.rhs = indexer;
-    access->addressable = indexer->addressable;
+
+
+    if (indexer->kind == SN_CONSTVAL) {
+        bool should_error = indexee->kind == SN_CONSTVAL;
+        usize array_len = type(indexee->type)->as_array.len;
+        if (type_is_signed_integer(indexer->type)) {
+            if (indexer->constval.i64 < 0 || indexer->constval.u64 >= array_len) {
+                report_pnode(should_error, pn->binop.rhs, "constant index out of range 0..<%zu", array_len);
+            }
+        } else {
+            if (indexer->constval.u64 >= array_len) {
+                report_pnode(should_error, pn->binop.rhs, "constant index out of range 0..<%zu", array_len);
+            }
+        }
+    }
+
+    if (indexee->kind == SN_CONSTVAL && indexer->kind == SN_CONSTVAL) {
+        if (indexee->constval.is_zero) {
+            access->constval = constval_zero(access->type);
+        } else {
+            access->constval = indexee->constval.compound.at[indexer->constval.u64];
+            access->constval.type = access->type;
+        }
+        access->kind = SN_CONSTVAL;
+    }
+    access->addressable = indexee->addressable;
 
     return access;
 }
@@ -814,53 +909,6 @@ SemaNode* check_expr_range(Analyzer* an, EntityTable* scope, PNode* pn) {
     range->type = lhs->type;
     return range;
 }
-
-// SemaNode* check_expr_in(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
-//     SemaNode* in_range = new_node(an, pn, SN_INVALID);
-//     in_range->type = TYPE_BOOL;
-
-//     u8 rhs_kind = pn->binop.rhs->base.kind;
-//     if (rhs_kind == PN_EXPR_RANGE_EQ) {
-//         in_range->kind = SN_IN_RANGE_EQ;
-//     } else if (rhs_kind == PN_EXPR_RANGE_LESS) {
-//         in_range->kind = SN_IN_RANGE_LESS;
-//     } else {
-//         report_pnode(true, pn->binop.rhs, "expected range expression");
-//     }
-
-//     SemaNode* value = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
-//     if (!type_is_numeric(value->type)) {
-//         report_pnode(true, pn->binop.lhs, "type must be numeric");
-
-//     }
-//     SemaNode* range = check_expr_range(an, scope, pn->binop.rhs);
-
-//     bool type_resolved = false;
-//     if (!type_equal(value->type, range->type, false, false)) {
-//         if (type_can_implicit_cast(value->type, range->type)) {
-//             value = insert_implicit_cast(an, value, range->type);
-//             type_resolved = true;
-//         } else if (type_can_implicit_cast(range->type, value->type)) {
-//             range->binop.lhs = insert_implicit_cast(an, range->binop.lhs, value->type);
-//             range->binop.rhs = insert_implicit_cast(an, range->binop.rhs, value->type);
-//             type_resolved = true;
-//         }
-//     } else {
-//         type_resolved = true;
-//     }
-
-//     if (!type_resolved) {
-//         string lhs_typestr = type_gen_string(value->type, true);
-//         string rhs_typestr = type_gen_string(range->type, true);
-//         report_pnode(true, pn, "type mismatch: '"str_fmt"' and '"str_fmt"'", 
-//             str_arg(lhs_typestr), str_arg(rhs_typestr));
-//     }
-
-//     in_range->in_range.value = value;
-//     in_range->in_range.range = range;
-
-//     return in_range;
-// }
 
 SemaNode* check_expr_call(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* call = new_node(an, pn, SN_CALL);
@@ -934,7 +982,8 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
             TNode* slice_type = type(selectee->type);
             expr->type = type_new_ref(an->m, TYPE_BOUNDLESS_SLICE, slice_type->as_ref.pointee, slice_type->as_ref.mutable);
         } else {
-            report_pnode(true, pn->binop.rhs, "slice has no field '"str_fmt"'", str_arg(selector));
+            string typestr = type_gen_string(t, true);
+            report_pnode(true, pn, "type '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
         }
         break;
     case TYPE_STRUCT:
@@ -948,16 +997,132 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
             }
         }
         if (expr->selector.field == UINT64_MAX) {
-            report_pnode(true, pn->binop.rhs, "struct has no field '"str_fmt"'", str_arg(selector));
+            string typestr = type_gen_string(t, true);
+            report_pnode(true, pn, "type '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
         }
         break;
     default:
+        string typestr = type_gen_string(t, true);
+        report_pnode(true, pn, "type '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
         UNREACHABLE;
     }
 
-    expr->addressable = true;
     expr->selector.selectee = selectee;
+
+    if (selectee->kind == SN_CONSTVAL && !expr->selector.through_pointer) {
+        if (selectee->constval.is_zero) {
+            expr->constval = constval_zero(expr->type);
+        } else {
+            switch (type(t)->kind) {
+            case TYPE_STRUCT:
+                expr->constval = selectee->constval.compound.at[expr->selector.field];
+                break;
+            default:
+                UNREACHABLE;
+            }
+        }
+        expr->kind = SN_CONSTVAL;
+    } else {
+        expr->addressable = true;
+    }
+
     return expr;
+}
+
+SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    if (pn->compound.type) {
+        expected = ingest_type(an, scope, pn->compound.type, true);
+    }
+    Type undistinct_expected = type_unwrap_distinct(expected);
+
+    if (undistinct_expected == TYPE_UNKNOWN) {
+        report_pnode(true, pn, "cannot assume type for compound expression");
+    }
+
+    SemaNode* compound = new_node(an, pn, SN_COMPOUND);
+    compound->compound.len = pn->compound.expr_list->list.len;
+    if (compound->compound.len) {
+        compound->compound.at = malloc(sizeof(SemaNode*) * compound->compound.len);
+    }
+    compound->type = expected;
+
+    bool all_constval = true;
+
+    for_n(i, 0, compound->compound.len) {
+        PNode* component_pnode = pn->compound.expr_list->list.at[i];
+
+        // figure out what type this component is expected to have
+        Type component_expected_type = TYPE_UNKNOWN;
+        switch (type(undistinct_expected)->kind) {
+        case TYPE_ARRAY:
+        case TYPE_ARRAY_LEN_UNKNOWN:
+            component_expected_type = type(undistinct_expected)->as_array.sub;
+            break;
+        case TYPE_SLICE:
+        case TYPE_BOUNDLESS_SLICE:
+            component_expected_type = type(undistinct_expected)->as_ref.pointee;
+            break;
+        case TYPE_STRUCT:
+            component_expected_type = type(undistinct_expected)->as_record.at[i].type;
+            break;
+        case TYPE_UNKNOWN:
+            break;
+        default:
+            UNREACHABLE;
+        }
+
+        SemaNode* component = check_expr(an, scope, component_pnode, component_expected_type);
+        if (component_expected_type != TYPE_UNKNOWN) {
+            if (type_can_implicit_cast(component->type, component_expected_type)) {
+                component = insert_implicit_cast(an, component, component_expected_type);
+            } else {
+                string expected = type_gen_string(component_expected_type, true);
+                string actual = type_gen_string(component->type, true);
+                report_pnode(true, component_pnode, "cannot coerce '"str_fmt"' to '"str_fmt"'", str_arg(actual), str_arg(expected));
+            }
+        }
+        compound->compound.at[i] = component;
+        all_constval = all_constval && component->kind == SN_CONSTVAL;
+    }
+
+    // make sure length matches
+    u32 expected_length = UINT32_MAX;
+    switch (type(undistinct_expected)->kind) {
+    case TYPE_ARRAY:
+        expected_length = type(undistinct_expected)->as_array.len;
+        break;
+    case TYPE_STRUCT:
+        expected_length = type(undistinct_expected)->as_record.len;
+        break;
+    case TYPE_ARRAY_LEN_UNKNOWN:
+        expected_length = compound->compound.len;
+        type_canon_array(an->m, undistinct_expected, expected_length);
+        break;
+    }
+
+    if (compound->compound.len != 0 && expected_length != USIZE_MAX && expected_length != compound->compound.len) {
+        report_pnode(true, pn, "expected %u components, got %u", expected_length, compound->compound.len);
+    }
+
+    // constval compression
+    if (all_constval) {
+        ConstVal cv = {0};
+        if (compound->compound.len == 0) {
+            cv = constval_zero(compound->type);
+        } else {
+            cv.compound.at = malloc(sizeof(ConstVal) * expected_length);
+            cv.compound.len = expected_length;
+            cv.type = compound->type;
+            for_n(i, 0, expected_length) {
+                cv.compound.at[i] = compound->compound.at[i]->constval;
+            }
+        }
+        compound->constval = cv;
+        compound->kind = SN_CONSTVAL;
+    }
+
+    compound->addressable = true;
+    return compound;
 }
 
 SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
@@ -992,7 +1157,7 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_TYPE_POINTER:
     case PN_TYPE_SLICE:
     case PN_TYPE_BOUNDLESS_SLICE:
-        Type t = ingest_type(an, scope, pn);
+        Type t = ingest_type(an, scope, pn, false);
         expr = new_node(an, pn, SN_CONSTVAL);
         expr->constval.type = TYPE_TYPEID;
         expr->type = TYPE_TYPEID;
@@ -1005,6 +1170,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_MOD:
         expr = check_expr_arith_binop(an, pn->base.kind, scope, pn, expected);
         break;
+    case PN_EXPR_NEG:
+        expr = check_expr_arith_neg(an, scope, pn, expected);
+        break;
     case PN_EXPR_BIT_AND:
     case PN_EXPR_BIT_OR:
     case PN_EXPR_XOR:
@@ -1013,6 +1181,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_BOOL_AND:
     case PN_EXPR_BOOL_OR:
         expr = check_expr_boolean_binop(an, pn->base.kind, scope, pn, expected);
+        break;
+    case PN_EXPR_BOOL_NOT:
+        expr = check_expr_bool_not(an, scope, pn, expected);
         break;
     case PN_EXPR_BOOL_COERCE:
         expr = check_expr_bool_coerce(an, scope, pn, expected);
@@ -1042,6 +1213,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_CALL:
         expr = check_expr_call(an, scope, pn, expected);
         break;
+    case PN_EXPR_COMPOUND:
+        expr = check_expr_compound(an, scope, pn, expected);
+        break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");
     case PN_EXPR_RANGE_EQ:
@@ -1064,7 +1238,7 @@ bool check_record_name_already_exists(Type t, string ident, usize current_len) {
     return false;
 }
 
-Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
+Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed) {
     switch (pn->base.kind) {
     case PN_TYPE_I8:  return TYPE_I8;
     case PN_TYPE_I16: return TYPE_I16;
@@ -1086,33 +1260,40 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
     case PN_TYPE_BOOL:   return TYPE_BOOL;
     case PN_TYPE_DYN:    return TYPE_DYN;
     case PN_TYPE_TYPEID: return TYPE_TYPEID;
-
     case PN_TYPE_ARRAY:
+        if (pn->array_type.len->base.kind == PN_DISCARD) {
+            if (!array_len_unknown_allowed) {
+                report_pnode(true, pn->array_type.len, "cannot assume array length here");
+            }
+            Type sub = ingest_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
+            Type arr = type_new_array_len_unknown(an->m, sub);
+            return arr;
+        } 
         SemaNode* length = check_expr(an, scope, pn->array_type.len, TYPE_UNKNOWN);
         if (length->kind != SN_CONSTVAL || !type_is_integer(length->type)) {
             report_pnode(true, pn->array_type.len, "array length must be a constant integer");
         }
-        Type sub = ingest_type(an, scope, pn->array_type.sub);
+        Type sub = ingest_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
         Type arr = type_new_array(an->m, sub, length->constval.i64);
         return arr;
     case PN_TYPE_DISTINCT:
-        sub = ingest_type(an, scope, pn->unop.sub);
+        sub = ingest_type(an, scope, pn->unop.sub, array_len_unknown_allowed);
         Type distinct = type_new(an->m, TYPE_DISTINCT);
         type(distinct)->as_distinct = sub;
         return distinct;
     case PN_TYPE_POINTER:
         Type pointee = TYPE_VOID;
         if (pn->ref_type.sub) {
-            pointee = ingest_type(an, scope, pn->ref_type.sub);
+            pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         }
         Type ptr = type_new_ref(an->m, TYPE_POINTER, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_BOUNDLESS_SLICE:
-        pointee = ingest_type(an, scope, pn->ref_type.sub);
+        pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         ptr = type_new_ref(an->m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_TYPE_SLICE:
-        pointee = ingest_type(an, scope, pn->ref_type.sub);
+        pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         ptr = type_new_ref(an->m, TYPE_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
     case PN_IDENT: {
@@ -1159,7 +1340,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
         for_n(i, 0, pn->record_type.fields->list.len) {
             PNode* item = pn->record_type.fields->list.at[i];
             if (item->item.ident->base.kind == PN_LIST) {
-                Type field_type = ingest_type(an, scope, item->item.type);
+                Type field_type = ingest_type(an, scope, item->item.type, false);
                 for_n(j, 0, item->item.ident->list.len) {
                     PNode* pnode = item->item.ident->list.at[j];
                     string ident = pnode_span(pnode);
@@ -1175,7 +1356,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn) {
                 if (check_record_name_already_exists(record, ident, field)) {
                     report_pnode(true, item, "field name already exists");
                 }
-                Type field_type = ingest_type(an, scope, item->item.type);
+                Type field_type = ingest_type(an, scope, item->item.type, false);
                 type(record)->as_record.at[field].name = ident;
                 type(record)->as_record.at[field].type = field_type;
                 field++;
@@ -1240,7 +1421,7 @@ SemaNode* check_def_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ent->storage = STORAGE_COMPTIME;
 
     if (pstmt->decl.type) {
-        ent->type = ingest_type(an, scope, pstmt->decl.type);
+        ent->type = ingest_type(an, scope, pstmt->decl.type, false);
         ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
     }
 
@@ -1268,6 +1449,12 @@ SemaNode* check_def_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
                 str_arg(decltype_str)
             );
         }
+    }
+    if (value->type == TYPE_TYPEID && value->kind == SN_CONSTVAL) {
+        // give the type an alias
+        Type alias = type_new_alias(an->m, value->constval.typeid);
+        type_attach_name(alias, name);
+        value->constval.typeid = alias;
     }
 
     assert((value->type == TYPE_TYPEID) == (value->constval.type == TYPE_TYPEID));
@@ -1327,7 +1514,7 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     }
 
     if (pstmt->decl.type) {
-        ent->type = ingest_type(an, scope, pstmt->decl.type);
+        ent->type = ingest_type(an, scope, pstmt->decl.type, false);
         ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
     }
 
@@ -1456,7 +1643,7 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     for_n (i, 0, param_list->list.len) {
         PNode* items = param_list->list.at[i];
         
-        Type t = ingest_type(an, fn_scope, items->item.type);
+        Type t = ingest_type(an, fn_scope, items->item.type, false);
 
         if (items->item.ident->base.kind == PN_IDENT) {
             string name = pnode_span(items->item.ident);
@@ -1497,7 +1684,7 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 
     Type ret_type;
     if (proto->fnproto.ret_type) {
-        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type);
+        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type, false);
     } else {
         ret_type = TYPE_VOID;
     }
@@ -1681,7 +1868,7 @@ SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     u8 iter_kind = pstmt->for_in.range->base.kind;
     if (iter_kind == PN_EXPR_RANGE_EQ || iter_kind == PN_EXPR_RANGE_LESS) {
         if (pstmt->for_in.type) {
-            iter_var->type = ingest_type(an, scope, pstmt->for_in.type);
+            iter_var->type = ingest_type(an, scope, pstmt->for_in.type, false);
             iter_var->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
         }
     

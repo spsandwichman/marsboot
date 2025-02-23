@@ -82,14 +82,14 @@ int main(int argc, char** argv) {
 
     // -----------------------------------
 
-    string header = c_gen(m);
+    string c_code = c_gen(m);
 
     // printf("--------------- C ---------------\n");
-    printf(str_fmt, str_arg(header));
+    // printf(str_fmt, str_arg(c_code));
     // printf("---------------------------------\n");
 
     // char* h_path = argv[1];
-    // size_t path_len = strlen(argv[1]);
+    size_t path_len = strlen(argv[1]);
 
     // h_path[path_len - 4] = 'h';
     // h_path[path_len - 3] = '\0';
@@ -97,11 +97,12 @@ int main(int argc, char** argv) {
     // fwrite(header.raw, header.len, 1, h_file);
     // fclose(h_file);
 
-    // char* c_path = argv[1];
-    // c_path[path_len - 4] = 'c';
-    // FILE* c_file = fopen(c_path, "w+");
-    // fwrite(body.raw, body.len, 1, c_file);
-    // fclose(c_file);
+    char* c_path = argv[1];
+    c_path[path_len - 4] = 'c';
+    c_path[path_len - 3] = '\0';
+    FILE* c_file = fopen(c_path, "w+");
+    fwrite(c_code.raw, c_code.len, 1, c_file);
+    fclose(c_file);
 }
 
 Context ctx;

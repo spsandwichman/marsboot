@@ -1,36 +1,40 @@
 module vec3;
 
 def Vec3 = struct {
-    x, y, z: float,
+    x, y, z: f32,
 };
 
-fun vec3_neg(a: Vec3): Vec3 {
-    return .{
-        -a.x,
-        -a.y,
-        -a.z,
-    };
+def unit_x = Vec3.{1, 0, 0};
+def unit_y = Vec3.{0, 1, 0};
+def unit_z = Vec3.{0, 0, 1};
+
+fun neg(a: Vec3): Vec3 {
+    return .{ -a.x, -a.y, -a.z };
 }
 
-fun vec3_add(a, b: Vec3): Vec3 {
-    return .{
-        a.x + b.x,
-        a.y + b.y,
-        a.z + b.z,
-    };
+fun inv(a: Vec3): Vec3 {
+    return .{ 1 / a.x, 1 / a.y, 1 / a.z };
 }
 
-fun vec3_inv(a: Vec3): Vec3 {
-    return .{
-        1 / a.x,
-        1 / a.y,
-        1 / a.z,
-    };
+fun add(a, b: Vec3): Vec3 {
+    return .{ a.x + b.x, a.y + b.y, a.z + b.z };
 }
 
-fun vec3_sum_all(vecs: []let Vec3): Vec3 {
-    mut sum: Vec3;
-    for let i in 0..<vecs.len {
+fun sub(a, b: Vec3): Vec3 {
+    return .{ a.x - b.x, a.y - b.y, a.z - b.z };
+}
+
+fun mul(a, b: Vec3): Vec3 {
+    return .{ a.x * b.x, a.y * b.y, a.z * b.z };
+}
+
+fun div(a, b: Vec3): Vec3 {
+    return .{ a.x / b.x, a.y / b.y, a.z / b.z };
+}
+
+fun sum_all(vecs: []let Vec3): Vec3 {
+    mut sum: Vec3 = .{};
+    for i in 0..<vecs.len {
         sum.x += vecs[i].x;
         sum.y += vecs[i].y;
         sum.z += vecs[i].z;

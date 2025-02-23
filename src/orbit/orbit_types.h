@@ -12,6 +12,8 @@ typedef int8_t   i8;
 
 typedef intptr_t  isize;
 typedef uintptr_t usize;
+#define USIZE_MAX UINTPTR_MAX
+#define ISIZE_MAX INTPTR_MAX
 
 typedef double   f64;
 typedef float    f32;

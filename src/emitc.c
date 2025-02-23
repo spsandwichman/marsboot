@@ -280,6 +280,10 @@ void c_emit_constval(ConstVal cv) {
     sb_append_c(sb, "(");
     emit_typename(type(cv.type));
     sb_append_c(sb, ")");
+    if (cv.is_zero) {
+        sb_append_c(sb, "{0}");
+        return;
+    }
     switch (type(cv.type)->kind) {
     case TYPE_I8:
     case TYPE_I16:
@@ -303,17 +307,14 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_F32: sb_printf(sb, "%lf", (f64)cv.f32); break;
     case TYPE_F64: sb_printf(sb, "%lf", (f64)cv.f64); break;
 
-    case TYPE_SLICE:
-        if (cv.is_string) {
-            sb_append_c(sb, "{\"");
-            for_n(i, 0, cv.string.len) {
-                sb_append_c(sb, "\\x");
-                emit_byte_hex(cv.string.raw[i]);
-            }
-            sb_printf(sb, "\", %llullu}", cv.string.len);
-        } else {
-            UNREACHABLE;
+    case TYPE_STRUCT:
+    case TYPE_ARRAY:
+        sb_append_c(sb, "{");
+        for_n(i, 0, cv.compound.len) {
+            if (i != 0) sb_append_c(sb, ", ");
+            c_emit_constval(cv.compound.at[i]);
         }
+        sb_append_c(sb, "}");
         break;
     default:
         UNREACHABLE;
@@ -467,11 +468,26 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         emit_expr_id(expr->binop.rhs);
         sb_append_c(sb, ";\n");
         break;
+    case SN_NEG:
+    case SN_BOOL_NOT:
+        c_calculate_expr(m, expr->unop.sub);
+
+        decl_begin(expr);
+        switch (expr->kind) {
+        case SN_NEG:      sb_append_c(sb, "-"); break;
+        case SN_BOOL_NOT: sb_append_c(sb, "!"); break;
+        default:
+            UNREACHABLE;
+        }
+        emit_expr_id(expr->unop.sub);
+        sb_append_c(sb, ";\n");
+        break;
     case SN_BOOL_OR:
     case SN_BOOL_AND:
-        /*
+        /* a && b
+
         bool _1 = a;
-        if ( [!] _1) {
+        if (_1) {
             _1 = b;
         }
         */
@@ -646,6 +662,19 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         decl_begin(expr);
         c_emit_constval(expr->constval);
         sb_append_c(sb, ";\n");
+        break;
+    case SN_COMPOUND:
+        for_n(i, 0, expr->compound.len) {
+            c_calculate_expr(m, expr->compound.at[i]);
+        }
+
+        decl_begin(expr);
+        sb_append_c(sb, "{");
+        for_n(i, 0, expr->compound.len) {
+            if (i != 0) sb_append_c(sb, ", ");
+            emit_expr_id(expr->compound.at[i]);
+        }
+        sb_append_c(sb, "};\n");
         break;
     default:
         UNREACHABLE;

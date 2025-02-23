@@ -91,7 +91,7 @@ typedef struct PNodeList {
 } PNodeList;
 
 PNodeList list_new(u32 cap) {
-    PNodeList list;
+    PNodeList list = {0};
     da_init(&list, cap);
     list.span.raw = current()->raw;
     list.span.len = current()->len;
@@ -99,13 +99,13 @@ PNodeList list_new(u32 cap) {
 }
 
 static PNode* list_solidify(PNodeList l) {
-    PNode* block = new_node(list, PN_LIST);
+    PNode* list = new_node(list, PN_LIST);
     // da_shrink(&l);
-    block->list.at = l.at;
-    block->list.len = l.len;
-    block->base.raw = l.span.raw;
-    block->base.len = l.span.len;
-    return block;
+    list->list.at = l.at;
+    list->list.len = l.len;
+    list->base.raw = l.span.raw;
+    list->base.len = l.span.len;
+    return list;
 }
 
 #define parse_type parse_unary
@@ -608,13 +608,15 @@ PNode* parse_compound_item() {
         item->binop.rhs = parse_expr();
         return item;
     case TOK_PERIOD: // . ident = expr
-        item = new_node(binop, PN_COMP_ITEM_INDEX);
-        advance();
-        item->binop.lhs = parse_ident();
-        expect(TOK_EQUAL);
-        advance();
-        item->binop.rhs = parse_expr();
-        return item;
+        if (peek(1)->kind == TOK_IDENTIFIER && peek(2)->kind == TOK_EQUAL) {
+            item = new_node(binop, PN_COMP_ITEM_INDEX);
+            advance();
+            item->binop.lhs = parse_ident();
+            expect(TOK_EQUAL);
+            advance();
+            item->binop.rhs = parse_expr();
+            return item;
+        }
     default:
         return parse_expr();
     }
@@ -785,7 +787,7 @@ PNode* parse_atom_terminal(bool allow_none) {
             term->compound.type = NULL;
             advance();
             advance();
-            PNodeList items = list_new(8);
+            PNodeList items = list_new(4);
             while (!match(TOK_CLOSE_BRACE)) {
                 PNode* item = parse_compound_item();
                 da_append(&items, item);
@@ -797,8 +799,8 @@ PNode* parse_atom_terminal(bool allow_none) {
                 }
             }
             expect(TOK_CLOSE_BRACE);
-            span_extend(term,0);
             term->compound.expr_list = list_solidify(items);
+            // printf("AAAAA %zu\n", term->compound.expr_list->list.at);
             advance();
         } else {
             term = new_node(unop, PN_EXPR_IMPLICIT_SELECTOR);

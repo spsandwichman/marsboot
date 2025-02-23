@@ -44,13 +44,13 @@ Type type_new_record(Module* m, u8 kind, usize len) {
 }
 
 Type type_new_array(Module* m, Type elem_type, usize len) {
-    for_n (i, 0, tg.handles.len) {
-        if (type(i)->kind != TYPE_ARRAY) continue;
-        if (type(i)->as_array.len != len) continue;
-        Type t_elem_type = type(i)->as_array.sub;
-        if (!type_equal(t_elem_type, elem_type, false, false)) continue;
-        return i;
-    }
+    // for_n (i, 0, tg.handles.len) {
+        // if (type(i)->kind != TYPE_ARRAY) continue;
+        // if (type(i)->as_array.len != len) continue;
+        // Type t_elem_type = type(i)->as_array.sub;
+        // if (!type_equal(t_elem_type, elem_type, false, false)) continue;
+        // return i;
+    // }
 
 
     Type t = type_new(m, TYPE_ARRAY);
@@ -65,9 +65,10 @@ Type type_new_array_len_unknown(Module* m, Type elem_type) {
     return t;
 }
 
-// convert an unknown array len type into a known one and get a unique type
-Type type_canon_array(Module* m, Type array_len_unknown, usize len) {
-    return type_new_array(m, type(array_len_unknown)->as_array.sub, len);
+// convert an unknown array len type into a known one
+void type_canon_array(Module* m, Type array_len_unknown, usize len) {
+    type(array_len_unknown)->kind = TYPE_ARRAY;
+    type(array_len_unknown)->as_array.len = len;
 }
 
 Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable) {
@@ -843,8 +844,13 @@ bool type_can_explicit_cast(Type from, Type to) {
         return true;
     }
 
-    // any float -> any int
+    // any float <-> any int
     if (type_is_numeric(from) && type_is_numeric(to)) {
+        return true;
+    }
+
+    // any numeric/intlike -> bool
+    if (to == TYPE_BOOL && (type_is_numeric(from) || type(from)->kind == TYPE_POINTER || type(from)->kind == TYPE_BOUNDLESS_SLICE)) {
         return true;
     }
 

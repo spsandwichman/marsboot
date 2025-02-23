@@ -131,6 +131,7 @@ Type type_new_array(Module* m, Type elem_type, usize len);
 Type type_new_alias(Module* m, Type t);
 Type type_new_array_len_unknown(Module* m, Type elem_type);
 TNode* type(Type t);
+void type_canon_array(Module* m, Type array_len_unknown, usize len);
 // void type_condense();
 
 bool type_is_numeric(Type t);
@@ -173,6 +174,7 @@ typedef struct ConstVal ConstVal;
 typedef struct ConstVal {
     Type type;
     bool is_string;
+    bool is_zero;
     union {
         bool bool;
         u8  u8;
@@ -258,6 +260,8 @@ enum SemaNodeKind {
     SN_CONSTVAL,
     SN_ENTITY,
 
+    SN_COMPOUND,
+
     SN_RANGE_LESS, // binop
     SN_RANGE_EQ, // binop
 
@@ -284,6 +288,9 @@ enum SemaNodeKind {
 
     SN_IMPLICIT_CAST, // unop
     SN_CAST, // unop
+
+    SN_NEG, // unop
+    SN_BOOL_NOT, // unop
     
     SN_ARRAY_INDEX, // binop
     SN_SLICE_INDEX, // binop
@@ -359,6 +366,11 @@ typedef struct SemaNode {
         struct {
             SemaNode** at;
             u32 len;
+        } compound;
+
+        struct {
+            SemaNode** at;
+            u32 len;
             u32 cap;
         } list;
 
@@ -422,6 +434,6 @@ Module* sema_check_module(PNode* top);
 SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected);
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt);
 SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt);
-Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn);
+Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed);
 
 #endif // SEMA_H

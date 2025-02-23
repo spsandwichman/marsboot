@@ -5,7 +5,7 @@ noreturn void crash(char* error, ...) {
     printf("INTERNAL COMPILER ERROR: ");
     va_list args;
     va_start(args, error);
-    vprintf(error, args);
+    vfprintf(stderr, error, args);
     va_end(args);
 
 #ifndef __WIN32__

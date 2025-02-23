@@ -7,14 +7,8 @@ def LLNode = struct {
     prev: ^mut LLNode,
 };
 
-fun malloc(size: uint): ^mut {
-    return null;
-}
-
 fun append_back(list, new: ^mut LLNode) {
-    if list?! || new?! {
-        return;
-    }
+    if list?! || new?! do return;
     mut end = list;
     while end.prev? {
         end = end.prev;
@@ -24,6 +18,7 @@ fun append_back(list, new: ^mut LLNode) {
 }
 
 fun insert_before(node, new: ^mut LLNode) {
+    if node?! || new?! do return;
     new.prev = node.prev;
     new.next = node;
     node.prev.next = new;
@@ -31,6 +26,7 @@ fun insert_before(node, new: ^mut LLNode) {
 }
 
 fun insert_after(node, new: ^mut LLNode) {
+    if node?! || new?! do return;
     new.next = node.next;
     new.prev = node;
     node.next.prev = new;

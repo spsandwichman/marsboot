@@ -96,9 +96,9 @@ void emit_report(bool error, string source, string path, string highlight, char*
     char* color = error ? Red : Yellow;
 
     if (error) {
-        printf(""Bold Red"ERROR"Reset);
+        fprintf(stderr, ""Bold Red"ERROR"Reset);
     } else {
-        printf(""Bold Yellow"WARNING"Reset);
+        fprintf(stderr, ""Bold Yellow"WARNING"Reset);
     }
 
     usize line_num = 0;
@@ -106,42 +106,42 @@ void emit_report(bool error, string source, string path, string highlight, char*
 
     string line = find_line(source, highlight.raw, &line_num, &col_num);
 
-    printf(" ["str_fmt":%d:%d] ", str_arg(path), line_num, col_num);
-    vprintf(message, varargs);
+    fprintf(stderr, " ["str_fmt":%d:%d] ", str_arg(path), line_num, col_num);
+    vfprintf(stderr, message, varargs);
 
     // trim the highlight if necessary
     if (highlight.raw + highlight.len > line.raw + line.len) {
         highlight.len = line.raw + line.len - highlight.raw;
     }
 
-    printf("\n %zu | ", line_num);
+    fprintf(stderr, "\n %zu | ", line_num);
     for_n(i, 0, line.len) {
         if (line.raw + i == highlight.raw) {
             // printf(Underline);
-            printf(Bold "%s", color);
+            fprintf(stderr, Bold "%s", color);
         } else if (line.raw + i >= highlight.raw + highlight.len) {
-            printf(Reset);
+            fprintf(stderr, Reset);
         }
 
-        printf("%c", line.raw[i]);
+        fprintf(stderr, "%c", line.raw[i]);
     }
-    printf(Reset);
-    printf("\n");
+    fprintf(stderr, Reset);
+    fprintf(stderr, "\n");
 
     for(usize l = line_num; l != 0; l /= 10) {
-        printf(" ");
+        fprintf(stderr, " ");
     }
-    printf("  |"Bold"%s", color);
+    fprintf(stderr, "  |"Bold"%s", color);
     for_n(i, 0, line.len + 1) {
         if (line.raw + i <= highlight.raw) {
-            printf(" ");
+            fprintf(stderr, " ");
         } else if (line.raw + i <= highlight.raw + highlight.len) {
-            printf("~");
+            fprintf(stderr, "~");
         } else {
             break;
         }
     }
-    printf(Reset"\n");
+    fprintf(stderr, Reset"\n");
     
     if (error) exit(-1);
 }
