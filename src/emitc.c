@@ -67,6 +67,11 @@ static void emit_hex_fast(u64 id) {
     sb_append(sb, (string){.raw = buffer + trailing_zeros, .len = 16 - trailing_zeros});
 }
 
+void emit_typeid(Type t) {
+    sb_append_c(sb, "0x");
+    emit_hex_fast(type_gen_typeid(t));
+}
+
 static void emit_mangled(Module* m, string name) {
     sb_append(sb, m->name);
     sb_append_char(sb, '_');
@@ -306,7 +311,9 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_F16: sb_printf(sb, "%lf", (f64)cv.f16); break;
     case TYPE_F32: sb_printf(sb, "%lf", (f64)cv.f32); break;
     case TYPE_F64: sb_printf(sb, "%lf", (f64)cv.f64); break;
-
+    case TYPE_TYPEID:
+        emit_typeid(cv.typeid);
+        break;
     case TYPE_STRUCT:
     case TYPE_ARRAY:
         sb_append_c(sb, "{");
@@ -316,6 +323,10 @@ void c_emit_constval(ConstVal cv) {
         }
         sb_append_c(sb, "}");
         break;
+    case TYPE_SLICE:
+        if (cv.is_string != 0) {
+            UNREACHABLE;
+        }
     default:
         UNREACHABLE;
     }
@@ -571,19 +582,34 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
     case SN_CAST:
         c_calculate_expr(m, expr->unop.sub);
 
-        bool require_ptr_cast = type(expr->type)->kind == TYPE_STRUCT;
-
         decl_begin(expr);
-        if (require_ptr_cast) {
-            sb_append_c(sb, "*(");
-            emit_typename(type(expr->type));
-            sb_append_c(sb, "*)");
-            emit_expr_id(expr->unop.sub);
+        Type from = (expr->unop.sub->type);
+        Type to = (expr->type);
+
+        // dyn boxing
+        if (to == TYPE_DYN && from != TYPE_DYN) {
+            sb_append_c(sb, "{(void*)&");
+            emit_expr_id(expr);
+            sb_append_c(sb, ", ");
+            emit_typeid(from);
+            sb_append_c(sb, "}");
+        } else
+        // dyn unboxing
+        if (to != TYPE_DYN && from == TYPE_DYN) {
+            TODO("dyn unboxing");
         } else {
-            sb_append_c(sb, "(");
-            emit_typename(type(expr->type));
-            sb_append_c(sb, ")");
-            emit_expr_id(expr->unop.sub);
+            bool require_ptr_cast = type(to)->kind == TYPE_STRUCT;
+            if (require_ptr_cast) {
+                sb_append_c(sb, "*(");
+                emit_typename(type(expr->type));
+                sb_append_c(sb, "*)&");
+                emit_expr_id(expr->unop.sub);
+            } else {
+                sb_append_c(sb, "(");
+                emit_typename(type(expr->type));
+                sb_append_c(sb, ")");
+                emit_expr_id(expr->unop.sub);
+            }
         }
         
         break;
@@ -899,6 +925,12 @@ string c_gen(Module* m) {
         "typedef struct Slice { Ptr raw; uint64_t len; } Slice;\n"
         "typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;\n"
     );
+
+    // unwrap distinct on everything 
+    for_n (t, _TYPE_SIMPLE_END, tg.handles.len) {
+        tg.handles.at[t] = type(type_unwrap_distinct(t));
+    }
+
     // emit typegraph
     for_n (t, _TYPE_SIMPLE_END, tg.handles.len) {
         emit_typedef(m, type(t));

@@ -1,13 +1,12 @@
 module dyntest;
 
-fun pass_dyn(x: dyn) {
-    // ...
-}
+fun pass_dyn(args: dyn) {}
 
 fun main() {
-    // mut x = []let int.{0, 1, 2};
+    mut x = []mut int.{0, 1, 2};
 
-    mut x = 1;
+    // mut x: i8 = 2;
+    // mut ty = i8;
 
-    pass_dyn(x);
+    // pass_dyn(x);
 }

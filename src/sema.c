@@ -1101,7 +1101,7 @@ SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type 
         break;
     }
 
-    if (compound->compound.len != 0 && expected_length != USIZE_MAX && expected_length != compound->compound.len) {
+    if (compound->compound.len != 0 && expected_length != UINT32_MAX && expected_length != compound->compound.len) {
         report_pnode(true, pn, "expected %u components, got %u", expected_length, compound->compound.len);
     }
 
@@ -1111,10 +1111,10 @@ SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type 
         if (compound->compound.len == 0) {
             cv = constval_zero(compound->type);
         } else {
-            cv.compound.at = malloc(sizeof(ConstVal) * expected_length);
-            cv.compound.len = expected_length;
+            cv.compound.at = malloc(sizeof(ConstVal) * compound->compound.len);
+            cv.compound.len = compound->compound.len;
             cv.type = compound->type;
-            for_n(i, 0, expected_length) {
+            for_n(i, 0, compound->compound.len) {
                 cv.compound.at[i] = compound->compound.at[i]->constval;
             }
         }
