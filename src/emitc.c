@@ -360,13 +360,18 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         ptr_decl_begin(expr);
 
         Entity* e = expr->entity;
-        if (e->storage == STORAGE_PARAMETER || e->storage == STORAGE_LOCAL) {
+        switch (e->storage) {
+        case STORAGE_PARAMETER:
+            sb_append_c(sb, "p_");
             sb_append(sb, e->name);
-        } else {
+            break;
+        case STORAGE_LOCAL:
+            sb_append_c(sb, "l_");
+            sb_append(sb, e->name);
+            break;
+        default:
             emit_mangled(m, e->name);
         }
-
-        sb_append_c(sb, ";\n");
         break;
     case SN_DEREF:
         c_calculate_expr(m, expr->unop.sub);
@@ -375,7 +380,6 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         emit_expr_id(expr);
         sb_append_c(sb, " = ");
         emit_expr_id(expr->unop.sub); 
-        sb_append_c(sb, ";\n");
         break;
     case SN_ARRAY_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -390,8 +394,6 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         sb_append_c(sb, ")[");
         emit_expr_id(expr->binop.rhs);        
         sb_append_c(sb, "]");
-
-        sb_append_c(sb, ";\n");
         break;
     case SN_SLICE_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -407,7 +409,6 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         sb_append_c(sb, ")[");
         emit_expr_id(expr->binop.rhs);        
         sb_append_c(sb, "]");
-        sb_append_c(sb, ";\n");
         break;
     case SN_SELECTOR:
         Type aggregate = expr->selector.selectee->type;
@@ -425,12 +426,11 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
         emit_expr_id(expr->selector.selectee);
         sb_append_c(sb, ")->");
         sb_append(sb, type(aggregate)->as_record.at[expr->selector.field].name);
-        sb_append_c(sb, ";\n");
         break;
     default:
         UNREACHABLE;
     }
-
+    sb_append_c(sb, ";\n");
 }
 
 // run this before using an expression's value.
@@ -528,7 +528,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             emit_expr_id(expr->selector.selectee);
         }
         sb_append_c(sb, expr->selector.through_pointer ? "->" : ".");
-        sb_append_c(sb, expr->kind == SN_SLICE_SELECTOR_LEN ? "len;\n" : "raw;\n");
+        sb_append_c(sb, expr->kind == SN_SLICE_SELECTOR_LEN ? "len" : "raw");
         break;
     case SN_SELECTOR:
         Type aggregate = expr->selector.selectee->type;
@@ -546,7 +546,6 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         emit_expr_id(expr->selector.selectee);
         sb_append_c(sb, ")->");
         sb_append(sb, type(aggregate)->as_record.at[expr->selector.field].name);
-        sb_append_c(sb, ";\n");
         break;
     case SN_CALL:
         for_n(i, 0, expr->call.len) {
@@ -554,7 +553,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         }
 
         c_calculate_expr(m, expr->call.callee);
-        if (expr->kind != TYPE_VOID) {
+        if (expr->type != TYPE_VOID) {
             decl_begin(expr);
         } else {
             emit_indent();
@@ -565,7 +564,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             if (i != 0) sb_append_c(sb, ", ");
             emit_expr_id(expr->call.at[i]);
         }
-        sb_append_c(sb, ");\n");
+        sb_append_c(sb, ")");
 
         break;
     case SN_IMPLICIT_CAST:
@@ -580,13 +579,11 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             emit_typename(type(expr->type));
             sb_append_c(sb, "*)");
             emit_expr_id(expr->unop.sub);
-            sb_append_c(sb, ";\n");
         } else {
             sb_append_c(sb, "(");
             emit_typename(type(expr->type));
             sb_append_c(sb, ")");
             emit_expr_id(expr->unop.sub);
-            sb_append_c(sb, ";\n");
         }
         
         break;
@@ -595,7 +592,6 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         
         decl_begin(expr);
         emit_expr_id(expr->unop.sub);
-        sb_append_c(sb, ";\n");
         break;
     case SN_DEREF:
         c_calculate_expr(m, expr->unop.sub);
@@ -605,7 +601,6 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         emit_typename(type(expr->type));
         sb_append_c(sb, "*)");
         emit_expr_id(expr->binop.lhs);
-        sb_append_c(sb, ";\n");
         break;
     case SN_ARRAY_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -618,7 +613,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         emit_expr_id(expr->binop.lhs);        
         sb_append_c(sb, ")[");
         emit_expr_id(expr->binop.rhs);        
-        sb_append_c(sb, "];\n");
+        sb_append_c(sb, "]");
         break;
     case SN_BOUNDLESS_SLICE_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -631,7 +626,7 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         emit_expr_id(expr->binop.lhs);        
         sb_append_c(sb, ")[");
         emit_expr_id(expr->binop.rhs);        
-        sb_append_c(sb, "];\n");
+        sb_append_c(sb, "]");
         break;
     case SN_SLICE_INDEX:
         c_calculate_expr(m, expr->binop.rhs);
@@ -645,23 +640,27 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         sb_append_c(sb, ".raw");
         sb_append_c(sb, ")[");
         emit_expr_id(expr->binop.rhs);        
-        sb_append_c(sb, "];\n");
+        sb_append_c(sb, "]");
         break;
     case SN_ENTITY:
         decl_begin(expr);
         Entity* e = expr->entity;
-
-        if (e->storage == STORAGE_PARAMETER || e->storage == STORAGE_LOCAL) {
+        switch (e->storage) {
+        case STORAGE_PARAMETER:
+            sb_append_c(sb, "p_");
             sb_append(sb, e->name);
-        } else {
+            break;
+        case STORAGE_LOCAL:
+            sb_append_c(sb, "l_");
+            sb_append(sb, e->name);
+            break;
+        default:
             emit_mangled(m, e->name);
         }
-        sb_append_c(sb, ";\n");
         break;
     case SN_CONSTVAL:
         decl_begin(expr);
         c_emit_constval(expr->constval);
-        sb_append_c(sb, ";\n");
         break;
     case SN_COMPOUND:
         for_n(i, 0, expr->compound.len) {
@@ -674,11 +673,12 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             if (i != 0) sb_append_c(sb, ", ");
             emit_expr_id(expr->compound.at[i]);
         }
-        sb_append_c(sb, "};\n");
+        sb_append_c(sb, "}");
         break;
     default:
         UNREACHABLE;
     }
+    sb_append_c(sb, ";\n");
 }
 
 void c_emit_stmt(Module* m, SemaNode* stmt) {
@@ -848,7 +848,18 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         emit_indent();
         emit_typename(type(e->type));
         sb_append_c(sb, " ");
-        sb_append(sb, e->name);
+        switch (e->storage) {
+        case STORAGE_PARAMETER:
+            sb_append_c(sb, "p_");
+            sb_append(sb, e->name);
+            break;
+        case STORAGE_LOCAL:
+            sb_append_c(sb, "l_");
+            sb_append(sb, e->name);
+            break;
+        default:
+            emit_mangled(m, e->name);
+        }
         sb_append_c(sb, " = ");
         if (stmt->decl.value) {
             emit_expr_id(stmt->decl.value);

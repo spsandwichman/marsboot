@@ -3,7 +3,6 @@
 #include "mars.h"
 #include "crash.h"
 #include "sema.h"
-#include "emitjkl.h"
 #include "emitc.h"
 
 char* strconcat(const char* a, const char* b) {
