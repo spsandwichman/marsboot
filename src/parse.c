@@ -331,17 +331,17 @@ PNode* parse_switch_stmt(bool is_which) {
     PNode* stmt = new_node(switch_stmt, is_which ? PN_STMT_WHICH : PN_STMT_SWITCH);
     advance();
     stmt->switch_stmt.cond = parse_expr();
-    expect(TOK_OPEN_BRACE);
-    advance();
+    // expect(TOK_OPEN_BRACE);
+    // advance();
 
 
     PNodeList cases = list_new(8);
-    while (!match(TOK_KEYWORD_CASE)) {
+    while (match(TOK_KEYWORD_CASE)) {
         PNode* case_block = parse_case_block();
         da_append(&cases, case_block);
     }
 
-    advance();
+    // advance();
 
     stmt->switch_stmt.cases = list_solidify(cases);
     return stmt;

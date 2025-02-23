@@ -1,9 +1,13 @@
 module dyntest;
 
-fun vararg_test(args: []let dyn) {}
-
-fun main() {
-    mut x = 1;
-    mut y: u8 = 1;
-    vararg_test(.{&x, &y});
+fun b(): int {
+    // mut x = 1;
+    switch x
+    case 1 {
+        x = 10;
+    }
+    case 2 {
+        x = 11;
+    }
+    return x;
 }
