@@ -3,125 +3,125 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef struct Struct_21991aabe40 {
+typedef struct Struct_5617ea8a3c10 {
   int64_t data;
   Ptr next;
   Ptr prev;
-} Struct_21991aabe40;
-typedef void (*Fun_21991aaba00)(Ptr, Ptr);
-typedef void (*Fun_21991aada30)(Ptr, Ptr);
-typedef void (*Fun_21991aaddb0)(Ptr, Ptr);
+} Struct_5617ea8a3c10;
+typedef void (*Fun_5617ea8a41a0)(Ptr, Ptr);
+typedef void (*Fun_5617ea8a4fd0)(Ptr, Ptr);
+typedef void (*Fun_5617ea8a5bf0)(Ptr, Ptr);
 
 void test_append_back(Ptr list, Ptr new);
 void test_insert_before(Ptr node, Ptr new);
 void test_insert_after(Ptr node, Ptr new);
 
 void test_append_back(Ptr list, Ptr new) {
-  Ptr v21991aabcc0 = list;
-  _Bool v21991aabd00 = (_Bool)v21991aabcc0;
-  _Bool v21991aabf80 = !v21991aabd00;
-  _Bool v21991aac0c0 = v21991aabf80;
-  if (!v21991aabf80) {
-    Ptr v21991aabe00 = new;
-    _Bool v21991aabc00 = (_Bool)v21991aabe00;
-    _Bool v21991aabd80 = !v21991aabc00;
-    v21991aac0c0 = v21991aabd80;
+  Ptr v5617ea8a42b0 = list;
+  _Bool v5617ea8a42f0 = (_Bool)v5617ea8a42b0;
+  _Bool v5617ea8a4330 = !v5617ea8a42f0;
+  _Bool v5617ea8a4430 = v5617ea8a4330;
+  if (!v5617ea8a4330) {
+    Ptr v5617ea8a4370 = new;
+    _Bool v5617ea8a43b0 = (_Bool)v5617ea8a4370;
+    _Bool v5617ea8a43f0 = !v5617ea8a43b0;
+    v5617ea8a4430 = v5617ea8a43f0;
   }
-  if (v21991aac0c0)
+  if (v5617ea8a4430)
   {
     return ;
   }
-  Ptr v21991aabf00 = list;
-  Ptr end = v21991aabf00;
+  Ptr v5617ea8a4670 = list;
+  Ptr end = v5617ea8a4670;
   while (1) {
-    Ptr v21991aad270 = end;
-    Ptr v21991aad970 = ((Struct_21991aabe40*)v21991aad270)->prev;
-    _Bool v21991aad230 = (_Bool)v21991aad970;
-    if (!v21991aad230) break;
+    Ptr v5617ea8a4730 = end;
+    Ptr v5617ea8a46f0 = ((Struct_5617ea8a3c10*)v5617ea8a4730)->next;
+    _Bool v5617ea8a4770 = (_Bool)v5617ea8a46f0;
+    if (!v5617ea8a4770) break;
     {
-      Ptr v21991aadcb0 = end;
-      Ptr v21991aad870 = ((Struct_21991aabe40*)v21991aadcb0)->prev;
-      Ptr v21991aad2b0 = &end;
-      *(Ptr*)v21991aad2b0 = v21991aad870;
+      Ptr v5617ea8a4a30 = end;
+      Ptr v5617ea8a49f0 = ((Struct_5617ea8a3c10*)v5617ea8a4a30)->next;
+      Ptr v5617ea8a49b0 = &end;
+      *(Ptr*)v5617ea8a49b0 = v5617ea8a49f0;
     }
   }
-  Ptr v21991aad770 = new;
-  Ptr v21991aad9f0 = end;
-  Ptr v21991aad330 = &((Struct_21991aabe40*)v21991aad9f0)->prev;
-  *(Ptr*)v21991aad330 = v21991aad770;
-  Ptr v21991aad6f0 = end;
-  Ptr v21991aada70 = new;
-  Ptr v21991aad7f0 = &((Struct_21991aabe40*)v21991aada70)->next;
-  *(Ptr*)v21991aad7f0 = v21991aad6f0;
+  Ptr v5617ea8a4b30 = new;
+  Ptr v5617ea8a4af0 = end;
+  Ptr v5617ea8a4ab0 = &((Struct_5617ea8a3c10*)v5617ea8a4af0)->next;
+  *(Ptr*)v5617ea8a4ab0 = v5617ea8a4b30;
+  Ptr v5617ea8a4c30 = end;
+  Ptr v5617ea8a4bf0 = new;
+  Ptr v5617ea8a4bb0 = &((Struct_5617ea8a3c10*)v5617ea8a4bf0)->prev;
+  *(Ptr*)v5617ea8a4bb0 = v5617ea8a4c30;
 }
 
 void test_insert_before(Ptr node, Ptr new) {
-  Ptr v21991aad5f0 = node;
-  _Bool v21991aad3f0 = (_Bool)v21991aad5f0;
-  _Bool v21991aaddf0 = !v21991aad3f0;
-  _Bool v21991aad6b0 = v21991aaddf0;
-  if (!v21991aaddf0) {
-    Ptr v21991aad670 = new;
-    _Bool v21991aadaf0 = (_Bool)v21991aad670;
-    _Bool v21991aad370 = !v21991aadaf0;
-    v21991aad6b0 = v21991aad370;
+  Ptr v5617ea8a50e0 = node;
+  _Bool v5617ea8a5120 = (_Bool)v5617ea8a50e0;
+  _Bool v5617ea8a5160 = !v5617ea8a5120;
+  _Bool v5617ea8a5260 = v5617ea8a5160;
+  if (!v5617ea8a5160) {
+    Ptr v5617ea8a51a0 = new;
+    _Bool v5617ea8a51e0 = (_Bool)v5617ea8a51a0;
+    _Bool v5617ea8a5220 = !v5617ea8a51e0;
+    v5617ea8a5260 = v5617ea8a5220;
   }
-  if (v21991aad6b0)
+  if (v5617ea8a5260)
   {
     return ;
   }
-  Ptr v21991aad3b0 = node;
-  Ptr v21991aad730 = ((Struct_21991aabe40*)v21991aad3b0)->prev;
-  Ptr v21991aad7b0 = new;
-  Ptr v21991aad8b0 = &((Struct_21991aabe40*)v21991aad7b0)->prev;
-  *(Ptr*)v21991aad8b0 = v21991aad730;
-  Ptr v21991aad470 = node;
-  Ptr v21991aad8f0 = new;
-  Ptr v21991aacf70 = &((Struct_21991aabe40*)v21991aad8f0)->next;
-  *(Ptr*)v21991aacf70 = v21991aad470;
-  Ptr v21991aadbb0 = new;
-  Ptr v21991aad930 = node;
-  Ptr v21991aad830 = ((Struct_21991aabe40*)v21991aad930)->prev;
-  Ptr v21991aad0b0 = &((Struct_21991aabe40*)v21991aad830)->next;
-  *(Ptr*)v21991aad0b0 = v21991aadbb0;
-  Ptr v21991aadc70 = new;
-  Ptr v21991aad1f0 = node;
-  Ptr v21991aadbf0 = &((Struct_21991aabe40*)v21991aad1f0)->prev;
-  *(Ptr*)v21991aadbf0 = v21991aadc70;
+  Ptr v5617ea8a5510 = node;
+  Ptr v5617ea8a54d0 = ((Struct_5617ea8a3c10*)v5617ea8a5510)->prev;
+  Ptr v5617ea8a5490 = new;
+  Ptr v5617ea8a5450 = &((Struct_5617ea8a3c10*)v5617ea8a5490)->prev;
+  *(Ptr*)v5617ea8a5450 = v5617ea8a54d0;
+  Ptr v5617ea8a5610 = node;
+  Ptr v5617ea8a55d0 = new;
+  Ptr v5617ea8a5590 = &((Struct_5617ea8a3c10*)v5617ea8a55d0)->next;
+  *(Ptr*)v5617ea8a5590 = v5617ea8a5610;
+  Ptr v5617ea8a5750 = new;
+  Ptr v5617ea8a5710 = node;
+  Ptr v5617ea8a56d0 = ((Struct_5617ea8a3c10*)v5617ea8a5710)->prev;
+  Ptr v5617ea8a5690 = &((Struct_5617ea8a3c10*)v5617ea8a56d0)->next;
+  *(Ptr*)v5617ea8a5690 = v5617ea8a5750;
+  Ptr v5617ea8a5850 = new;
+  Ptr v5617ea8a5810 = node;
+  Ptr v5617ea8a57d0 = &((Struct_5617ea8a3c10*)v5617ea8a5810)->prev;
+  *(Ptr*)v5617ea8a57d0 = v5617ea8a5850;
 }
 
 void test_insert_after(Ptr node, Ptr new) {
-  Ptr v21991aacfb0 = node;
-  _Bool v21991aacff0 = (_Bool)v21991aacfb0;
-  _Bool v21991aad030 = !v21991aacff0;
-  _Bool v21991aad170 = v21991aad030;
-  if (!v21991aad030) {
-    Ptr v21991aad070 = new;
-    _Bool v21991aad0f0 = (_Bool)v21991aad070;
-    _Bool v21991aad130 = !v21991aad0f0;
-    v21991aad170 = v21991aad130;
+  Ptr v5617ea8a5d00 = node;
+  _Bool v5617ea8a5d40 = (_Bool)v5617ea8a5d00;
+  _Bool v5617ea8a5d80 = !v5617ea8a5d40;
+  _Bool v5617ea8a5e80 = v5617ea8a5d80;
+  if (!v5617ea8a5d80) {
+    Ptr v5617ea8a5dc0 = new;
+    _Bool v5617ea8a5e00 = (_Bool)v5617ea8a5dc0;
+    _Bool v5617ea8a5e40 = !v5617ea8a5e00;
+    v5617ea8a5e80 = v5617ea8a5e40;
   }
-  if (v21991aad170)
+  if (v5617ea8a5e80)
   {
     return ;
   }
-  Ptr v21991ab0a90 = node;
-  Ptr v21991ab0650 = ((Struct_21991aabe40*)v21991ab0a90)->next;
-  Ptr v21991ab07d0 = new;
-  Ptr v21991ab05d0 = &((Struct_21991aabe40*)v21991ab07d0)->next;
-  *(Ptr*)v21991ab05d0 = v21991ab0650;
-  Ptr v21991ab0550 = node;
-  Ptr v21991ab0f10 = new;
-  Ptr v21991ab06d0 = &((Struct_21991aabe40*)v21991ab0f10)->prev;
-  *(Ptr*)v21991ab06d0 = v21991ab0550;
-  Ptr v21991ab0610 = new;
-  Ptr v21991ab0810 = node;
-  Ptr v21991ab0850 = ((Struct_21991aabe40*)v21991ab0810)->next;
-  Ptr v21991ab0390 = &((Struct_21991aabe40*)v21991ab0850)->prev;
-  *(Ptr*)v21991ab0390 = v21991ab0610;
-  Ptr v21991ab0e50 = new;
-  Ptr v21991ab0710 = node;
-  Ptr v21991ab0910 = &((Struct_21991aabe40*)v21991ab0710)->next;
-  *(Ptr*)v21991ab0910 = v21991ab0e50;
+  Ptr v5617ea8a6130 = node;
+  Ptr v5617ea8a60f0 = ((Struct_5617ea8a3c10*)v5617ea8a6130)->next;
+  Ptr v5617ea8a60b0 = new;
+  Ptr v5617ea8a6070 = &((Struct_5617ea8a3c10*)v5617ea8a60b0)->next;
+  *(Ptr*)v5617ea8a6070 = v5617ea8a60f0;
+  Ptr v5617ea8a6230 = node;
+  Ptr v5617ea8a61f0 = new;
+  Ptr v5617ea8a61b0 = &((Struct_5617ea8a3c10*)v5617ea8a61f0)->prev;
+  *(Ptr*)v5617ea8a61b0 = v5617ea8a6230;
+  Ptr v5617ea8a63b0 = new;
+  Ptr v5617ea8a6370 = node;
+  Ptr v5617ea8a6330 = ((Struct_5617ea8a3c10*)v5617ea8a6370)->next;
+  Ptr v5617ea8a62f0 = &((Struct_5617ea8a3c10*)v5617ea8a6330)->prev;
+  *(Ptr*)v5617ea8a62f0 = v5617ea8a63b0;
+  Ptr v5617ea8a64f0 = new;
+  Ptr v5617ea8a64b0 = node;
+  Ptr v5617ea8a6470 = &((Struct_5617ea8a3c10*)v5617ea8a64b0)->next;
+  *(Ptr*)v5617ea8a6470 = v5617ea8a64f0;
 }
 

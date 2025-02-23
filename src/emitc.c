@@ -884,7 +884,7 @@ string c_gen(Module* m) {
     
     // builtins
     sb_append_c(sb, 
-        "typedef void* Ptr;\n"
+        "typedef uint8_t* Ptr;\n"
         "typedef struct Slice { Ptr raw; uint64_t len; } Slice;\n"
         "typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;\n"
     );

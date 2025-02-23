@@ -1,0 +1,11 @@
+module dyntest;
+
+fun pass_dyn(x: dyn) {
+    // ...
+}
+
+fun main() {
+    // mut x = []let int.{0, 1, 2};
+
+    // pass_dyn(x);
+}

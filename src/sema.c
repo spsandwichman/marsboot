@@ -378,6 +378,8 @@ SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
         n->type = to;
         n->constval = constval_cast(n->constval, to);
         return n;
+    } else if (n->kind == SN_CONSTVAL && to_undistinct == TYPE_DYN) {
+        n = insert_implicit_cast(an, n, normalize_untyped(an->m, n->type));
     }
 
     SemaNode* impl_cast = new_node(an, NULL, SN_IMPLICIT_CAST);
@@ -494,7 +496,6 @@ SemaNode* check_expr_comparison(Analyzer* an, u8 kind, EntityTable* scope, PNode
 
     return binop;
 }
-
 
 SemaNode* check_expr_boolean_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
@@ -707,7 +708,7 @@ SemaNode* check_expr_arith_neg(Analyzer* an, EntityTable* scope, PNode* pn, Type
     SemaNode* neg = new_node(an, pn, SN_NEG);
     neg->type = sub->type;
 
-    if (!type_is_numeric(sub->type)) {
+    if (!(type_is_float(sub->type) || type_is_integer(sub->type))) {
         string typestr = type_gen_string(sub->type, true);
         report_pnode(true, sub->pnode, "type '"str_fmt"' is not numeric", str_arg(typestr));
     }

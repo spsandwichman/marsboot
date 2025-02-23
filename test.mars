@@ -10,11 +10,11 @@ def LLNode = struct {
 fun append_back(list, new: ^mut LLNode) {
     if list?! || new?! do return;
     mut end = list;
-    while end.prev? {
-        end = end.prev;
+    while end.next? {
+        end = end.next;
     }
-    end.prev = new;
-    new.next = end;
+    end.next = new;
+    new.prev = end;
 }
 
 fun insert_before(node, new: ^mut LLNode) {

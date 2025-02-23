@@ -44,9 +44,11 @@ int main(int argc, char** argv) {
 
     TokenBuf tb = lex_string(str(buf), str(argv[1]));
     da_shrink(&tb);
-    // printf("lex %d tokens (%d B)\n", tb.len, tb.len * sizeof(Token));
     
     PNode* top = parse_file(tb, NULL_STR);
+    string module_name = pnode_span(top->list.at[0]->module_decl.ident);
+
+    // TODO look through this directory for other mars files
 
     type_init();
     Module* m = sema_check_module(top);
