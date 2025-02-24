@@ -170,6 +170,7 @@ bool type_is_intlike(Type t) {
 }
 
 #define apply_unop(result, typekind, sub, op) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).u8 =  op (sub).u8;  break;\
     case TYPE_U16:  (result).u16 = op (sub).u16; break;\
@@ -189,6 +190,7 @@ bool type_is_intlike(Type t) {
     }
 
 #define apply_unop_integer(result, typekind, sub, op) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).u8 =  op (sub).u8;  break;\
     case TYPE_U16:  (result).u16 = op (sub).u16; break;\
@@ -205,6 +207,7 @@ bool type_is_intlike(Type t) {
     }
 
 #define apply_unop_bool(result, typekind, sub, op) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).bool = op (sub).u8;  break;\
     case TYPE_U16:  (result).bool = op (sub).u16; break;\
@@ -224,6 +227,7 @@ bool type_is_intlike(Type t) {
     }
 
 #define apply_binop(result, typekind, lhs, op, rhs) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).u8 =  (lhs).u8  op (rhs).u8;  break;\
     case TYPE_U16:  (result).u16 = (lhs).u16 op (rhs).u16; break;\
@@ -243,6 +247,7 @@ bool type_is_intlike(Type t) {
     }
 
 #define apply_binop_integer(result, typekind, lhs, op, rhs) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).u8 =  (lhs).u8  op (rhs).u8;  break;\
     case TYPE_U16:  (result).u16 = (lhs).u16 op (rhs).u16; break;\
@@ -259,6 +264,7 @@ bool type_is_intlike(Type t) {
     }
 
 #define apply_bool_binop(result, typekind, lhs, op, rhs) \
+    (result).is_zero = false;\
     switch (typekind) { \
     case TYPE_U8:   (result).bool =  (lhs).u8  op (rhs).u8;  break;\
     case TYPE_U16:  (result).bool = (lhs).u16 op (rhs).u16; break;\
@@ -324,6 +330,7 @@ void const_eval_expr_bit_binop(Analyzer* m, SemaNode* n, u8 kind) {
     }
 }
 
+// this is disgusting
 #define cast(tag, cv, from_kind) \
     switch (from_kind) {\
     case TYPE_U8:  n.tag = (tag) (cv).u8;  break;\
@@ -366,6 +373,21 @@ ConstVal constval_cast(ConstVal v, Type to) {
     default: UNREACHABLE;
     }
     return n;
+}
+
+#undef cast
+
+bool constval_equal(ConstVal a, ConstVal b) {
+    if (a.type != b.type) return false;
+
+    switch (a.type) {
+    case TYPE_I8: case TYPE_U8: return a.u8 == b.u8;
+    case TYPE_I16: case TYPE_U16: case TYPE_F16: return a.u16 == b.u16;
+    case TYPE_I32: case TYPE_U32: case TYPE_F32: return a.u32 == b.u32;
+    case TYPE_I64: case TYPE_U64: case TYPE_F64: return a.u64 == b.u64;
+    case TYPE_TYPEID: return type_equal(a.typeid, b.typeid, false, false);
+    default: UNREACHABLE;
+    }
 }
 
 SemaNode* insert_implicit_cast(Analyzer* an, SemaNode* n, Type to) {
@@ -721,6 +743,33 @@ SemaNode* check_expr_arith_neg(Analyzer* an, EntityTable* scope, PNode* pn, Type
     }
 
     return neg;
+}
+
+SemaNode* check_expr_cast(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* cast = new_node(an, pn, SN_CAST);
+    Type to = ingest_type(an, scope, pn->binop.lhs, false);
+    cast->type = to;
+    SemaNode* value = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
+
+    if (type_can_explicit_cast(value->type, to)) {
+        if (value->kind == SN_CONSTVAL) {
+            // cast = insert_implicit_cast(an, value, to);
+            ConstVal cv = constval_cast(value->constval, to);
+            // UNREACHABLE;
+            cast->constval = cv;
+            cast->kind = SN_CONSTVAL;
+        } else {
+            cast->unop.sub = value;
+        }
+    } else {
+        string valuetype_str = type_gen_string(value->type, true);
+        string to_str = type_gen_string(to, true);
+        report_pnode(true, value->pnode, "cannot cast from '"str_fmt"' to '"str_fmt"'", 
+            str_arg(valuetype_str),
+            str_arg(to_str)
+        );
+    }
+    return cast;
 }
 
 SemaNode* check_expr_addrof(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
@@ -1228,6 +1277,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         break;
     case PN_EXPR_COMPOUND:
         expr = check_expr_compound(an, scope, pn, expected, false);
+        break;
+    case PN_EXPR_CAST:
+        expr = check_expr_cast(an, scope, pn, expected);
         break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");
@@ -1935,6 +1987,74 @@ SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt) 
     return for_loop;
 }
 
+SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* switch_stmt = new_node(an, pstmt, SN_STMT_SWITCH);
+
+    SemaNode* cond = check_expr(an, scope, pstmt->switch_stmt.cond, TYPE_UNKNOWN);
+    cond = insert_implicit_cast(an, cond, normalize_untyped(an->m, cond->type));
+    Type expected_match_type = cond->type;
+    if (expected_match_type == TYPE_DYN) {
+        expected_match_type = TYPE_TYPEID;
+    }
+    if (!type_is_integer(expected_match_type) && expected_match_type != TYPE_TYPEID) {
+        report_pnode(true, cond->pnode, "cannot switch on non-integer");
+    }
+    switch_stmt->switch_stmt.cond = cond;
+
+    switch_stmt->switch_stmt.len = pstmt->switch_stmt.cases->list.len;
+    switch_stmt->switch_stmt.cases = malloc(sizeof(SemaNode*) * switch_stmt->switch_stmt.len);
+
+    Vec_typedef(ConstVal);
+    Vec(ConstVal) all_matches = vec_new(ConstVal, 16);
+
+    for_n(i, 0, pstmt->switch_stmt.cases->list.len) {
+        PNode* case_pnode = pstmt->switch_stmt.cases->list.at[i];
+        usize num_matches = case_pnode->case_block.matches->list.len;
+        PNode** match_pnodes = case_pnode->case_block.matches->list.at;
+
+        SemaNode* case_block = new_node(an, pstmt, SN_CASE_BLOCK);
+        case_block->case_block.matches = malloc(sizeof(SemaNode*) * num_matches);
+        case_block->case_block.len = num_matches;
+        for_n (i, 0, num_matches) {
+            SemaNode* match = check_expr(an, scope, match_pnodes[i], expected_match_type);
+
+            if (match->kind != SN_CONSTVAL) {
+                report_pnode(true, match->pnode, "case match must be compile-time constant");
+            }
+            if (type_can_implicit_cast(match->type, expected_match_type)) {
+                match = insert_implicit_cast(an, match, expected_match_type);
+            } else {
+                string match_type_str = type_gen_string(match->type, true);
+                string expected_type_str = type_gen_string(expected_match_type, true);
+                report_pnode(true, match->pnode, "cannot coerce from '"str_fmt"' to '"str_fmt"'", 
+                    str_arg(match_type_str),
+                    str_arg(expected_type_str)
+                );
+            }
+
+            // check to see if this case has been declared before
+            for_vec(ConstVal* cv, &all_matches) {
+                if (constval_equal(*cv, match->constval)) {
+                    report_pnode(true, match->pnode, "case match already present");
+                }
+            }
+
+            case_block->case_block.matches[i] = match;
+            vec_append(&all_matches, match->constval);
+
+            EntityTable* block_scope = etbl_new(scope);
+            SemaNode* block = check_stmt(an, block_scope, case_pnode->case_block.sub);
+            case_block->case_block.block = block;
+        }
+        switch_stmt->switch_stmt.cases[i] = case_block;
+    }
+
+    vec_destroy(&all_matches);
+
+    // UNREACHABLE;
+    return switch_stmt;
+}
+
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_LIST:
@@ -1956,6 +2076,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     case PN_STMT_ASSIGN_BIT_OR:
     case PN_STMT_ASSIGN_XOR:
         return check_stmt_op_assign(an, scope, pstmt);
+    case PN_STMT_SWITCH:
+        return check_stmt_switch(an, scope, pstmt);
     case PN_STMT_IF:
         return check_stmt_if(an, scope, pstmt);
     case PN_STMT_WHILE:

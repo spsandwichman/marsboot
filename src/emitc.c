@@ -313,9 +313,9 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_BOOL:
         sb_append_char(sb, cv.bool ? '1' : '0');
         break;
-    case TYPE_F16: sb_printf(sb, "%lf", (f64)cv.f16); break;
-    case TYPE_F32: sb_printf(sb, "%lf", (f64)cv.f32); break;
-    case TYPE_F64: sb_printf(sb, "%lf", (f64)cv.f64); break;
+    case TYPE_F16: sb_printf(sb, "%.*lf", (f64)cv.f16, DECIMAL_DIG); break;
+    case TYPE_F32: sb_printf(sb, "%.*lf", (f64)cv.f32, DECIMAL_DIG); break;
+    case TYPE_F64: sb_printf(sb, "%.*lf", (f64)cv.f64, DECIMAL_DIG); break;
     case TYPE_TYPEID:
         emit_typeid(cv.typeid);
         break;
@@ -606,7 +606,22 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         } else
         // dyn unboxing
         if (to != TYPE_DYN && from == TYPE_DYN) {
-            TODO("dyn unboxing");
+            isize to_size = type_calculate_size(to);
+
+            sb_append_c(sb, "*(");
+            emit_typename(type(to));
+            sb_append_c(sb, "*)");
+
+            switch (to_size) {
+            case 1: case 2: case 4: case 8: 
+                sb_append_c(sb, "&"); break;
+            default: 
+                break; // unbox by reference
+            // TODO unbox by value with all sizes less than 8
+            }
+
+            emit_expr_id(expr->unop.sub);
+            sb_append_c(sb, ".raw");
         } else {
             bool require_ptr_cast = type(to)->kind == TYPE_STRUCT;
             if (require_ptr_cast) {
@@ -886,6 +901,42 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         emit_indent();
         sb_append_c(sb, "}\n");
         break;
+    case SN_STMT_SWITCH:
+        c_calculate_expr(m, stmt->switch_stmt.cond);
+        emit_indent();
+        sb_append_c(sb, "switch (");
+        emit_expr_id(stmt->switch_stmt.cond);
+        if (stmt->switch_stmt.cond->type == TYPE_DYN) {
+            sb_append_c(sb, ".id");
+        }
+        sb_append_c(sb, ") {\n");
+
+        for_n(i, 0, stmt->switch_stmt.len) {
+            SemaNode* case_block = stmt->switch_stmt.cases[i];
+            emit_indent();
+            for_n(j, 0, case_block->case_block.len) {
+                SemaNode* match = case_block->case_block.matches[j];
+                sb_append_c(sb, "case ");
+                c_emit_constval(match->constval);
+                sb_append_c(sb, ": ");
+            }
+            sb_append_c(sb, "\n");
+            indent_level++;
+            if (case_block->case_block.block->kind != SN_STMT_BLOCK) {
+                sb_append_c(sb, "{\n");
+            }
+            c_emit_stmt(m, case_block->case_block.block);
+            emit_indent();
+            if (case_block->case_block.block->kind != SN_STMT_BLOCK) {
+                sb_append_c(sb, "} ");
+            }
+            sb_append_c(sb, "break;\n");
+            indent_level--;
+        }
+
+        emit_indent();
+        sb_append_c(sb, "}\n");
+        break;
     case SN_STMT_BLOCK:
         emit_indent();
         indent_level++;
@@ -1009,7 +1060,7 @@ string c_gen(Module* m) {
             if (i != 0) sb_append_c(sb, ", ");
             TypeFnParam f = type(e->type)->as_function.params.at[i];
             emit_typename(type(f.type));
-            sb_append_c(sb, " ");
+            sb_append_c(sb, " p_");
             sb_append(sb, f.name);
         }
         sb_append_c(sb, ");\n");
@@ -1051,7 +1102,7 @@ string c_gen(Module* m) {
             if (i != 0) sb_append_c(sb, ", ");
             TypeFnParam f = type(e->type)->as_function.params.at[i];
             emit_typename(type(f.type));
-            sb_append_c(sb, " ");
+            sb_append_c(sb, " p_");
             sb_append(sb, f.name);
         }
         sb_append_c(sb, ") ");

@@ -322,6 +322,8 @@ enum SemaNodeKind {
     SN_STMT_ASSIGN,
 
     SN_STMT_IF,
+    SN_STMT_SWITCH,
+    SN_CASE_BLOCK,
     SN_STMT_WHILE,
     SN_STMT_FOR_IN,
     SN_STMT_FOR_CSTYLE,
@@ -399,6 +401,19 @@ typedef struct SemaNode {
             SemaNode* if_true;
             SemaNode* if_false;
         } if_stmt;
+
+        struct {
+            SemaNode* cond;
+            SemaNode** cases;
+            usize len;
+        } switch_stmt;
+
+        struct {
+            SemaNode* block;
+
+            SemaNode** matches; // matches
+            usize len;
+        } case_block;
 
         struct {
             SemaNode* cond;

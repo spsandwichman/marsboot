@@ -1,13 +1,11 @@
 module dyntest;
 
-fun b(): int {
-    // mut x = 1;
-    switch x
-    case 1 {
-        x = 10;
+fun a(d: dyn) {
+    switch d
+    case int {
+        let i = cast(int) d;
     }
-    case 2 {
-        x = 11;
+    case float {
+        let f = cast(float) d;
     }
-    return x;
 }

@@ -48,7 +48,6 @@ static void expect(u8 token_kind) {
     }
 }
 
-
 static void span_copy(PNode* p, PNode* from) {
     p->base.raw = from->base.raw;
     p->base.len = from->base.len;
@@ -69,7 +68,8 @@ string pnode_span(PNode* p) {
 #define new_node(T, kind) new_node_with_size(sizeof(((PNode*)0)->T), kind)
 
 static PNode* new_node_with_size(usize size, u8 kind) {
-    size = sizeof(PNodeBase) + size;
+    // size = sizeof(PNodeBase) + size; // this was causing some sanitization problems
+    size = sizeof(PNode);
     PNode* pn = malloc(size);
     memset(pn, 0, size);
     p.mem_allocated += size;
@@ -336,6 +336,7 @@ PNode* parse_switch_stmt(bool is_which) {
 
 
     PNodeList cases = list_new(8);
+    expect(TOK_KEYWORD_CASE);
     while (match(TOK_KEYWORD_CASE)) {
         PNode* case_block = parse_case_block();
         da_append(&cases, case_block);

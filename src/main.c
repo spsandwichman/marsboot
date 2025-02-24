@@ -52,53 +52,9 @@ int main(int argc, char** argv) {
     type_init();
     Module* m = sema_check_module(top);
 
-    // -----------------------------------
-
-    // Type selfptr = type_new_ref(m, TYPE_POINTER, TYPE_I64, true);
-    // type(selfptr)->as_ref.pointee = selfptr;
-
-    // Type vec3 = type_new_record(m, TYPE_STRUCT, 3);
-    
-    // type_attach_name(vec3, constr("Vec3"));
-    // type(vec3)->as_record.at[0].name = constr("x");
-    // type(vec3)->as_record.at[0].type = TYPE_I64;
-    // type(vec3)->as_record.at[1].name = constr("y");
-    // type(vec3)->as_record.at[1].type = TYPE_I64;
-    // type(vec3)->as_record.at[2].name = constr("z");
-    // type(vec3)->as_record.at[2].type = TYPE_I64;
-
-    // Type llnode = type_new_record(m, TYPE_STRUCT, 2);
-    // type_attach_name(llnode, constr("LLNode"));
-    // type(llnode)->as_record.at[0].name = constr("data");
-    // type(llnode)->as_record.at[0].type = TYPE_I64;
-    // type(llnode)->as_record.at[1].name = constr("next");
-    // type(llnode)->as_record.at[1].type = type_new_ref(m, TYPE_POINTER, llnode, true);
-
-    // Type foo = type_new_record(m, TYPE_STRUCT, 2);
-    // type_attach_name(foo, constr("Foo"));
-    // type(foo)->as_record.at[0].name = constr("vec");
-    // type(foo)->as_record.at[0].type = vec3;
-    // type(foo)->as_record.at[1].name = constr("node");
-    // type(foo)->as_record.at[1].type = llnode;
-
-    // -----------------------------------
-
     string c_code = c_gen(m);
-
-    // printf("--------------- C ---------------\n");
-    // printf(str_fmt, str_arg(c_code));
-    // printf("---------------------------------\n");
-
-    // char* h_path = argv[1];
     size_t path_len = strlen(argv[1]);
-
-    // h_path[path_len - 4] = 'h';
-    // h_path[path_len - 3] = '\0';
-    // FILE* h_file = fopen(h_path, "w+");
-    // fwrite(header.raw, header.len, 1, h_file);
-    // fclose(h_file);
-
-    char* c_path = argv[1];
+    char* c_path = strcpy(malloc(path_len) + 1, argv[1]);
     c_path[path_len - 4] = 'c';
     c_path[path_len - 3] = '\0';
     FILE* c_file = fopen(c_path, "w+");
