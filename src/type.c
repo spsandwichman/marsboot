@@ -898,6 +898,12 @@ static void type_gen_typeid_internal(Hash* h, Type t, u64 n) {
         // maybe hash the module name as well?
         hash_fnv1a_u64(h, (u64)t);
         break;
+    case TYPE_SLICE:
+        hash_fnv1a(h, type(t)->as_ref.mutable ? "[]mut" : "[]let", 5);
+        type(t)->num_a = n;
+        type_gen_typeid_internal(h, type(t)->as_ref.pointee, n+1);
+        type(t)->num_a = 0;
+        return;
     case TYPE_POINTER:
         hash_fnv1a(h, type(t)->as_ref.mutable ? "^mut" : "^let", 4);
         type(t)->num_a = n;

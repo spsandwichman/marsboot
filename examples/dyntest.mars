@@ -1,11 +1,22 @@
 module dyntest;
 
-fun a(d: dyn) {
+fun use_int(i: int) {}
+fun use_float(f: float) {}
+fun use_string(f: []let u8) {}
+
+fun use_dyn(d: dyn) {
     switch d
     case int {
         let i = cast(int) d;
+        use_int(i);
     }
     case float {
         let f = cast(float) d;
+        use_float(f);
+    }
+    case []let u8 {
+        let s = cast([]let u8) d;
+        use_string(s);
+        let y = bitcast([]let u64) s;
     }
 }
