@@ -478,7 +478,6 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             UNREACHABLE;
         }
         emit_expr_id(expr->binop.rhs);
-        sb_append_c(sb, ";\n");
         break;
     case SN_NEG:
     case SN_BOOL_NOT:
@@ -492,7 +491,6 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             UNREACHABLE;
         }
         emit_expr_id(expr->unop.sub);
-        sb_append_c(sb, ";\n");
         break;
     case SN_BOOL_OR:
     case SN_BOOL_AND:
@@ -636,9 +634,33 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
                 emit_expr_id(expr->unop.sub);
             }
         }
-        
         break;
-    case SN_ADDR_OF:    
+    case SN_BITCAST:
+        c_calculate_expr(m, expr->unop.sub);
+
+        // generate union
+        emit_indent();
+        sb_append_c(sb, "union { ");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, " to; ");
+        emit_typename(type(expr->unop.sub->type));
+        sb_append_c(sb, " from; } ");
+        emit_expr_id(expr);
+        sb_append_c(sb, "_union;\n");
+
+        // assign to union
+        emit_indent();
+        emit_expr_id(expr);
+        sb_append_c(sb, "_union.from = ");
+        emit_expr_id(expr->unop.sub);
+        sb_append_c(sb, ";\n");
+
+        // get from union
+        decl_begin(expr);
+        emit_expr_id(expr);
+        sb_append_c(sb, "_union.to");
+        break;
+    case SN_ADDR_OF:
         c_calculate_expr_ptr(m, expr->unop.sub);
         
         decl_begin(expr);
@@ -830,6 +852,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         emit_indent();
         emit_typename(type(iter_var->type));
         sb_append_c(sb, " ");
+        sb_append_c(sb, "l_");
         sb_append(sb, iter_var->name);
         sb_append_c(sb, " = ");
         emit_expr_id(initial);
@@ -846,6 +869,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         sb_append_c(sb, " v");
         emit_hex_fast((u64)iter_var);
         sb_append_c(sb, " = ");
+        sb_append_c(sb, "l_");
         sb_append(sb, iter_var->name);
         sb_append_c(sb, ";\n");
 
@@ -862,6 +886,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         
         emit_indent();
         sb_append_c(sb, "++");
+        sb_append_c(sb, "l_");
         sb_append(sb, iter_var->name);
         sb_append_c(sb, ";\n");
 
@@ -1014,7 +1039,7 @@ string c_gen(Module* m) {
     
     // builtins
     sb_append_c(sb, 
-        "typedef uint8_t* Ptr;\n"
+        "typedef void* Ptr;\n"
         "typedef struct Slice { Ptr raw; uint64_t len; } Slice;\n"
         "typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;\n"
     );

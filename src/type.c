@@ -921,14 +921,41 @@ u64 type_gen_typeid(Type t) {
     return (u64) h;
 }
 
-// return -1 if unable to calculate
-isize type_calculate_size(Type t) {
+// when calling for the first time, use n = 1;
+bool type_is_infinite(Type t) {
+    if (type(t)->num_a) return true;
+
+    switch (type(t)->kind) {
+    case TYPE_ARRAY:
+    case TYPE_ARRAY_LEN_UNKNOWN:
+        type(t)->num_a = 1;
+        bool is_infinite = type_is_infinite(type(t)->as_array.sub);
+        type(t)->num_a = 0;
+        return is_infinite;
+    case TYPE_STRUCT:
+    case TYPE_UNION:
+        type(t)->num_a = 1;
+        is_infinite = false;
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField* rf = &type(t)->as_record.at[i];
+            is_infinite = is_infinite || type_is_infinite(rf->type);
+        }
+
+        type(t)->num_a = 0;
+        return is_infinite;
+    default:
+        return false;
+    }
+}
+
+usize type_calculate_size(Type t) {
     switch (type(t)->kind) {
     case TYPE_I8:  case TYPE_U8: return 1;
     case TYPE_I16: case TYPE_U16: return 2;
     case TYPE_I32: case TYPE_U32: return 4;
 
-    case TYPE_POINTER: case TYPE_BOUNDLESS_SLICE:
+    case TYPE_POINTER: 
+    case TYPE_BOUNDLESS_SLICE:
     case TYPE_TYPEID:
     case TYPE_I64: case TYPE_U64: return 8;
 
@@ -936,11 +963,64 @@ isize type_calculate_size(Type t) {
     case TYPE_F32: return 4;
     case TYPE_F64: return 8;
     case TYPE_SLICE: case TYPE_DYN: return 16;
+
+    case TYPE_STRUCT:
+        if (type(t)->as_record.size != 0) {
+            return type(t)->as_record.size;
+        }
+        if (type(t)->as_record.len == 0) {
+            return 0;
+        }
+        usize size = 0;
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField* rf = &type(t)->as_record.at[i];
+            size = align_forward(size, type_calculate_align(rf->type));
+            size += type_calculate_size(rf->type);
+        }
+
+        size = align_forward(size, type_calculate_align(t));
+        type(t)->as_record.size = size;
+        return size;
     default:
         UNREACHABLE;
     }
 }
 
-isize type_calculate_align(Type t) {
-    UNREACHABLE;
+usize type_calculate_align(Type t) {
+    switch (type(t)->kind) {
+    case TYPE_I8:  case TYPE_U8: return 1;
+    case TYPE_I16: case TYPE_U16: return 2;
+    case TYPE_I32: case TYPE_U32: return 4;
+
+    case TYPE_POINTER: 
+    case TYPE_BOUNDLESS_SLICE:
+    case TYPE_TYPEID:
+    case TYPE_I64: case TYPE_U64: return 8;
+
+    case TYPE_F16: return 2;
+    case TYPE_F32: return 4;
+    case TYPE_F64:
+    case TYPE_SLICE: 
+    case TYPE_DYN: return 8;
+
+    case TYPE_STRUCT:
+    case TYPE_UNION:
+        if (type(t)->as_record.align != 0) {
+            return type(t)->as_record.align;
+        }
+        if (type(t)->as_record.len == 0) {
+            return 0;
+        }
+        usize align = 0;
+        for_n(i, 0, type(t)->as_record.len) {
+            TypeRecordField* rf = &type(t)->as_record.at[i];
+            usize field_align = type_calculate_align(rf->type);
+            align = max(align, field_align);
+        }
+
+        type(t)->as_record.align = align;
+        return align;
+    default:
+        UNREACHABLE;
+    }
 }

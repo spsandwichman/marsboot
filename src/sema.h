@@ -161,8 +161,9 @@ bool type_can_implicit_cast(Type from, Type to);
 bool type_can_explicit_cast(Type from, Type to);
 bool type_is_equalable(Type t);
 
-isize type_calculate_size(Type t);
-isize type_calculate_align(Type t);
+bool type_is_infinite(Type t);
+usize type_calculate_size(Type t);
+usize type_calculate_align(Type t);
 
 void type_print_graph();
 
@@ -293,6 +294,7 @@ enum SemaNodeKind {
 
     SN_IMPLICIT_CAST, // unop
     SN_CAST, // unop
+    SN_BITCAST, // unop
 
     SN_NEG, // unop
     SN_BOOL_NOT, // unop

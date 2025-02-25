@@ -745,6 +745,35 @@ SemaNode* check_expr_arith_neg(Analyzer* an, EntityTable* scope, PNode* pn, Type
     return neg;
 }
 
+SemaNode* check_expr_bitcast(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* cast = new_node(an, pn, SN_BITCAST);
+    Type to = ingest_type(an, scope, pn->binop.lhs, false);
+    cast->type = to;
+    SemaNode* value = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
+
+    usize value_size = type_calculate_size(value->type);
+    usize to_size = type_calculate_size(to);
+
+    if (value_size == to_size) {
+        if (value->kind == SN_CONSTVAL) {
+            // ConstVal cv = constval_cast(value->constval, to);
+            // cast->constval = cv;
+            // cast->kind = SN_CONSTVAL;
+            TODO("constval bitcast");
+        } else {
+            cast->unop.sub = value;
+        }
+    } else {
+        string valuetype_str = type_gen_string(value->type, true);
+        string to_str = type_gen_string(to, true);
+        report_pnode(true, value->pnode, "size mismatch '"str_fmt"'(%llu) and '"str_fmt"'(%llu)", 
+            str_arg(valuetype_str), value_size,
+            str_arg(to_str), to_size
+        );
+    }
+    return cast;
+}
+
 SemaNode* check_expr_cast(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* cast = new_node(an, pn, SN_CAST);
     Type to = ingest_type(an, scope, pn->binop.lhs, false);
@@ -1281,11 +1310,14 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_CAST:
         expr = check_expr_cast(an, scope, pn, expected);
         break;
+    case PN_EXPR_BITCAST:
+        expr = check_expr_bitcast(an, scope, pn, expected);
+        break;
     case PN_DISCARD:
         report_pnode(true, pn, "_ not allowed here");
     case PN_EXPR_RANGE_EQ:
     case PN_EXPR_RANGE_LESS:
-            report_pnode(true, pn, "range not allowed here");
+        report_pnode(true, pn, "range not allowed here");
     default:
         report_pnode(true, pn, "expected valid expression");
     }
@@ -2060,7 +2092,15 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     case PN_LIST:
         return check_block(an, scope, pstmt, false);
     case PN_STMT_DECL:
-        return check_var_decl(an, scope, pstmt);
+        SemaNode* decl = check_var_decl(an, scope, pstmt);
+
+        if (decl->kind == SN_DEF_DECL && decl->decl.entity->type == TYPE_TYPEID) {
+            if (type_is_infinite(decl->decl.entity->constval.typeid)) {
+                report_pnode(true, decl->pnode->decl.ident, "type has infinite size");
+            }
+        }
+
+        return decl;
     case PN_STMT_FN_DECL:
         return check_fn_decl(an, scope, pstmt);
     case PN_STMT_RETURN:
