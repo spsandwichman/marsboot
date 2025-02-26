@@ -1908,6 +1908,8 @@ SemaNode* check_stmt_op_assign(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 
 SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     SemaNode* if_stmt = new_node(an, pstmt, SN_STMT_IF);
+
+    vec_append(&an->control_flow, if_stmt);
     
     SemaNode* cond = check_expr(an, scope, pstmt->ternary.cond, TYPE_BOOL);
     if (type_can_implicit_cast(cond->type, TYPE_BOOL)) {
@@ -1926,12 +1928,17 @@ SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         EntityTable* if_false_scope = etbl_new(scope);
         if_stmt->if_stmt.if_false = check_stmt(an, if_false_scope, pstmt->ternary.if_false);
     }
+
+    vec_pop(&an->control_flow);
+
     return if_stmt;
 }
 
 SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     SemaNode* while_loop = new_node(an, pstmt, SN_STMT_WHILE);
     
+    vec_append(&an->control_flow, while_loop);
+
     SemaNode* cond = check_expr(an, scope, pstmt->binop.lhs, TYPE_BOOL);
     if (type_can_implicit_cast(cond->type, TYPE_BOOL)) {
         cond = insert_implicit_cast(an, cond, TYPE_BOOL);
@@ -1945,6 +1952,8 @@ SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     
     EntityTable* body_scope = etbl_new(scope);
     while_loop->while_loop.body = check_stmt(an, body_scope, pstmt->binop.rhs);
+
+    vec_pop(&an->control_flow);
 
     return while_loop;
 }
@@ -2087,6 +2096,43 @@ SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return switch_stmt;
 }
 
+SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* break_stmt = new_node(an, pstmt, SN_STMT_BREAK);
+    
+    if (pstmt->cflow.label) {
+        string label_to_find = pnode_span(pstmt->cflow.label);
+        for_n_reverse(i, an->control_flow.len, 0) {
+            SemaNode* cfstmt = an->control_flow.at[i];
+            switch (cfstmt->kind) {
+            case SN_STMT_WHILE:
+                if (cfstmt->while_loop.label.raw == 0) break;
+                if (string_eq(cfstmt->while_loop.label, cfstmt->while_loop.label)) {
+                    break_stmt->break_cont_stmt.label = cfstmt;
+                }
+                goto found_associated;
+            default:
+                UNREACHABLE;
+            }
+        }
+    } else {
+        for_n_reverse(i, an->control_flow.len, 0) {
+            SemaNode* cfstmt = an->control_flow.at[i];
+            switch (cfstmt->kind) {
+            case SN_STMT_WHILE:
+                break_stmt->break_cont_stmt.label = cfstmt;
+                goto found_associated;
+            default:
+                UNREACHABLE;
+            }
+        }
+    }
+    
+    report_pnode(true, pstmt, "cannot find associated control-flow statement");
+
+    found_associated:
+    return break_stmt;
+}
+
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_LIST:
@@ -2116,6 +2162,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     case PN_STMT_ASSIGN_BIT_OR:
     case PN_STMT_ASSIGN_XOR:
         return check_stmt_op_assign(an, scope, pstmt);
+    case PN_STMT_BREAK:
+        return check_stmt_break(an, scope, pstmt);
     case PN_STMT_SWITCH:
         return check_stmt_switch(an, scope, pstmt);
     case PN_STMT_IF:
@@ -2136,7 +2184,7 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     }
 }
 
-Module* sema_check_module(PNode* top) {
+Module* sema_check(PNode* top) {
     Module* mod = malloc(sizeof(Module));
     *mod = (Module){};
     assert(top->base.kind == PN_LIST);
@@ -2151,6 +2199,7 @@ Module* sema_check_module(PNode* top) {
     an.current_fn = NULL;
     an.return_type = TYPE_UNKNOWN;
     an.defer_stack = vecptr_new(SemaNode, 4);
+    an.control_flow = vecptr_new(SemaNode, 16);
 
     // pre-collect entitites
     for_n (i, 1, top->list.len) {

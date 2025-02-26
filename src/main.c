@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     // TODO look through this directory for other mars files
 
     type_init();
-    Module* m = sema_check_module(top);
+    Module* m = sema_check(top);
 
     string c_code = c_gen(m);
     size_t path_len = strlen(argv[1]);

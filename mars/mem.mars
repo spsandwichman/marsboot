@@ -1,0 +1,41 @@
+module mem;
+
+def AllocMode = enum u8 {
+    Alloc,
+    Realloc,
+    Free,
+};
+
+def AllocatorFun = fun(size, align: uint, mem: ^mut, mode: AllocMode, data: ^mut): ^mut;
+
+def Allocator = struct {
+    fn: AllocatorFun,
+    data: ^mut,
+};
+
+fun alloc(allocator: ^mut Allocator, size, align: uint): ^mut {
+    return allocator.fn(size, align, null, .Alloc, allocator);
+}
+
+fun free(allocator: ^mut Allocator, mem: ^let) {
+    return allocator.fn(size, align, null, .Free, allocator);
+}
+
+fun realloc(allocator: ^mut Allocator, mem: ^let, new_size: uint): ^mut {
+    return allocator.fn(size, 0, mem, .Realloc, allocator); // alignment is taken from mem's region alignment
+}
+
+fun set(mem: ^mut, size: uint, val: u8): ^mut {
+    builtin::memory_set(mem, size, val);
+    return mem;
+}
+
+fun zero(mem: ^mut, size: uint): ^mut {
+    builtin::memory_set(mem, 0, val);
+    return val;
+}
+
+fun copy(dst: ^mut, src: ^let, size: uint): ^mut {
+    builtin::memory_copy(dest, src, size);
+    return dst;
+}

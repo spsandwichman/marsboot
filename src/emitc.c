@@ -826,6 +826,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         emit_indent();
         sb_append_c(sb, "while (1) {\n");
         indent_level++;
+        
         c_calculate_expr(m, stmt->while_loop.cond);
         emit_indent();
         sb_append_c(sb, "if (!");
@@ -833,9 +834,15 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         sb_append_c(sb, ") break;\n");
         
         c_emit_stmt(m, stmt->while_loop.body);
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_continue:\n");
         indent_level--;
         emit_indent();
         sb_append_c(sb, "}\n");
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
         break;
     case SN_STMT_FOR_IN:
         emit_indent();
@@ -885,6 +892,10 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         c_emit_stmt(m, stmt->for_range.body);
         
         emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_continue:\n");
+
+        emit_indent();
         sb_append_c(sb, "++");
         sb_append_c(sb, "l_");
         sb_append(sb, iter_var->name);
@@ -896,6 +907,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         indent_level--;
         emit_indent();
         sb_append_c(sb, "}\n");
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
         break;
     case SN_STMT_FOR_CSTYLE:
         emit_indent();
@@ -917,6 +931,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
 
         c_emit_stmt(m, stmt->for_cstyle.body);
 
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_continue:\n");
         c_emit_stmt(m, stmt->for_cstyle.post);
         
         indent_level--;
@@ -925,6 +942,15 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         indent_level--;
         emit_indent();
         sb_append_c(sb, "}\n");
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
+        break;
+    case SN_STMT_BREAK:
+        emit_indent();
+        sb_append_c(sb, "goto ");
+        emit_expr_id(stmt->break_cont_stmt.label);
+        sb_append_c(sb, "_break;\n");
         break;
     case SN_STMT_SWITCH:
         c_calculate_expr(m, stmt->switch_stmt.cond);

@@ -1,0 +1,28 @@
+module mem;
+c
+when builtin::arch == .C {
+
+    mut heap = Allocator.{
+        _heap_allocator_fun,
+        null,
+    };
+    fun _heap_allocator_fun(size, align: uint, mem: ^mut, mode: AllocMode, data: ^mut): ^mut {
+        // stdlib shit
+        extern fun malloc(size: uint): ^mut;
+        extern fun free(size: uint): ^mut;
+        extern fun realloc(size: uint): ^mut;
+
+        switch mode
+        case .Alloc {
+            return malloc(size);
+        }
+        case .Realloc {
+            return realloc(mem, size);
+        }
+        case .Free {
+            free(mem)
+        }
+
+        return null;
+    }
+}

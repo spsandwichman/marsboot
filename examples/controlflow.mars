@@ -1,74 +1,84 @@
 module examples;
 
-fun control_flow(foo: int) {
-    
-    // standard if statement
-    if foo == 1 {
-        foo += 2;
-    }
-    if foo == 1 do foo += 2;
-
-    // standard while loop
-    mut x = 0;
-    while x < 10 {
-        x += 1;
-    }
-    while x < 10 do x += 1;
-
-    // c-style for loop
-    for mut i = 0; i < 10; i += 1 {
-        foo *= i;
-    }
-    for mut i = 0; i < 10; i += 1 do foo *= i;
-
-    // ranged for loop
-    for i in 0..<10 {
-        foo *= i;
+fun loop_test(b: bool) {
+    while b {
+        break;
     }
 
-    // labels
-    outer: for i in 0..<10 {
-        for j in 0..<10 {
-            if j == 5 {
-                break outer;
-            }
-            if i == 1 {
-                continue; // continues the inner loop
-            }
-        }
-    }
+    // for mut i = 0; i < 10; i += 1 {
 
-    switch foo
-    case 1 {
-        // each case has implicit 'break;' and its own scope
-        mut y = 1;
-    }
-    case 4, 5, 6 { // match multiple cases
-        mut y = 2;
-    }
-    case 7, 8..=10 { // match ranges
-
-        fallthrough; // fall through to the next case
-    }
-    case 10 {
-        let y = foo / 3 + 10;
-        fallthrough y; // jump to the matching case
-    }
-    case { // optional 'default' branch
-        foo -= 1;
-    }
-
-    // nested function definitions cannot capture local variables.
-    fn modify(x: ^mut int): int {
-        x^ += 1;
-        return x^;
-    }
-
-    // expressions are always evaluated post-order, left-to-right.
-    {
-        mut u: int = 10;
-        mut v = modify(&u) + u;
-        // v == 22
-    }
-
+    // }
 }
+
+// fun control_flow(foo: int) {
+    
+//     // standard if statement
+//     if foo == 1 {
+//         foo += 2;
+//     }
+//     if foo == 1 do foo += 2;
+
+//     // standard while loop
+//     mut x = 0;
+//     while x < 10 {
+//         x += 1;
+//     }
+//     while x < 10 do x += 1;
+
+//     // c-style for loop
+//     for mut i = 0; i < 10; i += 1 {
+//         foo *= i;
+//     }
+//     for mut i = 0; i < 10; i += 1 do foo *= i;
+
+//     // ranged for loop
+//     for i in 0..<10 {
+//         foo *= i;
+//     }
+
+//     // labels
+//     outer: for i in 0..<10 {
+//         for j in 0..<10 {
+//             if j == 5 {
+//                 break outer;
+//             }
+//             if i == 1 {
+//                 continue; // continues the inner loop
+//             }
+//         }
+//     }
+
+//     switch foo
+//     case 1 {
+//         // each case has implicit 'break;' and its own scope
+//         mut y = 1;
+//     }
+//     case 4, 5, 6 { // match multiple cases
+//         mut y = 2;
+//     }
+//     case 7, 8..=10 { // match ranges
+
+//         fallthrough; // fall through to the next case
+//     }
+//     case 10 {
+//         let y = foo / 3 + 10;
+//         fallthrough y; // jump to the matching case
+//     }
+//     case _ { // optional 'default' branch
+//         foo -= 1;
+//     }
+
+//     // nested function definitions cannot capture local variables.
+//     fun modify(x: ^mut int): int {
+//         x^ += 1;
+//         return x^;
+//     }
+
+//     // expressions are always evaluated post-order, left-to-right.
+//     {
+//         mut u: int = 10;
+//         mut v = modify(&u) + u;
+//         // v == 22
+//     }
+
+// }

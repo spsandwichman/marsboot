@@ -330,6 +330,9 @@ enum SemaNodeKind {
     SN_STMT_FOR_IN,
     SN_STMT_FOR_CSTYLE,
 
+    SN_STMT_BREAK,
+    SN_STMT_CONTINUE,
+
     SN_VAR_DECL,
     SN_DEF_DECL,
     SN_FN_DECL,
@@ -399,12 +402,19 @@ typedef struct SemaNode {
         } selector;
 
         struct {
+            SemaNode* sub;
+            SemaNode* upper_bound;
+            SemaNode* lower_bound;
+        } slice;
+
+        struct {
             SemaNode* cond;
             SemaNode* if_true;
             SemaNode* if_false;
         } if_stmt;
 
         struct {
+            string label; // NULL_STR if none
             SemaNode* cond;
             SemaNode** cases;
             usize len;
@@ -412,34 +422,34 @@ typedef struct SemaNode {
 
         struct {
             SemaNode* block;
-
             SemaNode** matches; // matches
             usize len;
         } case_block;
 
         struct {
+            string label; // NULL_STR if none
             SemaNode* cond;
             SemaNode* body;
         } while_loop;
 
         struct {
+            string label; // NULL_STR if none
             Entity* iter_var;
             SemaNode* range;
             SemaNode* body;
         } for_range;
 
         struct {
-            SemaNode* sub;
-            SemaNode* upper_bound;
-            SemaNode* lower_bound;
-        } slice;
-
-        struct {
+            string label;
             SemaNode* init;
             SemaNode* cond;
             SemaNode* post;
             SemaNode* body;
         } for_cstyle;
+
+        struct {
+            SemaNode* label;
+        } break_cont_stmt;
 
         // better to abstract this more
         // when anonymous functions come into play
@@ -459,10 +469,12 @@ typedef struct Analyzer {
     Module* m;
     Entity* current_fn;
     Type return_type;
+    
     VecPtr(SemaNode) defer_stack;
+    VecPtr(SemaNode) control_flow;
 } Analyzer;
 
-Module* sema_check_module(PNode* top);
+Module* sema_check(PNode* top);
 SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected);
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt);
 SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt);

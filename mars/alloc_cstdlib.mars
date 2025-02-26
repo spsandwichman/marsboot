@@ -1,5 +1,0 @@
-module alloc;
-
-when builtin::arch == .C {
-    HeapAlloc
-}
