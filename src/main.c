@@ -23,9 +23,10 @@ int main(int argc, char** argv) {
         exit(0);
     }
 
+    errno = 0;
     FILE* f = fopen(argv[1], "rb");
 
-    if (f == NULL) {
+    if (f == NULL || errno != 0) {
         printf("cannot open file '%s'\n", argv[1]);
         exit(0);
     }
@@ -54,7 +55,7 @@ int main(int argc, char** argv) {
 
     string c_code = c_gen(m);
     size_t path_len = strlen(argv[1]);
-    char* c_path = strcpy(malloc(path_len) + 1, argv[1]);
+    char* c_path = strcpy(malloc(path_len + 1), argv[1]);
     c_path[path_len - 4] = 'c';
     c_path[path_len - 3] = '\0';
     FILE* c_file = fopen(c_path, "w+");

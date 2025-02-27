@@ -3,19 +3,27 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef void (*Fun_55a85f0104d0)(_Bool);
+typedef void (*Fun_177143285f0)(_Bool);
 
 void examples_loop_test(_Bool p_b);
 
 void examples_loop_test(_Bool p_b) {
   while (1) {
-    _Bool v55a85f010600 = p_b;
-    if (!v55a85f010600) break;
+    _Bool v1771432abc0 = p_b;
+    if (!v1771432abc0) break;
     {
-      goto v55a85f0105b0_break;
+      while (1) {
+        _Bool v1771432ae30 = p_b;
+        if (!v1771432ae30) break;
+        {
+          goto v1771432ab70_break;
+        }
+        v1771432ade0_continue:
+      }
+      v1771432ade0_break:
     }
-    v55a85f0105b0_continue:
+    v1771432ab70_continue:
   }
-  v55a85f0105b0_break:
+  v1771432ab70_break:
 }
 

@@ -1662,10 +1662,12 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return decl;
 }
 
-SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return) {
+SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return, string label) {
     // VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
     SemaNode* list = new_node(an, pbody, SN_STMT_BLOCK);
-    vec_init(&list->list, 8);
+    list->block.label = label;
+
+    vec_init(&list->block, 8); // spooky shit...
 
     bool seen_return = false;
     bool warned_dead_code = false;
@@ -1679,7 +1681,7 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
         if (pstmt->base.kind == PN_STMT_RETURN) {
             seen_return = true;
         }
-        vec_append(&list->list, stmt);
+        vec_append(&list->block, stmt);
     }
     if (!seen_return && must_return) {
         PNode* pstmt = pbody;
@@ -1692,7 +1694,7 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
 }
 
 SemaNode* check_fn_body(Analyzer* an, EntityTable* scope, PNode* pbody, Type ret_type) {
-    return check_block(an, scope, pbody, ret_type != TYPE_VOID);
+    return check_block(an, scope, pbody, ret_type != TYPE_VOID, NULL_STR);
 }
 
 Vec_typedef(TypeFnParam);
@@ -1906,8 +1908,9 @@ SemaNode* check_stmt_op_assign(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return assign_stmt;
 }
 
-SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* if_stmt = new_node(an, pstmt, SN_STMT_IF);
+    if_stmt->if_stmt.label = label;
 
     vec_append(&an->control_flow, if_stmt);
     
@@ -1934,8 +1937,9 @@ SemaNode* check_stmt_if(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return if_stmt;
 }
 
-SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* while_loop = new_node(an, pstmt, SN_STMT_WHILE);
+    while_loop->while_loop.label = label;
     
     vec_append(&an->control_flow, while_loop);
 
@@ -1958,8 +1962,9 @@ SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return while_loop;
 }
 
-SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* for_loop = new_node(an, pstmt, SN_STMT_FOR_IN);
+    for_loop->for_range.label = label;
     string iter_var_ident = pnode_span(pstmt->for_in.ident);
 
     if (etbl_search(scope, iter_var_ident)) {
@@ -2006,8 +2011,9 @@ SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return for_loop;
 }
 
-SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* for_loop = new_node(an, pstmt, SN_STMT_FOR_CSTYLE);
+    for_loop->for_cstyle.label = label;
 
     EntityTable* body_scope = etbl_new(scope);
 
@@ -2028,8 +2034,9 @@ SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt) 
     return for_loop;
 }
 
-SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* switch_stmt = new_node(an, pstmt, SN_STMT_SWITCH);
+    switch_stmt->switch_stmt.label = label;
 
     SemaNode* cond = check_expr(an, scope, pstmt->switch_stmt.cond, TYPE_UNKNOWN);
     cond = insert_implicit_cast(an, cond, normalize_untyped(an->m, cond->type));
@@ -2106,10 +2113,11 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
             switch (cfstmt->kind) {
             case SN_STMT_WHILE:
                 if (cfstmt->while_loop.label.raw == 0) break;
-                if (string_eq(cfstmt->while_loop.label, cfstmt->while_loop.label)) {
+                if (string_eq(cfstmt->while_loop.label, label_to_find)) {
                     break_stmt->break_cont_stmt.label = cfstmt;
+                    goto found_associated;
                 }
-                goto found_associated;
+                continue;
             default:
                 UNREACHABLE;
             }
@@ -2127,16 +2135,52 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         }
     }
     
-    report_pnode(true, pstmt, "cannot find associated control-flow statement");
+    report_pnode(true, pstmt->cflow.label, "cannot find matching label");
 
     found_associated:
     return break_stmt;
 }
 
+SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+
+    string label = pnode_span(pstmt->label.ident);
+
+    for_n_reverse(i, an->control_flow.len, 0) {
+        SemaNode* cfstmt = an->control_flow.at[i];
+        switch (cfstmt->kind) {
+        case SN_STMT_WHILE:
+            if (cfstmt->while_loop.label.raw == 0) break;
+            if (string_eq(cfstmt->while_loop.label, label)) {
+                report_pnode(true, pstmt->label.ident, "label already exists");
+            }
+            break;
+        default:
+            UNREACHABLE;
+        }
+    }
+
+    switch (pstmt->label.stmt->base.kind) {
+    case PN_STMT_WHILE: 
+        return check_stmt_while(an, scope, pstmt->label.stmt, label);
+    case PN_STMT_SWITCH:
+        return check_stmt_switch(an, scope, pstmt->label.stmt, label);
+    case PN_STMT_FOR_CSTYLE:
+        return check_stmt_for_cstyle(an, scope, pstmt->label.stmt, label);
+    case PN_STMT_FOR_IN:
+        return check_stmt_for_in(an, scope, pstmt->label.stmt, label);
+    case PN_LIST:
+        return check_block(an, scope, pstmt->label.stmt, false, label);
+        break;
+    default:
+        report_pnode(true, pstmt->label.stmt, "labels can only precede control-flow statements");
+    }
+    return NULL;
+}
+
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
     case PN_LIST:
-        return check_block(an, scope, pstmt, false);
+        return check_block(an, scope, pstmt, false, NULL_STR);
     case PN_STMT_DECL:
         SemaNode* decl = check_var_decl(an, scope, pstmt);
 
@@ -2147,6 +2191,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         }
 
         return decl;
+    case PN_STMT_LABEL:
+        return check_label(an, scope, pstmt);
     case PN_STMT_FN_DECL:
         return check_fn_decl(an, scope, pstmt);
     case PN_STMT_RETURN:
@@ -2165,15 +2211,15 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     case PN_STMT_BREAK:
         return check_stmt_break(an, scope, pstmt);
     case PN_STMT_SWITCH:
-        return check_stmt_switch(an, scope, pstmt);
+        return check_stmt_switch(an, scope, pstmt, NULL_STR);
     case PN_STMT_IF:
-        return check_stmt_if(an, scope, pstmt);
+        return check_stmt_if(an, scope, pstmt, NULL_STR);
     case PN_STMT_WHILE:
-        return check_stmt_while(an, scope, pstmt);
+        return check_stmt_while(an, scope, pstmt, NULL_STR);
     case PN_STMT_FOR_IN:
-        return check_stmt_for_in(an, scope, pstmt);
+        return check_stmt_for_in(an, scope, pstmt, NULL_STR);
     case PN_STMT_FOR_CSTYLE:
-        return check_stmt_for_cstyle(an, scope, pstmt);
+        return check_stmt_for_cstyle(an, scope, pstmt, NULL_STR);
     case PN_DO:
         return check_stmt(an, scope, pstmt->unop.sub);
     case PN_EXPR_CALL:

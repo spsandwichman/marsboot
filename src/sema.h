@@ -391,6 +391,13 @@ typedef struct SemaNode {
         } list;
 
         struct {
+            SemaNode** at;
+            u32 len;
+            u32 cap;
+            string label;
+        } block;
+
+        struct {
             SemaNode* value;
             SemaNode* range;
         } in_range;
@@ -408,6 +415,7 @@ typedef struct SemaNode {
         } slice;
 
         struct {
+            string label; // NULL_STR if none
             SemaNode* cond;
             SemaNode* if_true;
             SemaNode* if_false;

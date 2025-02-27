@@ -1,8 +1,10 @@
 module examples;
 
 fun loop_test(b: bool) {
-    while b {
-        break;
+    L1: while b {
+        L2: while b {
+            break L1;
+        }
     }
 
     // for mut i = 0; i < 10; i += 1 {
