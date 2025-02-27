@@ -821,6 +821,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
             emit_indent();
             sb_append_c(sb, "}\n");
         }
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
         break;
     case SN_STMT_WHILE:
         emit_indent();
@@ -949,7 +952,7 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
     case SN_STMT_BREAK:
         emit_indent();
         sb_append_c(sb, "goto ");
-        emit_expr_id(stmt->break_cont_stmt.label);
+        emit_expr_id(stmt->disrupt_cflow_stmt.label);
         sb_append_c(sb, "_break;\n");
         break;
     case SN_STMT_SWITCH:
@@ -971,7 +974,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
                 c_emit_constval(match->constval);
                 sb_append_c(sb, ": ");
             }
-            sb_append_c(sb, "\n");
+            sb_append_c(sb, "case_");
+            emit_expr_id(case_block);
+            sb_append_c(sb, ":\n");
             indent_level++;
             if (case_block->case_block.block->kind != SN_STMT_BLOCK) {
                 sb_append_c(sb, "{\n");
@@ -987,6 +992,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
 
         emit_indent();
         sb_append_c(sb, "}\n");
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
         break;
     case SN_STMT_BLOCK:
         emit_indent();
@@ -995,6 +1003,9 @@ void c_emit_stmt(Module* m, SemaNode* stmt) {
         for_n(i, 0, stmt->list.len) {
             c_emit_stmt(m, stmt->list.at[i]);
         }
+        emit_indent();
+        emit_expr_id(stmt);
+        sb_append_c(sb, "_break:\n");
         indent_level--;
         emit_indent();
         sb_append_c(sb, "}\n");

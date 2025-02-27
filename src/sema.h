@@ -332,6 +332,8 @@ enum SemaNodeKind {
 
     SN_STMT_BREAK,
     SN_STMT_CONTINUE,
+    SN_STMT_FALLTHROUGH_NEXT,
+    SN_STMT_FALLTHROUGH_TO,
 
     SN_VAR_DECL,
     SN_DEF_DECL,
@@ -457,7 +459,8 @@ typedef struct SemaNode {
 
         struct {
             SemaNode* label;
-        } break_cont_stmt;
+            SemaNode* value; // only used with fallthrough
+        } disrupt_cflow_stmt;
 
         // better to abstract this more
         // when anonymous functions come into play

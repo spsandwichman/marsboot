@@ -918,7 +918,7 @@ SemaNode* check_expr_index(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     access->binop.rhs = indexer;
 
 
-    if (indexer->kind == SN_CONSTVAL) {
+    if (indexer->kind == SN_CONSTVAL && type(indexee->type)->kind == TYPE_ARRAY) {
         bool should_error = indexee->kind == SN_CONSTVAL;
         usize array_len = type(indexee->type)->as_array.len;
         if (type_is_signed_integer(indexer->type)) {
@@ -1665,9 +1665,10 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return, string label) {
     // VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
     SemaNode* list = new_node(an, pbody, SN_STMT_BLOCK);
-    list->block.label = label;
+    vec_append(&an->control_flow, list);
 
     vec_init(&list->block, 8); // spooky shit...
+    list->block.label = label;
 
     bool seen_return = false;
     bool warned_dead_code = false;
@@ -1690,6 +1691,8 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
         }
         report_pnode(true, pstmt, "function with value must return explicitly");
     }
+    vec_pop(&an->control_flow);
+
     return list;
 }
 
@@ -1804,8 +1807,6 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     an->return_type = ret_type;
 
     decl->fn_decl.body = check_fn_body(an, fn_scope, pstmt->fn_decl.stmts, ret_type);
-    
-    // ent->check_status = ENT_CHECK_COMPLETE;
     
     return decl;
 }
@@ -1965,6 +1966,8 @@ SemaNode* check_stmt_while(Analyzer* an, EntityTable* scope, PNode* pstmt, strin
 SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* for_loop = new_node(an, pstmt, SN_STMT_FOR_IN);
     for_loop->for_range.label = label;
+    vec_append(&an->control_flow, for_loop);
+
     string iter_var_ident = pnode_span(pstmt->for_in.ident);
 
     if (etbl_search(scope, iter_var_ident)) {
@@ -2008,12 +2011,16 @@ SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt, stri
         UNREACHABLE;
     }
 
+    vec_pop(&an->control_flow);
+
     return for_loop;
 }
 
 SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* for_loop = new_node(an, pstmt, SN_STMT_FOR_CSTYLE);
     for_loop->for_cstyle.label = label;
+
+    vec_append(&an->control_flow, for_loop);
 
     EntityTable* body_scope = etbl_new(scope);
 
@@ -2031,12 +2038,16 @@ SemaNode* check_stmt_for_cstyle(Analyzer* an, EntityTable* scope, PNode* pstmt, 
     for_loop->for_cstyle.post = check_stmt(an, body_scope, pstmt->for_cstyle.post);
     for_loop->for_cstyle.body = check_stmt(an, body_scope, pstmt->for_cstyle.block);
 
+    vec_pop(&an->control_flow);
+
     return for_loop;
 }
 
 SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt, string label) {
     SemaNode* switch_stmt = new_node(an, pstmt, SN_STMT_SWITCH);
     switch_stmt->switch_stmt.label = label;
+
+    vec_append(&an->control_flow, switch_stmt);
 
     SemaNode* cond = check_expr(an, scope, pstmt->switch_stmt.cond, TYPE_UNKNOWN);
     cond = insert_implicit_cast(an, cond, normalize_untyped(an->m, cond->type));
@@ -2099,8 +2110,90 @@ SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt, stri
 
     vec_destroy(&all_matches);
 
+    vec_pop(&an->control_flow);
+
     // UNREACHABLE;
     return switch_stmt;
+}
+
+SemaNode* check_stmt_continue(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* break_stmt = new_node(an, pstmt, SN_STMT_CONTINUE);
+    
+    if (pstmt->cflow.label) {
+        string label_to_find = pnode_span(pstmt->cflow.label);
+        for_n_reverse(i, an->control_flow.len, 0) {
+            SemaNode* cfstmt = an->control_flow.at[i];
+            switch (cfstmt->kind) {
+            case SN_STMT_WHILE:
+                if (cfstmt->while_loop.label.raw == 0) break;
+                if (string_eq(cfstmt->while_loop.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_FOR_CSTYLE:
+                if (cfstmt->for_cstyle.label.raw == 0) break;
+                if (string_eq(cfstmt->for_cstyle.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_FOR_IN:
+                if (cfstmt->for_range.label.raw == 0) break;
+                if (string_eq(cfstmt->for_range.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_SWITCH:
+                if (cfstmt->switch_stmt.label.raw == 0) break;
+                if (string_eq(cfstmt->switch_stmt.label, label_to_find)) {
+                    report_pnode(true, pstmt->cflow.label, "cannot continue with a switch statement");
+                }
+                continue;
+            case SN_STMT_BLOCK:
+                if (cfstmt->block.label.raw == 0) break;
+                if (string_eq(cfstmt->block.label, label_to_find)) {
+                    report_pnode(true, pstmt->cflow.label, "cannot continue with a statement block");
+                }
+                continue;
+            case SN_STMT_IF:
+                if (cfstmt->if_stmt.label.raw == 0) break;
+                if (string_eq(cfstmt->if_stmt.label, label_to_find)) {
+                    report_pnode(true, pstmt->cflow.label, "cannot continue with an if statement");
+                }
+                continue;
+            default:
+                UNREACHABLE;
+            }
+        }
+    } else {
+        for_n_reverse(i, an->control_flow.len, 0) {
+            SemaNode* cfstmt = an->control_flow.at[i];
+            switch (cfstmt->kind) {
+            case SN_STMT_WHILE:
+            case SN_STMT_FOR_CSTYLE:
+            case SN_STMT_FOR_IN:
+                break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                goto found_associated;
+            case SN_STMT_SWITCH:
+            case SN_STMT_BLOCK:
+            case SN_STMT_IF:
+                continue;
+            default:
+                UNREACHABLE;
+            }
+        }
+    }
+    
+    if (pstmt->cflow.label) {
+        report_pnode(true, pstmt->cflow.label, "label does not exist");
+    } else {
+        report_pnode(true, pstmt, "cannot use continue outside of loop statement");
+    }
+
+    found_associated:
+    return break_stmt;
 }
 
 SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
@@ -2114,7 +2207,42 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
             case SN_STMT_WHILE:
                 if (cfstmt->while_loop.label.raw == 0) break;
                 if (string_eq(cfstmt->while_loop.label, label_to_find)) {
-                    break_stmt->break_cont_stmt.label = cfstmt;
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_FOR_CSTYLE:
+                if (cfstmt->for_cstyle.label.raw == 0) break;
+                if (string_eq(cfstmt->for_cstyle.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_FOR_IN:
+                if (cfstmt->for_range.label.raw == 0) break;
+                if (string_eq(cfstmt->for_range.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_SWITCH:
+                if (cfstmt->switch_stmt.label.raw == 0) break;
+                if (string_eq(cfstmt->switch_stmt.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_BLOCK:
+                if (cfstmt->block.label.raw == 0) break;
+                if (string_eq(cfstmt->block.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
+                    goto found_associated;
+                }
+                continue;
+            case SN_STMT_IF:
+                if (cfstmt->if_stmt.label.raw == 0) break;
+                if (string_eq(cfstmt->if_stmt.label, label_to_find)) {
+                    break_stmt->disrupt_cflow_stmt.label = cfstmt;
                     goto found_associated;
                 }
                 continue;
@@ -2127,15 +2255,25 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
             SemaNode* cfstmt = an->control_flow.at[i];
             switch (cfstmt->kind) {
             case SN_STMT_WHILE:
-                break_stmt->break_cont_stmt.label = cfstmt;
+            case SN_STMT_FOR_CSTYLE:
+            case SN_STMT_FOR_IN:
+            case SN_STMT_SWITCH:
+                break_stmt->disrupt_cflow_stmt.label = cfstmt;
                 goto found_associated;
+            case SN_STMT_BLOCK: // blocks and if can only be broken out of using labels
+            case SN_STMT_IF:
+                continue;
             default:
                 UNREACHABLE;
             }
         }
     }
     
-    report_pnode(true, pstmt->cflow.label, "cannot find matching label");
+    if (pstmt->cflow.label) {
+        report_pnode(true, pstmt->cflow.label, "label does not exist");
+    } else {
+        report_pnode(true, pstmt, "cannot use break outside of control flow statement");
+    }
 
     found_associated:
     return break_stmt;
@@ -2149,17 +2287,43 @@ SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         SemaNode* cfstmt = an->control_flow.at[i];
         switch (cfstmt->kind) {
         case SN_STMT_WHILE:
-            if (cfstmt->while_loop.label.raw == 0) break;
+            if (cfstmt->while_loop.label.raw == 0) continue;
             if (string_eq(cfstmt->while_loop.label, label)) {
                 report_pnode(true, pstmt->label.ident, "label already exists");
             }
-            break;
+            continue;
+        case SN_STMT_FOR_CSTYLE:
+            if (cfstmt->for_cstyle.label.raw == 0) continue;
+            if (string_eq(cfstmt->for_cstyle.label, label)) {
+                report_pnode(true, pstmt->label.ident, "label already exists");
+            }
+            continue;
+        case SN_STMT_FOR_IN:
+            if (cfstmt->for_range.label.raw == 0) continue;
+            if (string_eq(cfstmt->for_range.label, label)) {
+                report_pnode(true, pstmt->label.ident, "label already exists");
+            }
+            continue;
+        case SN_STMT_SWITCH:
+            if (cfstmt->switch_stmt.label.raw == 0) continue;
+            if (string_eq(cfstmt->switch_stmt.label, label)) {
+                report_pnode(true, pstmt->label.ident, "label already exists");
+            }
+            continue;
+        case SN_STMT_BLOCK:
+            if (cfstmt->block.label.raw == 0) continue;
+            if (string_eq(cfstmt->block.label, label)) {
+                report_pnode(true, pstmt->label.ident, "label already exists");
+            }
+            continue;
         default:
             UNREACHABLE;
         }
     }
 
     switch (pstmt->label.stmt->base.kind) {
+    case PN_STMT_IF: 
+        return check_stmt_if(an, scope, pstmt->label.stmt, label);
     case PN_STMT_WHILE: 
         return check_stmt_while(an, scope, pstmt->label.stmt, label);
     case PN_STMT_SWITCH:
@@ -2170,7 +2334,6 @@ SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_stmt_for_in(an, scope, pstmt->label.stmt, label);
     case PN_LIST:
         return check_block(an, scope, pstmt->label.stmt, false, label);
-        break;
     default:
         report_pnode(true, pstmt->label.stmt, "labels can only precede control-flow statements");
     }
@@ -2210,6 +2373,8 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         return check_stmt_op_assign(an, scope, pstmt);
     case PN_STMT_BREAK:
         return check_stmt_break(an, scope, pstmt);
+    case PN_STMT_CONTINUE:
+        return check_stmt_continue(an, scope, pstmt);
     case PN_STMT_SWITCH:
         return check_stmt_switch(an, scope, pstmt, NULL_STR);
     case PN_STMT_IF:
