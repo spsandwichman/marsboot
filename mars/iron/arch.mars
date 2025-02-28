@@ -1,0 +1,5 @@
+module fe;
+
+def TargetSpec = struct {
+    name: []let u8,
+};

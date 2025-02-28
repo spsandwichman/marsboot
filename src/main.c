@@ -13,6 +13,10 @@ char* strconcat(const char* a, const char* b) {
     return out;
 }
 
+struct {
+    bool check_only;
+} flags;
+
 int main(int argc, char** argv) {
 #ifndef _WIN32
     init_signal_handler();
@@ -21,6 +25,13 @@ int main(int argc, char** argv) {
     if (argc == 1) {
         printf("no file provided\n");
         exit(0);
+    }
+
+    for_n(i, 2, argc) {
+        char* flag = argv[i];
+        if (strcmp(flag, "-check") == 0) {
+            flags.check_only = true;
+        }
     }
 
     errno = 0;
@@ -54,6 +65,9 @@ int main(int argc, char** argv) {
     Module* m = sema_check(top);
 
     string c_code = c_gen(m);
+    if (flags.check_only) {
+        return 0;
+    }
     size_t path_len = strlen(argv[1]);
     char* c_path = strcpy(malloc(path_len + 1), argv[1]);
     c_path[path_len - 4] = 'c';

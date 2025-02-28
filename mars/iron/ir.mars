@@ -1,0 +1,58 @@
+module fe;
+
+def Type = enum u8 {
+    Void = 0,
+
+    Bool,
+    I8,
+    I16,
+    I32,
+    I64,
+
+    F16,
+    F32,
+    F64,
+
+    Ptr,
+};
+
+def InstKind = enum u16 {
+    Invalid = 0,
+
+    Bookend,
+    Nop,
+
+    IConst,
+    
+    IAdd,
+    ISub,
+    IMul,
+    IDiv,
+    IMod,
+
+    UAdd,
+    USub,
+    UMul,
+    UDiv,
+    UMod,
+
+    ShiftLeft,
+    ShiftRight,
+    And,
+    Or,
+    Xor,
+
+    Not,
+};
+
+def Inst = struct {
+    kind: InstKind, // u16
+    next, prev: ^mut Inst,
+};
+
+def InstBinop = struct {
+    base: Inst,
+    lhs, rhs: ^mut Inst,
+}
+
+fun #inline to_binop(i: ^mut Inst): ^mut InstBinop { return cast(^mut InstBinop) i; }

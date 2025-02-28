@@ -1,5 +1,9 @@
 module dyntest;
 
+// extern fun use_int(i: int);
+// extern fun use_float(f: float);
+// extern fun use_string(f: []let u8);
+
 fun use_int(i: int) {}
 fun use_float(f: float) {}
 fun use_string(f: []let u8) {}
@@ -9,7 +13,6 @@ fun use_dyn(d: dyn): u64 {
     case int {
         let i = cast(int) d;
         use_int(i);
-        break;
     }
     case float {
         let f = cast(float) d;

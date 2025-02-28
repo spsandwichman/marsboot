@@ -2189,7 +2189,7 @@ SemaNode* check_stmt_continue(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     if (pstmt->cflow.label) {
         report_pnode(true, pstmt->cflow.label, "label does not exist");
     } else {
-        report_pnode(true, pstmt, "cannot use continue outside of loop statement");
+        report_pnode(true, pstmt, "cannot use unlabeled continue outside of loop");
     }
 
     found_associated:
@@ -2257,10 +2257,10 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
             case SN_STMT_WHILE:
             case SN_STMT_FOR_CSTYLE:
             case SN_STMT_FOR_IN:
-            case SN_STMT_SWITCH:
                 break_stmt->disrupt_cflow_stmt.label = cfstmt;
                 goto found_associated;
-            case SN_STMT_BLOCK: // blocks and if can only be broken out of using labels
+            case SN_STMT_SWITCH: // can only be broken out of using labels
+            case SN_STMT_BLOCK: 
             case SN_STMT_IF:
                 continue;
             default:
@@ -2272,11 +2272,22 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     if (pstmt->cflow.label) {
         report_pnode(true, pstmt->cflow.label, "label does not exist");
     } else {
-        report_pnode(true, pstmt, "cannot use break outside of control flow statement");
+        report_pnode(true, pstmt, "cannot use unlabeled break outside of loop");
     }
 
     found_associated:
     return break_stmt;
+}
+
+
+SemaNode* check_stmt_fallthrough(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    SemaNode* fallthrough = new_node(an, pstmt, SN_STMT_FALLTHROUGH_NEXT);    
+    
+    PNode* label = pstmt->fallthrough.first;
+    PNode* value = pstmt->fallthrough.second;
+    if (label->base.kind == PN_IDENT && value == NULL) { // label might be? - wtf why was i yoda writing this
+
+    }
 }
 
 SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {

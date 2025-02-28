@@ -1,5 +1,5 @@
 module mem;
-c
+
 when builtin::arch == .C {
 
     mut heap = Allocator.{
