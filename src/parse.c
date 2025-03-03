@@ -896,8 +896,8 @@ PNode* parse_atom() {
             advance();
             span_extend(atom, -1);
             break;
-        case TOK_EXCLAM:
-            atom = new_node(unop, PN_EXPR_BOOL_NOT);
+        case TOK_NOT_QUESTION:
+            atom = new_node(unop, PN_EXPR_BOOL_NOT_COERCE);
             atom->unop.sub = left;
             span_copy(atom, left);
             advance();
@@ -960,8 +960,7 @@ PNode* parse_unary() {
     // this should be turned into a table, dont care rn tho
     case TOK_AND: kind = PN_EXPR_ADDR; break;
     case TOK_KEYWORD_OFFSETOF: kind = PN_EXPR_OFFSETOF; break;
-    // case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
-    // case TOK_QUESTION: kind = PN_EXPR_BOOL_COERCE; break;
+    case TOK_EXCLAM: kind = PN_EXPR_BOOL_NOT; break;
     case TOK_TILDE: kind = PN_EXPR_BIT_NOT; break;
     case TOK_SUB: kind = PN_EXPR_NEG; break;
     case TOK_ADD: kind = PN_EXPR_POS; break; // does nothing lol

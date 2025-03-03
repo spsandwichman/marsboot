@@ -92,7 +92,7 @@ expr =
     | unary_expr
     ;
 
-unop = '&' | '~' | '-' | '+' | 'sizeof' | 'alignof' | 'typeof' | 'offsetof';
+unop = '&' | '~' | '-' | '+'  | '!' | 'sizeof' | 'alignof' | 'typeof' | 'offsetof';
 
 unary_expr =
     | ('cast' | 'bitcast') '(' expr ')' unary_expr
@@ -131,7 +131,7 @@ atom_expr =
     | atom_expr '.' '{' list<compound_item> '}'
     | atom_expr '^'
     | atom_expr '!'
-    | atom_expr '?'
+    | atom_expr '!?'
     | atom_expr '[' expr ']'
     | atom_expr '[' [expr] ':' [expr] ']'
     | atom_expr '(' list<expr> ')'

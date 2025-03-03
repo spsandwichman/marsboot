@@ -1,6 +1,8 @@
 #ifndef ORBIT_TYPES_H
 #define ORBIT_TYPES_H
 
+#include <stdint.h>
+
 typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -13,14 +15,16 @@ typedef int8_t   i8;
 typedef intptr_t  isize;
 typedef uintptr_t usize;
 #define USIZE_MAX UINTPTR_MAX
+#define USIZE_MIN 0
 #define ISIZE_MAX INTPTR_MAX
+#define ISIZE_MIN INTPTR_MIN
 
 typedef double   f64;
 typedef float    f32;
 typedef _Float16 f16;
 
 typedef _Bool bool;
-#define false ((bool)0)
-#define true ((bool)1)
+#define false (bool)0
+#define true  (bool)1
 
 #endif // ORBIT_TYPES_H

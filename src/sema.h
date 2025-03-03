@@ -14,6 +14,7 @@ enum TypeKind {
 
     TYPE_VOID,
     TYPE_NEVER, // currently unused
+
     TYPE_BOOL,
     TYPE_DYN,
     TYPE_TYPEID,
@@ -130,6 +131,8 @@ Type type_new_ref(Module* m, u8 kind, Type pointee, bool mutable);
 Type type_new_array(Module* m, Type elem_type, usize len);
 Type type_new_alias(Module* m, Type t);
 Type type_new_array_len_unknown(Module* m, Type elem_type);
+Type type_new_enum(Module* m, Type underlying, usize len);
+
 TNode* type(Type t);
 void type_canon_array(Module* m, Type array_len_unknown, usize len);
 // void type_condense();

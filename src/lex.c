@@ -307,6 +307,8 @@ static void tokenize(Lexer* l) {
         case '!':
             if (peek(l, 1) == '=')
                 push_token(TOK_NOT_EQUAL, 2);
+            else if (peek(l, 1) == '?')
+                push_token(TOK_NOT_QUESTION, 2);
             push_simple_token(TOK_EXCLAM);
         case '+':
             if (peek(l, 1) == '=')

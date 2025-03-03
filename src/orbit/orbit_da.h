@@ -1,7 +1,7 @@
 #ifndef ORBIT_DA_H
 #define ORBIT_DA_H
 
-#include "crash.h"
+#include "../crash.h"
 
 // sandwich's shitty """polymorphic""" dynamic array lib V2
 // lean and mean w/ new functions

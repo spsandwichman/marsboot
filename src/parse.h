@@ -36,6 +36,7 @@ typedef da(Token) TokenBuf;
     TOKEN(TOK_COMMA,     ",") \
     TOKEN(TOK_EXCLAM,    "!") \
     TOKEN(TOK_QUESTION,  "?") \
+    TOKEN(TOK_NOT_QUESTION,  "!?") \
     TOKEN(TOK_CARET,     "^") \
     TOKEN(TOK_ADD,       "+") \
     TOKEN(TOK_SUB,       "-") \
@@ -235,6 +236,7 @@ enum PNodeKind {
     PN_EXPR_ADDR,
     PN_EXPR_BOOL_NOT,
     PN_EXPR_BOOL_COERCE,
+    PN_EXPR_BOOL_NOT_COERCE,
     PN_EXPR_BIT_NOT,
     PN_EXPR_NEG,
     PN_EXPR_POS,

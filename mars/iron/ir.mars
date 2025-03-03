@@ -53,6 +53,6 @@ def Inst = struct {
 def InstBinop = struct {
     base: Inst,
     lhs, rhs: ^mut Inst,
-}
+};
 
-fun #inline to_binop(i: ^mut Inst): ^mut InstBinop { return cast(^mut InstBinop) i; }
+// fun #inline to_binop(i: ^mut Inst): ^mut InstBinop { return cast(^mut InstBinop) i; }

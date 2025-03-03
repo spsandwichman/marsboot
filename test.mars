@@ -8,7 +8,7 @@ def LLNode = struct {
 };
 
 fun append_back(list, new: ^mut LLNode) {
-    if list?! || new?! do return;
+    if list!? || new!? do return;
     mut end = list;
     while end.next? {
         end = end.next;
@@ -18,7 +18,7 @@ fun append_back(list, new: ^mut LLNode) {
 }
 
 fun insert_before(node, new: ^mut LLNode) {
-    if node?! || new?! do return;
+    if node!? || new!? do return;
     new.prev = node.prev;
     new.next = node;
     node.prev.next = new;
@@ -26,9 +26,15 @@ fun insert_before(node, new: ^mut LLNode) {
 }
 
 fun insert_after(node, new: ^mut LLNode) {
-    if node?! || new?! do return;
+    if node!? || new!? do return;
     new.next = node.next;
     new.prev = node;
     node.next.prev = new;
     node.next = new;
+}
+
+when true {
+    mut x = 1;
+} else {
+    mut y = 1;
 }

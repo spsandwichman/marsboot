@@ -3,130 +3,139 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef struct Struct_21872dccd10 {
+typedef struct Struct_564177380ef0 {
   int64_t data;
   Ptr next;
   Ptr prev;
-} Struct_21872dccd10;
-typedef void (*Fun_21872dcc390)(Ptr, Ptr);
-typedef void (*Fun_21872dccc10)(Ptr, Ptr);
-typedef void (*Fun_21872dccf50)(Ptr, Ptr);
+} Struct_564177380ef0;
+typedef void (*Fun_5641773814c0)(Ptr, Ptr);
+typedef void (*Fun_564177382500)(Ptr, Ptr);
+typedef void (*Fun_564177383320)(Ptr, Ptr);
 
+extern _Bool test_x;
 void test_append_back(Ptr p_list, Ptr p_new);
 void test_insert_before(Ptr p_node, Ptr p_new);
 void test_insert_after(Ptr p_node, Ptr p_new);
+_Bool test_x = (_Bool)1;
 
 void test_append_back(Ptr p_list, Ptr p_new) {
-  Ptr v21872dce6f0 = p_list;
-  _Bool v21872dcea60 = (_Bool)v21872dce6f0;
-  _Bool v21872dce970 = !v21872dcea60;
-  _Bool v21872dce740 = v21872dce970;
-  if (!v21872dce970) {
-    Ptr v21872dcea10 = p_new;
-    _Bool v21872dceb00 = (_Bool)v21872dcea10;
-    _Bool v21872dceab0 = !v21872dceb00;
-    v21872dce740 = v21872dceab0;
+  Ptr v5641773815f0 = p_list;
+  _Bool v564177381640 = (_Bool)v5641773815f0;
+  _Bool v564177381690 = !v564177381640;
+  _Bool v5641773817d0 = v564177381690;
+  if (!v564177381690) {
+    Ptr v5641773816e0 = p_new;
+    _Bool v564177381730 = (_Bool)v5641773816e0;
+    _Bool v564177381780 = !v564177381730;
+    v5641773817d0 = v564177381780;
   }
 ;
-  if (v21872dce740)
+  if (v5641773817d0)
   {
     return ;
   }
-  Ptr v21872dce7e0 = p_list;
-  Ptr l_end = v21872dce7e0;
+  v5641773815a0_break:
+  Ptr v564177381a40 = p_list;
+  Ptr l_end = v564177381a40;
   while (1) {
-    Ptr v21872dceba0 = l_end;
-    Ptr v21872dced30 = ((Struct_21872dccd10*)v21872dceba0)->next;
-    _Bool v21872dced80 = (_Bool)v21872dced30;
-    if (!v21872dced80) break;
+    Ptr v564177381b30 = l_end;
+    Ptr v564177381ae0 = ((Struct_564177380ef0*)v564177381b30)->next;
+    _Bool v564177381b80 = (_Bool)v564177381ae0;
+    if (!v564177381b80) break;
     {
-      Ptr v21872dce8d0 = l_end;
-      Ptr v21872dce6a0 = ((Struct_21872dccd10*)v21872dce8d0)->next;
-      Ptr v21872dce880 = &l_end;
-      *(Ptr*)v21872dce880 = v21872dce6a0;
+      Ptr v564177381e90 = l_end;
+      Ptr v564177381e40 = ((Struct_564177380ef0*)v564177381e90)->next;
+      Ptr v564177381df0 = &l_end;
+      *(Ptr*)v564177381df0 = v564177381e40;
+      v564177381d00_break:
     }
-    v21872dcec90_continue:
+    v564177381a90_continue:
   }
-  v21872dcec90_break:
-  Ptr v21872e40460 = p_new;
-  Ptr v21872e40aa0 = l_end;
-  Ptr v21872dcec40 = &((Struct_21872dccd10*)v21872e40aa0)->next;
-  *(Ptr*)v21872dcec40 = v21872e40460;
-  Ptr v21872e408c0 = l_end;
-  Ptr v21872e40960 = p_new;
-  Ptr v21872e40910 = &((Struct_21872dccd10*)v21872e40960)->prev;
-  *(Ptr*)v21872e40910 = v21872e408c0;
+  v564177381a90_break:
+  Ptr v564177381fd0 = p_new;
+  Ptr v564177381f80 = l_end;
+  Ptr v564177381f30 = &((Struct_564177380ef0*)v564177381f80)->next;
+  *(Ptr*)v564177381f30 = v564177381fd0;
+  Ptr v564177382140 = l_end;
+  Ptr v5641773820f0 = p_new;
+  Ptr v5641773820a0 = &((Struct_564177380ef0*)v5641773820f0)->prev;
+  *(Ptr*)v5641773820a0 = v564177382140;
+  v564177381500_break:
 }
 
 void test_insert_before(Ptr p_node, Ptr p_new) {
-  Ptr v21872e40f00 = p_node;
-  _Bool v21872e40690 = (_Bool)v21872e40f00;
-  _Bool v21872e405a0 = !v21872e40690;
-  _Bool v21872e406e0 = v21872e405a0;
-  if (!v21872e405a0) {
-    Ptr v21872e40c80 = p_new;
-    _Bool v21872e40fa0 = (_Bool)v21872e40c80;
-    _Bool v21872e40870 = !v21872e40fa0;
-    v21872e406e0 = v21872e40870;
+  Ptr v564177382630 = p_node;
+  _Bool v564177382680 = (_Bool)v564177382630;
+  _Bool v5641773826d0 = !v564177382680;
+  _Bool v564177382810 = v5641773826d0;
+  if (!v5641773826d0) {
+    Ptr v564177382720 = p_new;
+    _Bool v564177382770 = (_Bool)v564177382720;
+    _Bool v5641773827c0 = !v564177382770;
+    v564177382810 = v5641773827c0;
   }
 ;
-  if (v21872e406e0)
+  if (v564177382810)
   {
     return ;
   }
-  Ptr v21872e409b0 = p_node;
-  Ptr v21872e40f50 = ((Struct_21872dccd10*)v21872e409b0)->prev;
-  Ptr v21872e40820 = p_new;
-  Ptr v21872e40be0 = &((Struct_21872dccd10*)v21872e40820)->prev;
-  *(Ptr*)v21872e40be0 = v21872e40f50;
-  Ptr v21872e40cd0 = p_node;
-  Ptr v21872e40a50 = p_new;
-  Ptr v21872e40a00 = &((Struct_21872dccd10*)v21872e40a50)->next;
-  *(Ptr*)v21872e40a00 = v21872e40cd0;
-  Ptr v21872e41090 = p_new;
-  Ptr v21872e40c30 = p_node;
-  Ptr v21872e40230 = ((Struct_21872dccd10*)v21872e40c30)->prev;
-  Ptr v21872e40280 = &((Struct_21872dccd10*)v21872e40230)->next;
-  *(Ptr*)v21872e40280 = v21872e41090;
-  Ptr v21872e40b40 = p_new;
-  Ptr v21872e40af0 = p_node;
-  Ptr v21872e410e0 = &((Struct_21872dccd10*)v21872e40af0)->prev;
-  *(Ptr*)v21872e410e0 = v21872e40b40;
+  v5641773825e0_break:
+  Ptr v564177382b20 = p_node;
+  Ptr v564177382ad0 = ((Struct_564177380ef0*)v564177382b20)->prev;
+  Ptr v564177382a80 = p_new;
+  Ptr v564177382a30 = &((Struct_564177380ef0*)v564177382a80)->prev;
+  *(Ptr*)v564177382a30 = v564177382ad0;
+  Ptr v564177382c60 = p_node;
+  Ptr v564177382c10 = p_new;
+  Ptr v564177382bc0 = &((Struct_564177380ef0*)v564177382c10)->next;
+  *(Ptr*)v564177382bc0 = v564177382c60;
+  Ptr v564177382df0 = p_new;
+  Ptr v564177382da0 = p_node;
+  Ptr v564177382d50 = ((Struct_564177380ef0*)v564177382da0)->prev;
+  Ptr v564177382d00 = &((Struct_564177380ef0*)v564177382d50)->next;
+  *(Ptr*)v564177382d00 = v564177382df0;
+  Ptr v564177382f60 = p_new;
+  Ptr v564177382f10 = p_node;
+  Ptr v564177382ec0 = &((Struct_564177380ef0*)v564177382f10)->prev;
+  *(Ptr*)v564177382ec0 = v564177382f60;
+  v564177382540_break:
 }
 
 void test_insert_after(Ptr p_node, Ptr p_new) {
-  Ptr v21872e40e60 = p_node;
-  _Bool v21872e40eb0 = (_Bool)v21872e40e60;
-  _Bool v21872e42070 = !v21872e40eb0;
-  _Bool v21872e42250 = v21872e42070;
-  if (!v21872e42070) {
-    Ptr v21872e422a0 = p_new;
-    _Bool v21872e41fd0 = (_Bool)v21872e422a0;
-    _Bool v21872e41b20 = !v21872e41fd0;
-    v21872e42250 = v21872e41b20;
+  Ptr v564177383450 = p_node;
+  _Bool v5641773834a0 = (_Bool)v564177383450;
+  _Bool v5641773834f0 = !v5641773834a0;
+  _Bool v564177383630 = v5641773834f0;
+  if (!v5641773834f0) {
+    Ptr v564177383540 = p_new;
+    _Bool v564177383590 = (_Bool)v564177383540;
+    _Bool v5641773835e0 = !v564177383590;
+    v564177383630 = v5641773835e0;
   }
 ;
-  if (v21872e42250)
+  if (v564177383630)
   {
     return ;
   }
-  Ptr v21872e41d50 = p_node;
-  Ptr v21872e42200 = ((Struct_21872dccd10*)v21872e41d50)->next;
-  Ptr v21872e420c0 = p_new;
-  Ptr v21872e41df0 = &((Struct_21872dccd10*)v21872e420c0)->next;
-  *(Ptr*)v21872e41df0 = v21872e42200;
-  Ptr v21872e41850 = p_node;
-  Ptr v21872e41e40 = p_new;
-  Ptr v21872e41f80 = &((Struct_21872dccd10*)v21872e41e40)->prev;
-  *(Ptr*)v21872e41f80 = v21872e41850;
-  Ptr v21872e418a0 = p_new;
-  Ptr v21872e41e90 = p_node;
-  Ptr v21872e42110 = ((Struct_21872dccd10*)v21872e41e90)->next;
-  Ptr v21872e41ee0 = &((Struct_21872dccd10*)v21872e42110)->prev;
-  *(Ptr*)v21872e41ee0 = v21872e418a0;
-  Ptr v21872e423e0 = p_new;
-  Ptr v21872e41800 = p_node;
-  Ptr v21872e42160 = &((Struct_21872dccd10*)v21872e41800)->next;
-  *(Ptr*)v21872e42160 = v21872e423e0;
+  v564177383400_break:
+  Ptr v564177383940 = p_node;
+  Ptr v5641773838f0 = ((Struct_564177380ef0*)v564177383940)->next;
+  Ptr v5641773838a0 = p_new;
+  Ptr v564177383850 = &((Struct_564177380ef0*)v5641773838a0)->next;
+  *(Ptr*)v564177383850 = v5641773838f0;
+  Ptr v564177383a80 = p_node;
+  Ptr v564177383a30 = p_new;
+  Ptr v5641773839e0 = &((Struct_564177380ef0*)v564177383a30)->prev;
+  *(Ptr*)v5641773839e0 = v564177383a80;
+  Ptr v564177383c60 = p_new;
+  Ptr v564177383c10 = p_node;
+  Ptr v564177383bc0 = ((Struct_564177380ef0*)v564177383c10)->next;
+  Ptr v564177383b70 = &((Struct_564177380ef0*)v564177383bc0)->prev;
+  *(Ptr*)v564177383b70 = v564177383c60;
+  Ptr v564177383e20 = p_new;
+  Ptr v564177383dd0 = p_node;
+  Ptr v564177383d80 = &((Struct_564177380ef0*)v564177383dd0)->next;
+  *(Ptr*)v564177383d80 = v564177383e20;
+  v564177383360_break:
 }
 

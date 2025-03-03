@@ -1,11 +1,9 @@
 #include <string.h>
-#include <stdio.h>
 
 #include "vec.h"
-#include "crash.h"
 
 _VecGeneric* _vec_new(size_t stride, size_t initial_cap) {
-    // store the vec statically so it lives after vec_new has been called, 
+    // store the vec statically so it lives after vec_new has been called,
     // long enough for it to be copied out on the caller side
     _Thread_local static _VecGeneric temp;
     _vec_init(&temp, stride, initial_cap);

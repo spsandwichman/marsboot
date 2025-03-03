@@ -43,6 +43,15 @@ Type type_new_record(Module* m, u8 kind, usize len) {
     return t;
 }
 
+Type type_new_enum(Module* m, Type underlying, usize len) {
+    Type t = type_new(m, TYPE_ENUM);
+    type(t)->as_enum.at = malloc(sizeof(TypeEnumVariant) * len);
+    memset(type(t)->as_enum.at, 0, sizeof(TypeEnumVariant) * len);
+    type(t)->as_enum.len = len;
+    type(t)->as_enum.underlying = underlying;
+    return t;
+}
+
 Type type_new_array(Module* m, Type elem_type, usize len) {
     // for_n (i, 0, tg.handles.len) {
         // if (type(i)->kind != TYPE_ARRAY) continue;

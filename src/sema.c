@@ -1236,6 +1236,13 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         expr->type = expr->constval.type;
         expr->constval.i64 = 0;
         break;
+    case PN_EXPR_TRUE:
+    case PN_EXPR_FALSE:
+        expr = new_node(an, pn, SN_CONSTVAL);
+        expr->constval.type = TYPE_BOOL;
+        expr->type = expr->constval.type;
+        expr->constval.bool = pn->base.kind == PN_EXPR_TRUE;
+        break;
     case PN_EXPR_STRING:
         expr = check_expr_string(an, scope, pn, expected);
         break;
@@ -1278,6 +1285,13 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
         break;
     case PN_EXPR_BOOL_COERCE:
         expr = check_expr_bool_coerce(an, scope, pn, expected);
+        break;
+    case PN_EXPR_BOOL_NOT_COERCE:
+        expr = check_expr_bool_coerce(an, scope, pn, expected);
+        SemaNode* not = new_node(an, pn, SN_BOOL_NOT);
+        not->type = TYPE_BOOL;
+        not->unop.sub = expr;
+        expr = not;
         break;
     case PN_EXPR_LESS:
     case PN_EXPR_LESS_EQ:
@@ -1404,7 +1418,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
             if (ent->decl_pnode->decl.kind != DECLKIND_DEF) {
                 report_pnode(true, pn, "symbol is not a compile-time constant");
             }
-            SemaNode* decl = check_var_decl(an, ent->tbl, ent->decl_pnode);
+            SemaNode* _ = check_var_decl(an, ent->tbl, ent->decl_pnode);
         }
         if (ent->check_status == ENT_CHECK_COMPLETE) {
             SemaNode* snode = check_expr_ident(an, scope, pn, TYPE_UNKNOWN);
@@ -1419,6 +1433,21 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
         type(alias)->as_temp_alias.ent = ent;
         type(alias)->as_temp_alias.use = pn;
         return alias;
+    }
+    case PN_TYPE_ENUM: {
+        usize num_variants = 0;
+        Type backing_type = TYPE_I64;
+
+        if (pn->enum_type.type != NULL) {
+            backing_type = ingest_type(an, scope, pn->enum_type.type, false);
+            if (!type_is_integer(backing_type)) {
+                report_pnode(true, pn->enum_type.type, "enum backing type must be an integer");
+            }
+        }
+
+        UNREACHABLE;
+        // Type enum_type = type_new(an->m, );
+
     }
     case PN_TYPE_STRUCT: {
         usize num_fields = 0;
@@ -2288,6 +2317,8 @@ SemaNode* check_stmt_fallthrough(Analyzer* an, EntityTable* scope, PNode* pstmt)
     if (label->base.kind == PN_IDENT && value == NULL) { // label might be? - wtf why was i yoda writing this
 
     }
+
+    TODO("fallthrough");
 }
 
 SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {
@@ -2459,6 +2490,9 @@ Module* sema_check(PNode* top) {
                 UNREACHABLE;
             }
             } break;
+        case PN_STMT_WHEN:
+        case PN_STMT_WHICH: // defer these until later
+            break;
         default:
             UNREACHABLE;
         }
@@ -2466,8 +2500,8 @@ Module* sema_check(PNode* top) {
 
     // check stmts
     for_n (i, 1, top->list.len) {
-        PNode* tls = top->list.at[i];
-        SemaNode* decl = check_stmt(&an, mod->global, tls);
+        PNode* stmt = top->list.at[i];
+        SemaNode* decl = check_stmt(&an, mod->global, stmt);
         da_append(&mod->decls, decl);
     }
 
