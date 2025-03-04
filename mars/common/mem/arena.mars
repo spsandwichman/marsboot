@@ -1,0 +1,17 @@
+module mem;
+
+def ARENA_CHUNK_DATA_SIZE = 1024;
+
+def Arena = struct {
+    start: ^mut ArenaChunkHeader,
+};
+
+def ArenaChunkHeader = struct {
+    next: ^mut ArenaChunkHeader,
+    used: uint,
+    data: [0]u8,
+};
+
+fun arena_create(): Arena {
+    
+}

@@ -13,9 +13,7 @@ char* strconcat(const char* a, const char* b) {
     return out;
 }
 
-struct {
-    bool check_only;
-} flags;
+Flags flags;
 
 int main(int argc, char** argv) {
 #ifndef _WIN32

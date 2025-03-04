@@ -8,7 +8,6 @@ typedef struct SourceFile {
     string text;
 } SourceFile;
 
-
 da_typedef(SourceFile);
 typedef struct Context {
     da(SourceFile) files;
@@ -19,6 +18,13 @@ SourceFile ctx_add_file(string path, string text);
 SourceFile* ctx_find_from_substring(char* raw, usize len);
 
 void emit_report(bool error, string source, string path, string highlight, char* message, va_list varargs);
+
+typedef struct {
+    bool check_only;
+    bool implicit_mut;
+} Flags;
+
+extern Flags flags;
 
 #include "parse.h"
 

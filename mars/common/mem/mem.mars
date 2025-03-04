@@ -39,3 +39,4 @@ fun copy(dst: ^mut, src: ^let, size: uint): ^mut {
     builtin::memory_copy(dest, src, size);
     return dst;
 }
+
