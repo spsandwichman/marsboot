@@ -1,40 +1,44 @@
 module test;
 
-// linked list node
-def LLNode = struct {
-    data: int,
-    next: ^mut LLNode,
-    prev: ^mut LLNode,
+def Foo = enum u8 {
+    A,
+    B,
+    C,
 };
 
-fun append_back(list, new: ^mut LLNode) {
-    if list!? || new!? do return;
-    mut end = list;
-    while end.next? {
-        end = end.next;
-    }
-    end.next = new;
-    new.prev = end;
+fun bar(): Foo {
+    return .B;
 }
 
-fun insert_before(node, new: ^mut LLNode) {
-    if node!? || new!? do return;
-    new.prev = node.prev;
-    new.next = node;
-    node.prev.next = new;
-    node.prev = new;
-}
+// linked list node
+// def LLNode = struct {
+//     data: int,
+//     next: ^mut LLNode,
+//     prev: ^mut LLNode,
+// };
 
-fun insert_after(node, new: ^mut LLNode) {
-    if node!? || new!? do return;
-    new.next = node.next;
-    new.prev = node;
-    node.next.prev = new;
-    node.next = new;
-}
+// fun append_back(list, new: ^mut LLNode) {
+//     if list!? || new!? do return;
+//     mut end = list;
+//     while end.next? {
+//         end = end.next;
+//     }
+//     end.next = new;
+//     new.prev = end;
+// }
 
-when true {
-    mut x = 1;
-} else {
-    mut y = 1;
-}
+// fun insert_before(node, new: ^mut LLNode) {
+//     if node!? || new!? do return;
+//     new.prev = node.prev;
+//     new.next = node;
+//     node.prev.next = new;
+//     node.prev = new;
+// }
+
+// fun insert_after(node, new: ^mut LLNode) {
+//     if node!? || new!? do return;
+//     new.next = node.next;
+//     new.prev = node;
+//     node.next.prev = new;
+//     node.next = new;
+// }

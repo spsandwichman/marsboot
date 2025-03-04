@@ -1,7 +1,7 @@
 module fe;
 
 def Type = enum u8 {
-    Void = 0,
+    Void,
 
     Bool,
     I8,
@@ -17,7 +17,7 @@ def Type = enum u8 {
 };
 
 def InstKind = enum u16 {
-    Invalid = 0,
+    Invalid,
 
     Bookend,
     Nop,
@@ -46,7 +46,7 @@ def InstKind = enum u16 {
 };
 
 def Inst = struct {
-    kind: InstKind, // u16
+    kind: InstKind,
     next, prev: ^mut Inst,
 };
 
@@ -55,4 +55,6 @@ def InstBinop = struct {
     lhs, rhs: ^mut Inst,
 };
 
-// fun #inline to_binop(i: ^mut Inst): ^mut InstBinop { return cast(^mut InstBinop) i; }
+fun to_binop(i: ^mut Inst): ^mut InstBinop { 
+    return cast(^mut InstBinop) i; 
+}

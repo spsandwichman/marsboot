@@ -353,7 +353,17 @@ void const_eval_expr_bit_binop(Analyzer* m, SemaNode* n, u8 kind) {
 ConstVal constval_cast(ConstVal v, Type to) {
     ConstVal n = {0};
     n.type = to;
-    Type from = type_unwrap_distinct(v.type);
+    Type from = v.type;
+    while (true) switch (type(from)->kind) {
+    case TYPE_DISTINCT:
+        from = type(from)->as_distinct;
+        break;
+    case TYPE_ENUM:
+        from = type(from)->as_enum.underlying;
+    default:
+        goto cast_shit;
+    }
+    cast_shit:
 
     switch (to) {
     case TYPE_I8:  cast(i8,  v, from); break;
@@ -1036,6 +1046,37 @@ SemaNode* check_expr_call(Analyzer* an, EntityTable* scope, PNode* pn, Type expe
     return call;
 }
 
+SemaNode* check_expr_implicit_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
+    SemaNode* expr = new_node(an, pn, SN_CONSTVAL);
+
+    string selector = pnode_span(pn->unop.sub);
+
+    switch (type(expected)->kind) {
+    case TYPE_ENUM: {
+        Type selector_type = expected;
+        selector_type = type_unwrap_distinct(selector_type);
+        if (type(selector_type)->kind == TYPE_ENUM) {
+            for_n(i, 0, type(selector_type)->as_enum.len) {
+                TypeEnumVariant variant = type(selector_type)->as_enum.at[i];
+                if (string_eq(variant.name, selector)) {
+                    expr->kind = SN_CONSTVAL;
+                    expr->type = expr->constval.type = selector_type;
+                    expr->constval.i64 = variant.value;
+                    return expr;
+                }
+            }
+            string typestr = type_gen_string(selector_type, true);
+            report_pnode(true, pn, "enum '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
+        }
+    }
+    default:
+        report_pnode(true, pn, "cannot infer enum type");
+        UNREACHABLE;
+    }
+
+    return expr;
+}
+
 SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* expr = new_node(an, pn, SN_SELECTOR);
 
@@ -1080,6 +1121,24 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
             report_pnode(true, pn, "type '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
         }
         break;
+    case TYPE_TYPEID:
+        if (selectee->kind == SN_CONSTVAL && selectee->constval.type == TYPE_TYPEID) {
+            Type selector_type = selectee->constval.typeid;
+            selector_type = type_unwrap_distinct(selector_type);
+            if (type(selector_type)->kind == TYPE_ENUM) {
+                for_n(i, 0, type(selector_type)->as_enum.len) {
+                    TypeEnumVariant variant = type(selector_type)->as_enum.at[i];
+                    if (string_eq(variant.name, selector)) {
+                        expr->kind = SN_CONSTVAL;
+                        expr->type = expr->constval.type = selector_type;
+                        expr->constval.i64 = variant.value;
+                        return expr;
+                    }
+                }
+                string typestr = type_gen_string(selector_type, true);
+                report_pnode(true, pn, "enum '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
+            }
+        }
     default:
         string typestr = type_gen_string(t, true);
         report_pnode(true, pn, "type '"str_fmt"' has no field '"str_fmt"'", str_arg(typestr), str_arg(selector));
@@ -1108,7 +1167,7 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
     return expr;
 }
 
-#define copy_to_heap(V) memcpy(malloc(sizeof(V)), &V, sizeof(V))
+// #define copy_to_heap(V) memcpy(malloc(sizeof(V)), &V, sizeof(V))
 
 SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type expected, bool ignore_given_type) {
     if (pn->compound.type && !ignore_given_type) {
@@ -1312,6 +1371,9 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_EXPR_ADDR:
         expr = check_expr_addrof(an, scope, pn, expected);
         break;
+    case PN_EXPR_IMPLICIT_SELECTOR:
+        expr = check_expr_implicit_selector(an, scope, pn, expected);
+        break;
     case PN_EXPR_SELECTOR:
         expr = check_expr_selector(an, scope, pn, expected);
         break;
@@ -1444,10 +1506,32 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
                 report_pnode(true, pn->enum_type.type, "enum backing type must be an integer");
             }
         }
+        Type enum_type = type_new_enum(an->m, backing_type, pn->enum_type.variants->list.len);
+        type(enum_type)->as_enum.len = 0;
 
-        UNREACHABLE;
-        // Type enum_type = type_new(an->m, );
+        isize current_value = 0;
+        for_n(i, 0, pn->enum_type.variants->list.len) {
+            PNode* pn_variant = pn->enum_type.variants->list.at[i];
+            TypeEnumVariant* variant = &type(enum_type)->as_enum.at[i];
+            
+            if (pn_variant->base.kind == PN_IDENT) {
+                // simple
+                string variant_name = pnode_span(pn_variant);
+                for_n(j, 0, i) {
+                    TypeEnumVariant* variant = &type(enum_type)->as_enum.at[j];
+                    if (string_eq(variant->name, variant_name)) {
+                        report_pnode(true, pn_variant, "variant name already exists");
+                    }
+                }
+                variant->name = pnode_span(pn_variant);
+                variant->value = current_value++;
+            } else {
+                TODO("assigned");
+            }
+            type(enum_type)->as_enum.len++;
+        }
 
+        return enum_type;
     }
     case PN_TYPE_STRUCT: {
         usize num_fields = 0;

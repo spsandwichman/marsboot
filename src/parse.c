@@ -680,7 +680,9 @@ PNode* parse_atom_terminal(bool allow_none) {
     case TOK_KEYWORD_ENUM:
         term = new_node(enum_type, PN_TYPE_ENUM);
         advance();
-        term->enum_type.type = parse_expr();
+        if (!match(TOK_OPEN_BRACE)) {
+            term->enum_type.type = parse_expr();
+        }
         expect(TOK_OPEN_BRACE);
         PNodeList items = list_new(8);
         advance();
@@ -694,6 +696,7 @@ PNode* parse_atom_terminal(bool allow_none) {
                 break;
             }
         }
+        term->enum_type.variants = list_solidify(items);
         expect(TOK_CLOSE_BRACE);
         span_extend(term,0);
         advance();

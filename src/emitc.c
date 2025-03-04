@@ -147,6 +147,7 @@ void emit_typedef(Module* m, TNode* t) {
     case TYPE_SLICE:
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE:
+    case TYPE_ENUM:
         return;
     }
 
@@ -308,6 +309,7 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_U64:
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE:
+    case TYPE_ENUM:
         sb_printf(sb, "%llullu", cv.i64);
         break;
     case TYPE_BOOL:
