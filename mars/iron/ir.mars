@@ -1,9 +1,10 @@
 module fe;
 
-def Type = enum u8 {
-    Void,
+def Type = u16;
+def TypeKind = enum Type {
+    VOID = 0,
 
-    Bool,
+    BOOL,
     I8,
     I16,
     I32,
@@ -13,48 +14,249 @@ def Type = enum u8 {
     F32,
     F64,
 
-    Ptr,
+    PTR,
+
+    // _SIMPLE_END,
+    // RECORD,
+    // ARRAY,
 };
 
 def InstKind = enum u16 {
-    Invalid,
+    NOP = 0,
 
-    Bookend,
-    Nop,
+    // Bookend
+    BOOKEND,
 
-    IConst,
+    // Const
+    CONST,
     
-    IAdd,
-    ISub,
-    IMul,
-    IDiv,
-    IMod,
+    // Binop
+    ADD, SUB,
+    IMUL, IDIV, IMOD, UMUL, UDIV, UMOD,
+    SHL, ASR, LSR, AND, OR, XOR,
+    LT, LE, GT, GE, EQ, NE,
 
-    UAdd,
-    USub,
-    UMul,
-    UDiv,
-    UMod,
+    // Unop
+    NEG,
+    NOT,
 
-    ShiftLeft,
-    ShiftRight,
-    And,
-    Or,
-    Xor,
+    /*
+        Iron has three kinds of memory operations:
+            plain: these operate the way you expect them to. loads and stores 
+            are able to be optimized out if they have no effect on the 
+            immediate operation of the program.
 
-    Not,
+            volatile: these cannot be merged or optimized out whatsoever.
+            a plain operations can be merged *into* volatile operations, 
+            but the volatile operation must remain without being moved or 
+            modified.
+
+            unique: a kind of "relaxed" volatile. unique operations can be 
+            removed  if they have no effect. for example, a unique load with 
+            no use can be removed. however, like volatile, a plain operations 
+            can be merged *into* unique operations, but the unique operation 
+            must remain without being moved or modified.
+    */
+
+    // Load
+    LOAD,
+    LOAD_VOLATILE,
+    LOAD_UNIQUE,
+
+    // Store
+    STORE,
+    STORE_VOLATILE,
+    STORE_UNIQUE,
+
+    // Inst
+    CASCADE_VOLATILE,
+    CASCADE_UNIQUE, // pretty much just for jackal's BARRIER lmao
 };
 
 def Inst = struct {
     kind: InstKind,
+    type: Type,
     next, prev: ^mut Inst,
 };
 
+def InstBookend = struct {
+    block: ^mut Block,
+};
+
+def InstUnop = struct {
+    sub: ^mut Inst,
+};
+
 def InstBinop = struct {
-    base: Inst,
     lhs, rhs: ^mut Inst,
 };
 
-fun to_binop(i: ^mut Inst): ^mut InstBinop { 
-    return cast(^mut InstBinop) i; 
+def InstConst = struct {
+    val: u64,  
+};
+
+def InstLoad = struct {
+    ptr: ^mut Inst,
+};
+
+def InstStore = struct {
+    ptr: ^mut Inst,
+    val: ^mut Inst,
+};
+
+fun alloc(f: ^mut Function, size: uint): ^mut { return null; }
+
+fun append(b: ^mut Block, inst: ^mut Inst): ^mut Inst {
+    if b.start.kind == .BOOKEND {
+        let bookend = b.start;
+        inst.prev = bookend;
+        inst.next = bookend;
+        bookend.next = inst;
+        bookend.prev = inst;
+
+        b.start = inst;
+        b.end = inst;
+    } else {
+        inst.prev = b.end;
+        inst.next = b.end.next;
+        b.end.next.prev = inst;
+        b.end.next = inst;
+    }
+    return inst;
 }
+
+// inserts new before ref
+fun insert_before(new, ref: ^mut Inst): ^mut Inst {
+    if ref.prev.kind == .BOOKEND {
+        let bookend = cast(^mut InstBookend) ref.prev;
+        bookend.block.start = new;
+    }
+    new.next = ref;
+    new.prev = ref.prev;
+    ref.prev.next = new;
+    ref.prev = new;
+
+
+    return new;
+}
+
+// inserts new after ref
+fun insert_after(new, ref: ^mut Inst): ^mut Inst {
+    if ref.prev.kind == .BOOKEND {
+        let bookend = cast(^mut InstBookend) ref.next;
+        bookend.block.end = new;
+    }
+    new.prev = ref;
+    new.next = ref.next;
+    ref.next.prev = new;
+    ref.next = new;
+
+    return new;
+}
+
+fun inst_base(f: ^mut Function, kind: InstKind, type: Type): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst));
+    inst.type = type;
+    inst.kind = kind;
+    return inst;
+}
+
+fun from_extra(extra: ^mut): ^mut Inst {
+    return extra - sizeof(Inst);
+}
+
+// the to_* functions should always be inlined
+// TODO make a #inline tag or keyword
+
+fun inst_bookend(f: ^mut Function, block: ^mut Block): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst) + sizeof(InstBookend));
+    inst.kind = .BOOKEND;
+    mut bookend = to_bookend(inst);
+    bookend.block = block;
+    return inst;
+}
+
+fun to_bookend(inst: ^mut Inst): ^mut InstBookend { 
+    return cast(^mut InstBookend) inst + sizeof(Inst); 
+}
+
+fun inst_unop(f: ^mut Function, kind: InstKind, type: Type, sub: ^mut Inst): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst) + sizeof(InstUnop));
+    inst.type = type;
+    inst.kind = kind;
+    mut unop = to_unop(inst);
+    unop.sub = sub;
+    return inst;
+}
+
+fun to_unop(inst: ^mut Inst): ^mut InstUnop { 
+    return cast(^mut InstUnop) inst + sizeof(Inst); 
+}
+
+fun inst_binop(f: ^mut Function, kind: InstKind, type: Type, lhs, rhs: ^mut Inst): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst) + sizeof(InstBinop));
+    inst.type = type;
+    inst.kind = kind;
+
+    mut binop = to_binop(inst);
+    binop.lhs = lhs;
+    binop.rhs = rhs;
+    return inst;
+}
+fun to_binop(inst: ^mut Inst): ^mut InstBinop { 
+    return cast(^mut InstBinop) inst + sizeof(Inst); 
+}
+
+fun inst_load(f: ^mut Function, kind: InstKind, type: Type, ptr: ^mut Inst): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst) + sizeof(InstLoad));
+    inst.type = type;
+    inst.kind = kind;
+
+    mut load = to_load(inst);
+    load.ptr = ptr;
+    return inst;
+}
+fun to_load(inst: ^mut Inst): ^mut InstLoad { 
+    return cast(^mut InstLoad) inst + sizeof(Inst); 
+}
+
+fun inst_store(f: ^mut Function, kind: InstKind, type: Type, ptr, val: ^mut Inst): ^mut Inst {
+    mut inst: ^mut Inst = alloc(f, sizeof(Inst) + sizeof(InstStore));
+    inst.type = type;
+    inst.kind = kind;
+
+    mut store = to_store(inst);
+    store.ptr = ptr;
+    store.val = val;
+    return inst;
+}
+fun to_store(inst: ^mut Inst): ^mut InstStore { 
+    return cast(^mut InstStore) inst + sizeof(Inst); 
+}
+
+def Block = struct {
+    start, end: ^mut Inst,
+    next_block: ^mut Block,
+    function: ^mut Function,
+};
+
+fun new_block(f: ^mut Function): ^mut Block {
+    mut block: ^mut Block = alloc(f, sizeof(Block));
+    mut bookend = inst_bookend(f, block);
+    block.start = null;
+    block.end = bookend;
+    block.function = f;
+    return block;
+}
+
+def Function = struct {
+    symbol: ^mut Symbol,
+    first_block: ^mut Block,
+};
+
+def Symbol = struct {
+    name: []let u8,
+    // to: union {
+    //     func: ^mut Function,
+    // },
+};

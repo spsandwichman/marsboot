@@ -286,6 +286,11 @@ void c_emit_constval(ConstVal cv) {
     sb_append_c(sb, "(");
     emit_typename(type(cv.type));
     sb_append_c(sb, ")");
+
+    if (type(cv.type)->kind == TYPE_ENUM) {
+        cv.type = type(cv.type)->as_enum.underlying;
+    }
+
     if (cv.is_zero) {
         if ((type(cv.type)->kind == TYPE_ARRAY && type(cv.type)->as_array.len == 0) ||
             (type(cv.type)->kind == TYPE_STRUCT && type(cv.type)->as_record.len == 0)) {
@@ -309,7 +314,6 @@ void c_emit_constval(ConstVal cv) {
     case TYPE_U64:
     case TYPE_POINTER:
     case TYPE_BOUNDLESS_SLICE:
-    case TYPE_ENUM:
         sb_printf(sb, "%llullu", cv.i64);
         break;
     case TYPE_BOOL:
@@ -460,6 +464,9 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
         c_calculate_expr(m, expr->binop.rhs);
 
         decl_begin(expr);
+        sb_append_c(sb, "(");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, ")(");
         emit_expr_id(expr->binop.lhs);
         switch (expr->kind) {
         case SN_EQ:  sb_append_c(sb, " == "); break;
@@ -480,18 +487,23 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             UNREACHABLE;
         }
         emit_expr_id(expr->binop.rhs);
+        sb_append_c(sb, ")");
         break;
     case SN_NEG:
     case SN_BOOL_NOT:
         c_calculate_expr(m, expr->unop.sub);
 
         decl_begin(expr);
+        sb_append_c(sb, "(");
+        emit_typename(type(expr->type));
+        sb_append_c(sb, ")(");
         switch (expr->kind) {
         case SN_NEG:      sb_append_c(sb, "-"); break;
         case SN_BOOL_NOT: sb_append_c(sb, "!"); break;
         default:
             UNREACHABLE;
         }
+        sb_append_c(sb, ")");
         emit_expr_id(expr->unop.sub);
         break;
     case SN_BOOL_OR:

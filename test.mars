@@ -1,44 +1,11 @@
 module test;
 
-def Foo = enum u8 {
-    A,
-    B,
-    C,
-};
-
-fun bar(): Foo {
-    return .B;
+fun some_int(x: uint): int {
+    return cast(int) x + 10;
 }
 
-// linked list node
-// def LLNode = struct {
-//     data: int,
-//     next: ^mut LLNode,
-//     prev: ^mut LLNode,
-// };
-
-// fun append_back(list, new: ^mut LLNode) {
-//     if list!? || new!? do return;
-//     mut end = list;
-//     while end.next? {
-//         end = end.next;
-//     }
-//     end.next = new;
-//     new.prev = end;
-// }
-
-// fun insert_before(node, new: ^mut LLNode) {
-//     if node!? || new!? do return;
-//     new.prev = node.prev;
-//     new.next = node;
-//     node.prev.next = new;
-//     node.prev = new;
-// }
-
-// fun insert_after(node, new: ^mut LLNode) {
-//     if node!? || new!? do return;
-//     new.next = node.next;
-//     new.prev = node;
-//     node.next.prev = new;
-//     node.next = new;
-// }
+fun some_uint(): uint {
+    let x: uint = 10;
+    let y = some_int(x) + 1;
+    return x + 1;
+}

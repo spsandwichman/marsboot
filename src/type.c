@@ -589,20 +589,19 @@ isize type_binary_implicit_cast_priority(Type t) {
         return 6;
     case TYPE_I64:
     case TYPE_U64:
-    case TYPE_F64:
         return 4;
     case TYPE_I32:
     case TYPE_U32:
-    case TYPE_F32:
         return 3;
     case TYPE_I16:
     case TYPE_U16:
-    case TYPE_F16:
         return 2;
     case TYPE_I8:
     case TYPE_U8:
+    case TYPE_UNTYPED_INT:
         return 1;
     default:
+        return 0;
         UNREACHABLE;
     }
 }
@@ -645,10 +644,15 @@ bool type_is_equalable(Type t) {
     case TYPE_F64:
     case TYPE_UNTYPED_INT:
     case TYPE_UNTYPED_FLOAT:
+    case TYPE_ENUM:
         return true;
     default:
         return false;
     }
+}
+
+bool type_is_pointer(Type t) {
+    return type(t)->kind == TYPE_POINTER || type(t)->kind == TYPE_BOUNDLESS_SLICE;
 }
 
 bool type_is_numeric(Type t) {
@@ -668,6 +672,7 @@ bool type_is_numeric(Type t) {
     case TYPE_F64:
     case TYPE_UNTYPED_INT:
     case TYPE_UNTYPED_FLOAT:
+    case TYPE_ENUM:
         return true;
     default:
         return false;
@@ -973,6 +978,10 @@ usize type_calculate_size(Type t) {
     case TYPE_F64: return 8;
     case TYPE_SLICE: case TYPE_DYN: return 16;
 
+    case TYPE_ENUM:
+        return type_calculate_size(type(t)->as_enum.underlying);
+    case TYPE_ARRAY:
+        return type_calculate_size(type(t)->as_array.sub) * type(t)->as_array.len;
     case TYPE_STRUCT:
         if (type(t)->as_record.size != 0) {
             return type(t)->as_record.size;
@@ -1011,6 +1020,12 @@ usize type_calculate_align(Type t) {
     case TYPE_F64:
     case TYPE_SLICE: 
     case TYPE_DYN: return 8;
+
+    case TYPE_ENUM:
+        return type_calculate_align(type(t)->as_enum.underlying);
+
+    case TYPE_ARRAY:
+        return type_calculate_align(type(t)->as_array.sub);
 
     case TYPE_STRUCT:
     case TYPE_UNION:

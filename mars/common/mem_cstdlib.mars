@@ -2,7 +2,7 @@ module mem;
 
 when builtin::arch == .C {
 
-    mut heap = Allocator.{
+    mut heap = Allocator .{
         _heap_allocator_fun,
         null,
     };
