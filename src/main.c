@@ -5,14 +5,6 @@
 #include "sema.h"
 #include "emitc.h"
 
-char* strconcat(const char* a, const char* b) {
-    char* out = malloc(strlen(a) + strlen(b) + 1);
-    memcpy(out, a, strlen(a));
-    memcpy(out + strlen(a), b, strlen(b));
-    out[strlen(a) + strlen(b)] = '\0';
-    return out;
-}
-
 Flags flags;
 
 int main(int argc, char** argv) {
@@ -53,7 +45,7 @@ int main(int argc, char** argv) {
 
     TokenBuf tb = lex_string(str(buf), str(argv[1]));
     da_shrink(&tb);
-    
+
     PNode* top = parse_file(tb, NULL_STR);
     string module_name = pnode_span(top->list.at[0]->module_decl.ident);
 

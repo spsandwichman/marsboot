@@ -1874,6 +1874,69 @@ SemaNode* check_fn_body(Analyzer* an, EntityTable* scope, PNode* pbody, Type ret
 
 Vec_typedef(TypeFnParam);
 
+Type check_fn_prototype(Analyzer* an, EntityTable* fn_scope, PNode* proto) {
+    // scan prototype and create a function type
+    Vec(TypeFnParam) params = vec_new(TypeFnParam, 8);
+    PNode* param_list = proto->fnproto.param_list;
+
+    // TODO extract into general param_list ingest
+    for_n (i, 0, param_list->list.len) {
+        PNode* items = param_list->list.at[i];
+        
+        Type t = ingest_type(an, fn_scope, items->item.type, false);
+
+        if (items->item.ident->base.kind == PN_IDENT) {
+            string name = pnode_span(items->item.ident);
+            if (etbl_search(fn_scope, name)) {
+                report_pnode(true, items->item.ident, "symbol already declared");
+            }
+            // warn if the parameter name is the same as a local name
+            if (etbl_search(fn_scope, name)) {
+                report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
+            }
+            TypeFnParam p = { .name = name, .type = t };
+            vec_append(&params, p);
+            
+            Entity* p_ent = etbl_put(fn_scope, name);
+            p_ent->storage = STORAGE_PARAMETER;
+            p_ent->type = t;
+            p_ent->check_status = ENT_CHECK_COMPLETE;
+        } else {
+            for_n(i, 0, items->item.ident->list.len) {
+                string name = pnode_span(items->item.ident->list.at[i]);
+                if (etbl_search(fn_scope, name)) {
+                    report_pnode(true, items->item.ident->list.at[i], "symbol already declared");
+                }
+                // warn if the parameter name is the same as a local name
+                if (etbl_search(fn_scope, name)) {
+                    report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
+                }
+                TypeFnParam p = { .name = name, .type = t };
+                vec_append(&params, p);
+
+                Entity* p_ent = etbl_put(fn_scope, name);
+                p_ent->storage = STORAGE_PARAMETER;
+                p_ent->type = t;
+                p_ent->check_status = ENT_CHECK_COMPLETE;
+            }
+        }
+    }
+
+    Type ret_type;
+    if (proto->fnproto.ret_type) {
+        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type, false);
+    } else {
+        ret_type = TYPE_VOID;
+    }
+
+    Type t = type_new(an->m, TYPE_FUNCTION);
+    type(t)->as_function.params.at = params.at;
+    type(t)->as_function.params.len = params.len;
+    type(t)->as_function.ret_type = ret_type;
+
+    return t;
+}
+
 SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     PNode* proto = pstmt->fn_decl.proto;
     PNode* body = pstmt->fn_decl.stmts;
@@ -1909,81 +1972,61 @@ SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     // new scope for the function scope
     EntityTable* fn_scope = etbl_new(an->m->global); // because you cant capture local variables 
 
-    // scan prototype and create a function type
-    Vec(TypeFnParam) params = vec_new(TypeFnParam, 8);
-    PNode* param_list = proto->fnproto.param_list;
-
-    // TODO extract into general param_list ingest
-    for_n (i, 0, param_list->list.len) {
-        PNode* items = param_list->list.at[i];
-        
-        Type t = ingest_type(an, fn_scope, items->item.type, false);
-
-        if (items->item.ident->base.kind == PN_IDENT) {
-            string name = pnode_span(items->item.ident);
-            if (etbl_search(fn_scope, name)) {
-                report_pnode(true, items->item.ident, "symbol already declared");
-            }
-            // warn if the parameter name is the same as a local name
-            if (etbl_search(scope, name)) {
-                report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
-            }
-            TypeFnParam p = { .name = name, .type = t };
-            vec_append(&params, p);
-            
-            Entity* p_ent = etbl_put(fn_scope, name);
-            p_ent->storage = STORAGE_PARAMETER;
-            p_ent->type = t;
-            p_ent->check_status = ENT_CHECK_COMPLETE;
-        } else {
-            for_n(i, 0, items->item.ident->list.len) {
-                string name = pnode_span(items->item.ident->list.at[i]);
-                if (etbl_search(fn_scope, name)) {
-                    report_pnode(true, items->item.ident->list.at[i], "symbol already declared");
-                }
-                // warn if the parameter name is the same as a local name
-                if (etbl_search(scope, name)) {
-                    report_pnode(false, items->item.ident->list.at[i], "parameter does not capture local; consider renaming");
-                }
-                TypeFnParam p = { .name = name, .type = t };
-                vec_append(&params, p);
-
-                Entity* p_ent = etbl_put(fn_scope, name);
-                p_ent->storage = STORAGE_PARAMETER;
-                p_ent->type = t;
-                p_ent->check_status = ENT_CHECK_COMPLETE;
-            }
-        }
-    }
-
-    Type ret_type;
-    if (proto->fnproto.ret_type) {
-        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type, false);
-    } else {
-        ret_type = TYPE_VOID;
-    }
-
-    Type t = type_new(an->m, TYPE_FUNCTION);
-    type(t)->as_function.params.at = params.at;
-    type(t)->as_function.params.len = params.len;
-    type(t)->as_function.ret_type = ret_type;
-
     decl->fn_decl.entity = ent;
     decl->fn_decl.scope = fn_scope;
 
     ent->check_status = ENT_CHECK_COMPLETE;
     ent->decl = decl;
-    ent->type = t;
+    ent->type = check_fn_prototype(an, fn_scope, proto);
 
     an->current_fn = ent;
     Type previous_ret_type = an->return_type;
-    an->return_type = ret_type;
+    an->return_type = type(ent->type)->as_function.ret_type;
 
-    decl->fn_decl.body = check_fn_body(an, fn_scope, pstmt->fn_decl.stmts, ret_type);
+    decl->fn_decl.body = check_fn_body(an, fn_scope, pstmt->fn_decl.stmts, an->return_type);
     
     an->return_type = previous_ret_type;
 
     return decl;
+}
+
+SemaNode* check_extern_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
+    bool is_global_decl = scope == an->m->global;
+
+    switch (pstmt->unop.sub->base.kind) {
+    case PN_FNPROTO: {
+        PNode* proto = pstmt->unop.sub;
+        PNode* ident = proto->fnproto.ident;
+        string name = pnode_span(ident);
+        Entity* ent = etbl_search(scope, name);
+        if (is_global_decl) {
+            // this is guaranteed to exist    
+            assert(ent);
+            if (ent->decl_pnode == pstmt) {
+                if (ent->check_status == ENT_CHECK_COMPLETE) {
+                    return NULL;
+                }
+            } else {
+                report_pnode(true, ident, "symbol already declared");
+            }
+        } else if (ent) {
+            report_pnode(true, ident, "symbol already declared");
+        }
+        if (!ent) {
+            ent = etbl_put(scope, name);
+        }
+          // new scope for the function scope
+        EntityTable* fn_scope = etbl_new(an->m->global);
+
+        ent->storage = STORAGE_EXTERN_FUNCTION;
+        ent->type = check_fn_prototype(an, fn_scope, proto);
+        ent->decl = NULL;
+
+        } break;
+    default:
+        UNREACHABLE;
+    }
+    return NULL;
 }
 
 SemaNode* check_stmt_return(Analyzer* an, EntityTable* scope, PNode* pstmt) {
@@ -2454,7 +2497,6 @@ SemaNode* check_stmt_break(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return break_stmt;
 }
 
-
 SemaNode* check_stmt_fallthrough(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     SemaNode* fallthrough = new_node(an, pstmt, SN_STMT_FALLTHROUGH_NEXT);    
     
@@ -2540,8 +2582,9 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
                 report_pnode(true, decl->pnode->decl.ident, "type has infinite size");
             }
         }
-
         return decl;
+    case PN_STMT_EXTERN_DECL:
+        return check_extern_decl(an, scope, pstmt);
     case PN_STMT_LABEL:
         return check_label(an, scope, pstmt);
     case PN_STMT_FN_DECL:
@@ -2630,6 +2673,7 @@ Module* sema_check(PNode* top) {
                 PNode* ident = decl->fnproto.ident;
                 string ident_name = pnode_span(ident);
                 Entity* ent = etbl_put(mod->global, ident_name);
+                ent->decl_pnode = tls;
                 ent->check_status = ENT_CHECK_NONE;
                 ent->storage = STORAGE_EXTERN_FUNCTION;
                 ent->tbl = mod->global;
@@ -2646,11 +2690,15 @@ Module* sema_check(PNode* top) {
         }
     }
 
+    // check when/which somewhere in here.........
+
     // check stmts
     for_n (i, 1, top->list.len) {
         PNode* stmt = top->list.at[i];
         SemaNode* decl = check_stmt(&an, mod->global, stmt);
-        da_append(&mod->decls, decl);
+        if (decl != NULL) {
+            da_append(&mod->decls, decl);
+        }
     }
 
     return mod;

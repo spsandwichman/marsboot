@@ -387,6 +387,10 @@ void c_calculate_expr_ptr(Module* m, SemaNode* expr) {
             sb_append_c(sb, "l_");
             sb_append(sb, e->name);
             break;
+        case STORAGE_EXTERN:
+        case STORAGE_EXTERN_FUNCTION:
+            sb_append(sb, e->name);
+            break;
         default:
             emit_mangled(m, e->name);
         }
@@ -739,6 +743,10 @@ void c_calculate_expr(Module* m, SemaNode* expr) {
             break;
         case STORAGE_LOCAL:
             sb_append_c(sb, "l_");
+            sb_append(sb, e->name);
+            break;
+        case STORAGE_EXTERN:
+        case STORAGE_EXTERN_FUNCTION:
             sb_append(sb, e->name);
             break;
         default:
@@ -1125,12 +1133,16 @@ string c_gen(Module* m) {
     // emit extern fn decls
     for_n (i, 0, m->global->len) {
         Entity* e = m->global->at[i];
-        if (e->storage != STORAGE_FUNCTION) {
+        if (e->storage != STORAGE_FUNCTION && e->storage != STORAGE_EXTERN_FUNCTION) {
             continue;
         }
         emit_typename(type(type(e->type)->as_function.ret_type));
         sb_append_c(sb, " ");
-        emit_mangled(m, e->name);
+        if (e->storage == STORAGE_EXTERN_FUNCTION) {
+            sb_append(sb, e->name);
+        } else {
+            emit_mangled(m, e->name);
+        }
         sb_append_c(sb, "(");
         for_n(i, 0, type(e->type)->as_function.params.len) {
             if (i != 0) sb_append_c(sb, ", ");

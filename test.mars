@@ -1,11 +1,5 @@
 module test;
 
-fun some_int(x: uint): int {
-    return cast(int) x + 10;
-}
-
-fun some_uint(): uint {
-    let x: uint = 10;
-    let y = some_int(x) + 1;
-    return x + 1;
-}
+extern fun malloc(size: uint): ^mut;
+extern fun free(ptr: ^mut);
+extern fun realloc(ptr: ^mut, size: uint): ^mut;

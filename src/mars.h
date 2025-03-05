@@ -21,7 +21,6 @@ void emit_report(bool error, string source, string path, string highlight, char*
 
 typedef struct {
     bool check_only;
-    bool implicit_mut;
 } Flags;
 
 extern Flags flags;
