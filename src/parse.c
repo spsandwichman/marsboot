@@ -457,6 +457,9 @@ PNode* parse_extern_decl() {
 PNode* parse_stmt() {
     PNode* stmt;
     switch (current()->kind) {
+    case TOK_KEYWORD_IMPORT:
+        stmt = parse_import_decl();
+        break;
     case TOK_OPEN_BRACE:
         stmt = parse_stmt_group();
         break;
@@ -1149,10 +1152,10 @@ PNode* parse_file(TokenBuf tb, string expected_module_name) {
     PNodeList list = list_new(32);
     da_append(&list, mod_decl);
 
-    while (!match(TOK_EOF) && match(TOK_KEYWORD_IMPORT)) {
-        PNode* import = parse_import_decl();
-        da_append(&list, import);
-    }
+    // while (!match(TOK_EOF) && match(TOK_KEYWORD_IMPORT)) {
+    //     PNode* import = parse_import_decl();
+    //     da_append(&list, import);
+    // }
 
     while (!match(TOK_EOF)) {
         PNode* import = parse_stmt();

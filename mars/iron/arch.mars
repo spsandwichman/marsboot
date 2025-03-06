@@ -2,4 +2,5 @@ module fe;
 
 def TargetSpec = struct {
     name: []let u8,
+    pointer_int_type: Type,
 };

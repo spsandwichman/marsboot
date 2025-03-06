@@ -1,0 +1,9 @@
+module A;
+
+def Foo = struct {
+    x, y, z: int,
+};
+
+fun foo_new(): Foo {
+    return .{1, 2, 3};
+}

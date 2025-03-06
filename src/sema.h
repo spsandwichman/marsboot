@@ -218,6 +218,8 @@ enum EntityStorageKind {
 
     STORAGE_EXTERN_FUNCTION,
     STORAGE_FUNCTION,
+
+    STORAGE_MODULE,
 };
 
 enum EntityCheckStatus {

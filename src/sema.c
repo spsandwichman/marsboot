@@ -2727,6 +2727,8 @@ SemaNode* check_label(Analyzer* an, EntityTable* scope, PNode* pstmt) {
 
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     switch (pstmt->base.kind) {
+    // case PN_STMT_IMPORT_DECL:
+        // return check_import(an, scope, pstmt);
     case PN_LIST:
         return check_block(an, scope, pstmt, false, NULL_STR);
     case PN_STMT_DECL:
@@ -2862,6 +2864,16 @@ void precollect_entities(Analyzer* an, EntityTable* scope, PNode* block) {
                 UNREACHABLE;
             }
             } break;
+        case PN_STMT_IMPORT_DECL: {
+            PNode* ident = tls->import_decl.ident;
+            string ident_name = pnode_span(ident);
+            Entity* ent = etbl_put(an->m->global, ident_name);
+            ent->decl_pnode = tls;
+            ent->check_status = ENT_CHECK_NONE;
+            ent->storage = STORAGE_MODULE;
+            ent->tbl = an->m->global;
+            break;
+        }
         case PN_STMT_WHEN:
         case PN_STMT_WHICH: // defer these until later
             break;
