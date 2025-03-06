@@ -3,15 +3,24 @@ module mem;
 def ARENA_CHUNK_DATA_SIZE = 1024;
 
 def Arena = struct {
-    start: ^mut ArenaChunkHeader,
+    start: ^mut ArenaChunk,
 };
 
-def ArenaChunkHeader = struct {
-    next: ^mut ArenaChunkHeader,
+def ArenaChunk = struct {
+    next: ^mut ArenaChunk,
     used: uint,
     data: [0]u8,
 };
 
-fun arena_create(): Arena {
-    
+fun arena_new(): Arena {
+    mut arena: Arena;
+    arena.start = arena_new_chunk();
+    return arena;
+}
+
+fun arena_new_chunk(): ^mut ArenaChunk {
+    mut chunk: ^mut ArenaChunk = alloc(&heap, sizeof(Arena) + ARENA_CHUNK_DATA_SIZE);
+    chunk.next = null;
+    chunk.used = 0;
+    return chunk;
 }

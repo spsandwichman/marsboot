@@ -7,17 +7,25 @@ def Complex = struct {
 
     // self keyword as parameter AND a type
     // can be self, ^let self, or ^mut self
-    fun hadamard(self, x: self): Complex {
+    fun hadamard(self, x: self): self {
         return .{
             self.real * x.real,
             self.imag * x.imag,
         };
     }
+
+    // member constants
+    def zero = self.{0, 0};
 };
 
 // generics
 fun add[T: typeid] (x, y: T): T {
     return x + y;
+}
+
+def Vec[T: typeid] = struct {
+    at: [^]mut T,
+    len, cap: u32,
 }
 
 // traits/interfaces
@@ -35,10 +43,10 @@ impl Eq for Complex {
     }
 }
 
-def Cast = interface [T: typeid] {
+def Cast[T: typeid] = interface {
     fun cast_to(self): T;
 };
 
-def ImplicitCast = interface [T: typeid] {
+def ImplicitCast[T: typeid] = interface {
     fun implicit_cast_to(self): T;
 };

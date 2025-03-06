@@ -3,9 +3,9 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef Ptr (*Fun_17cc7d9a260)(uint64_t);
-typedef void (*Fun_17cc7d9a220)(Ptr);
-typedef Ptr (*Fun_17cc7d9a420)(Ptr, uint64_t);
+typedef Ptr (*Fun_558d84d33290)(uint64_t);
+typedef void (*Fun_558d84d33520)(Ptr);
+typedef Ptr (*Fun_558d84d33800)(Ptr, uint64_t);
 
 Ptr malloc(uint64_t p_size);
 void free(Ptr p_ptr);

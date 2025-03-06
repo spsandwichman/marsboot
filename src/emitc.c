@@ -1118,13 +1118,17 @@ string c_gen(Module* m) {
     // emit extern variable decls
     for_n (i, 0, m->global->len) {
         Entity* e = m->global->at[i];
-        if (e->storage != STORAGE_GLOBAL) {
+        if (e->storage != STORAGE_GLOBAL && e->storage != STORAGE_EXTERN) {
             continue;
         }
         sb_append_c(sb, "extern ");
         emit_typename(type(e->type));
         sb_append_c(sb, " ");
-        emit_mangled(m, e->name);
+        if (e->storage == STORAGE_EXTERN) {
+            sb_append(sb, e->name);
+        } else {
+            emit_mangled(m, e->name);
+        }
         sb_append_c(sb, ";\n");
     }
 

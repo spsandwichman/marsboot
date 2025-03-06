@@ -853,11 +853,12 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
     }
     // this entitiy is global, but hasnt been checked yet. lets go do that
     if (ent->check_status == ENT_CHECK_NONE) {
-        if (ent->storage == STORAGE_FUNCTION) {
-            SemaNode* _ = check_fn_decl(an, ent->tbl, ent->decl_pnode);
-        } else {
-            SemaNode* _ = check_var_decl(an, ent->tbl, ent->decl_pnode);
-        }
+        // if (ent->storage == STORAGE_FUNCTION) {
+        //     SemaNode* _ = check_fn_decl(an, ent->tbl, ent->decl_pnode);
+        // } else {
+        //     SemaNode* _ = check_var_decl(an, ent->tbl, ent->decl_pnode);
+        // }
+        SemaNode* _ = check_stmt(an, ent->tbl, ent->decl_pnode);
     } else if (ent->check_status == ENT_CHECK_IN_PROGRESS || 
                ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
         if (ent->type == TYPE_TYPEID && ent->decl_pnode->decl.kind == DECLKIND_DEF) {
@@ -1521,7 +1522,8 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
             if (ent->storage != STORAGE_COMPTIME) {
                 report_pnode(true, pn, "symbol is not a compile-time constant");
             }
-            SemaNode* _ = check_var_decl(an, ent->tbl, ent->decl_pnode);
+            // SemaNode* _ = check_var_decl(an, ent->tbl, ent->decl_pnode);
+            SemaNode* _ = check_stmt(an, ent->tbl, ent->decl_pnode);
         }
         if (ent->check_status == ENT_CHECK_COMPLETE) {
             SemaNode* snode = check_expr_ident(an, scope, pn, TYPE_UNKNOWN);
@@ -2023,8 +2025,41 @@ SemaNode* check_extern_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         ent->decl = NULL;
 
         } break;
+    case PN_STMT_DECL: {
+        PNode* decl = pstmt->unop.sub;
+        PNode* ident = decl->decl.ident;
+        string name = pnode_span(ident);
+        Entity* ent = etbl_search(scope, name);
+        if (is_global_decl) {
+            // this is guaranteed to exist    
+            assert(ent);
+            if (ent->decl_pnode == pstmt) {
+                if (ent->check_status == ENT_CHECK_COMPLETE) {
+                    return NULL;
+                }
+            } else {
+                report_pnode(true, ident, "symbol already declared");
+            }
+        } else if (ent) {
+            report_pnode(true, ident, "symbol already declared");
+        }
+        if (!ent) {
+            ent = etbl_put(scope, name);
+        }
+
+        ent->storage = STORAGE_EXTERN;
+        if (decl->decl.type == NULL) {
+            report_pnode(true, decl, "extern declaration requires type");
+        }
+        ent->type = ingest_type(an, scope, decl->decl.type, false);
+
+        if (decl->decl.value != NULL) {
+            report_pnode(true, decl, "extern declaration cannot have value");
+        }
+
+        } break;
     default:
-        UNREACHABLE;
+        report_pnode(true, pstmt->unop.sub, "invalid extern declaration");
     }
     return NULL;
 }
@@ -2669,7 +2704,7 @@ Module* sema_check(PNode* top) {
         case PN_STMT_EXTERN_DECL: {
             PNode* decl = tls->unop.sub;
             switch (decl->base.kind) {
-            case PN_FNPROTO:
+            case PN_FNPROTO: {
                 PNode* ident = decl->fnproto.ident;
                 string ident_name = pnode_span(ident);
                 Entity* ent = etbl_put(mod->global, ident_name);
@@ -2677,7 +2712,19 @@ Module* sema_check(PNode* top) {
                 ent->check_status = ENT_CHECK_NONE;
                 ent->storage = STORAGE_EXTERN_FUNCTION;
                 ent->tbl = mod->global;
-                break;
+                } break;
+            case PN_STMT_DECL: {
+                PNode* ident = decl->decl.ident;
+                if (decl->decl.kind == DECLKIND_DEF) {
+                    report_pnode(true, decl, "extern decl must have runtime storage");
+                }
+                string ident_name = pnode_span(ident);
+                Entity* ent = etbl_put(mod->global, ident_name);
+                ent->decl_pnode = tls;
+                ent->check_status = ENT_CHECK_NONE;
+                ent->storage = STORAGE_EXTERN;
+                ent->tbl = mod->global;
+                } break;
             default:
                 UNREACHABLE;
             }

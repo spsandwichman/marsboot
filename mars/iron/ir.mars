@@ -1,5 +1,7 @@
 module fe;
 
+// import mem "../common/mem/mem.mars";
+
 def Type = u16;
 def TypeKind = enum Type {
     VOID = 0,
@@ -34,7 +36,8 @@ def InstKind = enum u16 {
     ADD, SUB,
     IMUL, IDIV, IMOD, UMUL, UDIV, UMOD,
     SHL, ASR, LSR, AND, OR, XOR,
-    LT, LE, GT, GE, EQ, NE,
+    ILT, ILE, IGT, IGE, ULT, ULE, UGT, UGE, 
+    EQ, NE,
 
     // Unop
     NEG,
@@ -104,7 +107,7 @@ def InstStore = struct {
     val: ^mut Inst,
 };
 
-fun malloc(f: ^mut Function, size: uint): ^mut { return null; }
+
 
 fun append(b: ^mut Block, inst: ^mut Inst): ^mut Inst {
     if b.start.kind == .BOOKEND {
@@ -128,29 +131,26 @@ fun append(b: ^mut Block, inst: ^mut Inst): ^mut Inst {
 // inserts new before ref
 fun insert_before(new, ref: ^mut Inst): ^mut Inst {
     if ref.prev.kind == .BOOKEND {
-        let bookend = cast(^mut InstBookend) ref.prev;
+        let bookend = to_bookend(ref.prev);
         bookend.block.start = new;
     }
     new.next = ref;
     new.prev = ref.prev;
     ref.prev.next = new;
     ref.prev = new;
-
-
     return new;
 }
 
 // inserts new after ref
 fun insert_after(new, ref: ^mut Inst): ^mut Inst {
-    if ref.prev.kind == .BOOKEND {
-        let bookend = cast(^mut InstBookend) ref.next;
+    if ref.next.kind == .BOOKEND {
+        let bookend = to_bookend(ref.next);
         bookend.block.end = new;
     }
     new.prev = ref;
     new.next = ref.next;
     ref.next.prev = new;
     ref.next = new;
-
     return new;
 }
 
@@ -253,6 +253,12 @@ fun new_block(f: ^mut Function): ^mut Block {
 def Function = struct {
     symbol: ^mut Symbol,
     first_block: ^mut Block,
+};
+
+fun new_function()
+
+def Module = struct {
+    functions: VecFunctionPtr;
 };
 
 def Symbol = struct {

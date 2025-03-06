@@ -3,62 +3,62 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef struct Struct_1d2fb1600a0 {
+typedef struct Struct_562a896b4080 {
   uint16_t kind;
   uint16_t type;
   Ptr next;
   Ptr prev;
-} Struct_1d2fb1600a0;
-typedef struct Struct_1d2fb1653d0 {
+} Struct_562a896b4080;
+typedef struct Struct_562a896b42c0 {
   Ptr block;
-} Struct_1d2fb1653d0;
-typedef struct Struct_1d2fb166150 {
+} Struct_562a896b42c0;
+typedef struct Struct_562a896b4330 {
   Ptr start;
   Ptr end;
   Ptr next_block;
   Ptr function;
-} Struct_1d2fb166150;
-typedef struct Struct_1d2fb165610 {
+} Struct_562a896b4330;
+typedef struct Struct_562a896b44d0 {
   Ptr symbol;
   Ptr first_block;
-} Struct_1d2fb165610;
-typedef struct Struct_1d2fb165fd0 {
+} Struct_562a896b44d0;
+typedef struct Struct_562a896b4560 {
   Slice name;
-} Struct_1d2fb165fd0;
-typedef struct Struct_1d2fb165990 {
+} Struct_562a896b4560;
+typedef struct Struct_562a896b4b80 {
   Ptr sub;
-} Struct_1d2fb165990;
-typedef struct Struct_1d2fb165c50 {
+} Struct_562a896b4b80;
+typedef struct Struct_562a896b4d20 {
   Ptr lhs;
   Ptr rhs;
-} Struct_1d2fb165c50;
-typedef struct Struct_1d2fb1652d0 {
+} Struct_562a896b4d20;
+typedef struct Struct_562a896b4ee0 {
   uint64_t val;
-} Struct_1d2fb1652d0;
-typedef struct Struct_1d2fb165310 {
+} Struct_562a896b4ee0;
+typedef struct Struct_562a896b5030 {
   Ptr ptr;
-} Struct_1d2fb165310;
-typedef struct Struct_1d2fb1660d0 {
+} Struct_562a896b5030;
+typedef struct Struct_562a896b51d0 {
   Ptr ptr;
   Ptr val;
-} Struct_1d2fb1660d0;
-typedef Ptr (*Fun_1d2fb165f50)(Ptr, uint64_t);
-typedef Ptr (*Fun_1d2fb165790)(Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb165d90)(Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb1657d0)(Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb165910)(Ptr, uint16_t, uint16_t);
-typedef Ptr (*Fun_1d2fb165810)(Ptr);
-typedef Ptr (*Fun_1d2fb165cd0)(Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb165a10)(Ptr);
-typedef Ptr (*Fun_1d2fb165f90)(Ptr, uint16_t, uint16_t, Ptr);
-typedef Ptr (*Fun_1d2fb165a90)(Ptr);
-typedef Ptr (*Fun_1d2fb165ad0)(Ptr, uint16_t, uint16_t, Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb165690)(Ptr);
-typedef Ptr (*Fun_1d2fb165510)(Ptr, uint16_t, uint16_t, Ptr);
-typedef Ptr (*Fun_1d2fb165490)(Ptr);
-typedef Ptr (*Fun_1d2fb1654d0)(Ptr, uint16_t, uint16_t, Ptr, Ptr);
-typedef Ptr (*Fun_1d2fb165550)(Ptr);
-typedef Ptr (*Fun_1d2fb165b90)(Ptr);
+} Struct_562a896b51d0;
+typedef Ptr (*Fun_562a896b5760)(Ptr, uint64_t);
+typedef Ptr (*Fun_562a896b5cc0)(Ptr, Ptr);
+typedef Ptr (*Fun_562a896b7750)(Ptr, Ptr);
+typedef Ptr (*Fun_562a896b89b0)(Ptr, Ptr);
+typedef Ptr (*Fun_562a896b9c90)(Ptr, uint16_t, uint16_t);
+typedef Ptr (*Fun_562a896ba650)(Ptr);
+typedef Ptr (*Fun_562a896bacd0)(Ptr, Ptr);
+typedef Ptr (*Fun_562a896bb6e0)(Ptr);
+typedef Ptr (*Fun_562a896bc1c0)(Ptr, uint16_t, uint16_t, Ptr);
+typedef Ptr (*Fun_562a896bcd90)(Ptr);
+typedef Ptr (*Fun_562a896bd900)(Ptr, uint16_t, uint16_t, Ptr, Ptr);
+typedef Ptr (*Fun_562a896be4d0)(Ptr);
+typedef Ptr (*Fun_562a896bf130)(Ptr, uint16_t, uint16_t, Ptr);
+typedef Ptr (*Fun_562a896bfd00)(Ptr);
+typedef Ptr (*Fun_562a896c0870)(Ptr, uint16_t, uint16_t, Ptr, Ptr);
+typedef Ptr (*Fun_562a896c1440)(Ptr);
+typedef Ptr (*Fun_562a896c1ec0)(Ptr);
 
 Ptr fe_malloc(Ptr p_f, uint64_t p_size);
 Ptr fe_append(Ptr p_b, Ptr p_inst);
@@ -79,404 +79,404 @@ Ptr fe_to_store(Ptr p_inst);
 Ptr fe_new_block(Ptr p_f);
 
 Ptr fe_malloc(Ptr p_f, uint64_t p_size) {
-  Ptr v1d2fb1668b0 = (Ptr)0llu;
-  return v1d2fb1668b0;
-  v1d2fb1665e0_break:
+  Ptr v562a896b5890 = (Ptr)0llu;
+  return v562a896b5890;
+  v562a896b57a0_break:
 }
 
 Ptr fe_append(Ptr p_b, Ptr p_inst) {
-  Ptr v1d2fb166d60 = p_b;
-  Ptr v1d2fb166d10 = ((Struct_1d2fb166150*)v1d2fb166d60)->start;
-  uint16_t v1d2fb166c70 = ((Struct_1d2fb1600a0*)v1d2fb166d10)->kind;
-  uint16_t v1d2fb166db0 = (uint16_t)1llu;
-  _Bool v1d2fb166ea0 = (_Bool)(v1d2fb166c70 == v1d2fb166db0);
-  if (v1d2fb166ea0)
+  Ptr v562a896b5e90 = p_b;
+  Ptr v562a896b5e40 = ((Struct_562a896b4330*)v562a896b5e90)->start;
+  uint16_t v562a896b5df0 = ((Struct_562a896b4080*)v562a896b5e40)->kind;
+  uint16_t v562a896b5ee0 = (uint16_t)1llu;
+  _Bool v562a896b5f30 = (_Bool)(v562a896b5df0 == v562a896b5ee0);
+  if (v562a896b5f30)
   {
-    Ptr v1d2fb167560 = p_b;
-    Ptr v1d2fb167e70 = ((Struct_1d2fb166150*)v1d2fb167560)->start;
-    Ptr l_bookend = v1d2fb167e70;
-    Ptr v1d2fb168460 = l_bookend;
-    Ptr v1d2fb1680a0 = p_inst;
-    Ptr v1d2fb167ec0 = &((Struct_1d2fb1600a0*)v1d2fb1680a0)->prev;
-    *(Ptr*)v1d2fb167ec0 = v1d2fb168460;
-    Ptr v1d2fb167510 = l_bookend;
-    Ptr v1d2fb167fb0 = p_inst;
-    Ptr v1d2fb167790 = &((Struct_1d2fb1600a0*)v1d2fb167fb0)->next;
-    *(Ptr*)v1d2fb167790 = v1d2fb167510;
-    Ptr v1d2fb167b50 = p_inst;
-    Ptr v1d2fb167b00 = l_bookend;
-    Ptr v1d2fb167ab0 = &((Struct_1d2fb1600a0*)v1d2fb167b00)->next;
-    *(Ptr*)v1d2fb167ab0 = v1d2fb167b50;
-    Ptr v1d2fb1679c0 = p_inst;
-    Ptr v1d2fb167e20 = l_bookend;
-    Ptr v1d2fb168000 = &((Struct_1d2fb1600a0*)v1d2fb167e20)->prev;
-    *(Ptr*)v1d2fb168000 = v1d2fb1679c0;
-    Ptr v1d2fb1681e0 = p_inst;
-    Ptr v1d2fb167bf0 = p_b;
-    Ptr v1d2fb168370 = &((Struct_1d2fb166150*)v1d2fb167bf0)->start;
-    *(Ptr*)v1d2fb168370 = v1d2fb1681e0;
-    Ptr v1d2fb167600 = p_inst;
-    Ptr v1d2fb1675b0 = p_b;
-    Ptr v1d2fb168050 = &((Struct_1d2fb166150*)v1d2fb1675b0)->end;
-    *(Ptr*)v1d2fb168050 = v1d2fb167600;
-    v1d2fb1664a0_break:
+    Ptr v562a896b6240 = p_b;
+    Ptr v562a896b61f0 = ((Struct_562a896b4330*)v562a896b6240)->start;
+    Ptr l_bookend = v562a896b61f0;
+    Ptr v562a896b6380 = l_bookend;
+    Ptr v562a896b6330 = p_inst;
+    Ptr v562a896b62e0 = &((Struct_562a896b4080*)v562a896b6330)->prev;
+    *(Ptr*)v562a896b62e0 = v562a896b6380;
+    Ptr v562a896b64c0 = l_bookend;
+    Ptr v562a896b6470 = p_inst;
+    Ptr v562a896b6420 = &((Struct_562a896b4080*)v562a896b6470)->next;
+    *(Ptr*)v562a896b6420 = v562a896b64c0;
+    Ptr v562a896b6600 = p_inst;
+    Ptr v562a896b65b0 = l_bookend;
+    Ptr v562a896b6560 = &((Struct_562a896b4080*)v562a896b65b0)->next;
+    *(Ptr*)v562a896b6560 = v562a896b6600;
+    Ptr v562a896b6770 = p_inst;
+    Ptr v562a896b6720 = l_bookend;
+    Ptr v562a896b66d0 = &((Struct_562a896b4080*)v562a896b6720)->prev;
+    *(Ptr*)v562a896b66d0 = v562a896b6770;
+    Ptr v562a896b68b0 = p_inst;
+    Ptr v562a896b6860 = p_b;
+    Ptr v562a896b6810 = &((Struct_562a896b4330*)v562a896b6860)->start;
+    *(Ptr*)v562a896b6810 = v562a896b68b0;
+    Ptr v562a896b6a30 = p_inst;
+    Ptr v562a896b69e0 = p_b;
+    Ptr v562a896b6990 = &((Struct_562a896b4330*)v562a896b69e0)->end;
+    *(Ptr*)v562a896b6990 = v562a896b6a30;
+    v562a896b60b0_break:
   }
   else {
     {
-      Ptr v1d2fb168140 = p_b;
-      Ptr v1d2fb1676f0 = ((Struct_1d2fb166150*)v1d2fb168140)->end;
-      Ptr v1d2fb168190 = p_inst;
-      Ptr v1d2fb167650 = &((Struct_1d2fb1600a0*)v1d2fb168190)->prev;
-      *(Ptr*)v1d2fb167650 = v1d2fb1676f0;
-      Ptr v1d2fb1682d0 = p_b;
-      Ptr v1d2fb167dd0 = ((Struct_1d2fb166150*)v1d2fb1682d0)->end;
-      Ptr v1d2fb1683c0 = ((Struct_1d2fb1600a0*)v1d2fb167dd0)->next;
-      Ptr v1d2fb1680f0 = p_inst;
-      Ptr v1d2fb168410 = &((Struct_1d2fb1600a0*)v1d2fb1680f0)->next;
-      *(Ptr*)v1d2fb168410 = v1d2fb1683c0;
-      Ptr v1d2fb168320 = p_inst;
-      Ptr v1d2fb167a10 = p_b;
-      Ptr v1d2fb168280 = ((Struct_1d2fb166150*)v1d2fb167a10)->end;
-      Ptr v1d2fb167ce0 = ((Struct_1d2fb1600a0*)v1d2fb168280)->next;
-      Ptr v1d2fb167c90 = &((Struct_1d2fb1600a0*)v1d2fb167ce0)->prev;
-      *(Ptr*)v1d2fb167c90 = v1d2fb168320;
-      Ptr v1d2fb167920 = p_inst;
-      Ptr v1d2fb167830 = p_b;
-      Ptr v1d2fb1677e0 = ((Struct_1d2fb166150*)v1d2fb167830)->end;
-      Ptr v1d2fb167740 = &((Struct_1d2fb1600a0*)v1d2fb1677e0)->next;
-      *(Ptr*)v1d2fb167740 = v1d2fb167920;
-      v1d2fb167970_break:
+      Ptr v562a896b6d70 = p_b;
+      Ptr v562a896b6d20 = ((Struct_562a896b4330*)v562a896b6d70)->end;
+      Ptr v562a896b6cd0 = p_inst;
+      Ptr v562a896b6c80 = &((Struct_562a896b4080*)v562a896b6cd0)->prev;
+      *(Ptr*)v562a896b6c80 = v562a896b6d20;
+      Ptr v562a896b6f50 = p_b;
+      Ptr v562a896b6f00 = ((Struct_562a896b4330*)v562a896b6f50)->end;
+      Ptr v562a896b6eb0 = ((Struct_562a896b4080*)v562a896b6f00)->next;
+      Ptr v562a896b6e60 = p_inst;
+      Ptr v562a896b6e10 = &((Struct_562a896b4080*)v562a896b6e60)->next;
+      *(Ptr*)v562a896b6e10 = v562a896b6eb0;
+      Ptr v562a896b7130 = p_inst;
+      Ptr v562a896b70e0 = p_b;
+      Ptr v562a896b7090 = ((Struct_562a896b4330*)v562a896b70e0)->end;
+      Ptr v562a896b7040 = ((Struct_562a896b4080*)v562a896b7090)->next;
+      Ptr v562a896b6ff0 = &((Struct_562a896b4080*)v562a896b7040)->prev;
+      *(Ptr*)v562a896b6ff0 = v562a896b7130;
+      Ptr v562a896b72c0 = p_inst;
+      Ptr v562a896b7270 = p_b;
+      Ptr v562a896b7220 = ((Struct_562a896b4330*)v562a896b7270)->end;
+      Ptr v562a896b71d0 = &((Struct_562a896b4080*)v562a896b7220)->next;
+      *(Ptr*)v562a896b71d0 = v562a896b72c0;
+      v562a896b6b90_break:
     }
   }
-  v1d2fb166c20_break:
-  Ptr v1d2fb166ef0 = p_inst;
-  return v1d2fb166ef0;
-  v1d2fb1667c0_break:
+  v562a896b5da0_break:
+  Ptr v562a896b7390 = p_inst;
+  return v562a896b7390;
+  v562a896b5d00_break:
 }
 
 Ptr fe_insert_before(Ptr p_new, Ptr p_ref) {
-  Ptr v1d2fb168910 = p_ref;
-  Ptr v1d2fb168870 = ((Struct_1d2fb1600a0*)v1d2fb168910)->prev;
-  uint16_t v1d2fb168ff0 = ((Struct_1d2fb1600a0*)v1d2fb168870)->kind;
-  uint16_t v1d2fb1688c0 = (uint16_t)1llu;
-  _Bool v1d2fb1687d0 = (_Bool)(v1d2fb168ff0 == v1d2fb1688c0);
-  if (v1d2fb1687d0)
+  Ptr v562a896b7920 = p_ref;
+  Ptr v562a896b78d0 = ((Struct_562a896b4080*)v562a896b7920)->prev;
+  uint16_t v562a896b7880 = ((Struct_562a896b4080*)v562a896b78d0)->kind;
+  uint16_t v562a896b7970 = (uint16_t)1llu;
+  _Bool v562a896b79c0 = (_Bool)(v562a896b7880 == v562a896b7970);
+  if (v562a896b79c0)
   {
-    Ptr v1d2fb1693b0 = p_ref;
-    Ptr v1d2fb168cd0 = ((Struct_1d2fb1600a0*)v1d2fb1693b0)->prev;
-    Ptr v1d2fb168820 = (Ptr)v1d2fb168cd0;
-    Ptr l_bookend = v1d2fb168820;
-    Ptr v1d2fb168d70 = p_new;
-    Ptr v1d2fb1689b0 = l_bookend;
-    Ptr v1d2fb168d20 = ((Struct_1d2fb1653d0*)v1d2fb1689b0)->block;
-    Ptr v1d2fb1691d0 = &((Struct_1d2fb166150*)v1d2fb168d20)->start;
-    *(Ptr*)v1d2fb1691d0 = v1d2fb168d70;
-    v1d2fb168be0_break:
+    Ptr v562a896b7db0 = p_ref;
+    Ptr v562a896b7d60 = ((Struct_562a896b4080*)v562a896b7db0)->prev;
+    Ptr v562a896b7c80 = (Ptr)v562a896b7d60;
+    Ptr l_bookend = v562a896b7c80;
+    Ptr v562a896b7f40 = p_new;
+    Ptr v562a896b7ef0 = l_bookend;
+    Ptr v562a896b7ea0 = ((Struct_562a896b42c0*)v562a896b7ef0)->block;
+    Ptr v562a896b7e50 = &((Struct_562a896b4330*)v562a896b7ea0)->start;
+    *(Ptr*)v562a896b7e50 = v562a896b7f40;
+    v562a896b7b40_break:
   }
-  v1d2fb168b90_break:
-  Ptr v1d2fb168690 = p_ref;
-  Ptr v1d2fb1686e0 = p_new;
-  Ptr v1d2fb169400 = &((Struct_1d2fb1600a0*)v1d2fb1686e0)->next;
-  *(Ptr*)v1d2fb169400 = v1d2fb168690;
-  Ptr v1d2fb168aa0 = p_ref;
-  Ptr v1d2fb168dc0 = ((Struct_1d2fb1600a0*)v1d2fb168aa0)->prev;
-  Ptr v1d2fb169310 = p_new;
-  Ptr v1d2fb168fa0 = &((Struct_1d2fb1600a0*)v1d2fb169310)->prev;
-  *(Ptr*)v1d2fb168fa0 = v1d2fb168dc0;
-  Ptr v1d2fb169220 = p_new;
-  Ptr v1d2fb1694a0 = p_ref;
-  Ptr v1d2fb169040 = ((Struct_1d2fb1600a0*)v1d2fb1694a0)->prev;
-  Ptr v1d2fb1694f0 = &((Struct_1d2fb1600a0*)v1d2fb169040)->next;
-  *(Ptr*)v1d2fb1694f0 = v1d2fb169220;
-  Ptr v1d2fb168e10 = p_new;
-  Ptr v1d2fb168af0 = p_ref;
-  Ptr v1d2fb168730 = &((Struct_1d2fb1600a0*)v1d2fb168af0)->prev;
-  *(Ptr*)v1d2fb168730 = v1d2fb168e10;
-  Ptr v1d2fb168e60 = p_new;
-  return v1d2fb168e60;
-  v1d2fb169360_break:
+  v562a896b7830_break:
+  Ptr v562a896b8080 = p_ref;
+  Ptr v562a896b8030 = p_new;
+  Ptr v562a896b7fe0 = &((Struct_562a896b4080*)v562a896b8030)->next;
+  *(Ptr*)v562a896b7fe0 = v562a896b8080;
+  Ptr v562a896b8210 = p_ref;
+  Ptr v562a896b81c0 = ((Struct_562a896b4080*)v562a896b8210)->prev;
+  Ptr v562a896b8170 = p_new;
+  Ptr v562a896b8120 = &((Struct_562a896b4080*)v562a896b8170)->prev;
+  *(Ptr*)v562a896b8120 = v562a896b81c0;
+  Ptr v562a896b83a0 = p_new;
+  Ptr v562a896b8350 = p_ref;
+  Ptr v562a896b8300 = ((Struct_562a896b4080*)v562a896b8350)->prev;
+  Ptr v562a896b82b0 = &((Struct_562a896b4080*)v562a896b8300)->next;
+  *(Ptr*)v562a896b82b0 = v562a896b83a0;
+  Ptr v562a896b8510 = p_new;
+  Ptr v562a896b84c0 = p_ref;
+  Ptr v562a896b8470 = &((Struct_562a896b4080*)v562a896b84c0)->prev;
+  *(Ptr*)v562a896b8470 = v562a896b8510;
+  Ptr v562a896b85b0 = p_new;
+  return v562a896b85b0;
+  v562a896b7790_break:
 }
 
 Ptr fe_insert_after(Ptr p_new, Ptr p_ref) {
-  Ptr v1d2fb16c3b0 = p_ref;
-  Ptr v1d2fb16bf00 = ((Struct_1d2fb1600a0*)v1d2fb16c3b0)->prev;
-  uint16_t v1d2fb16bc80 = ((Struct_1d2fb1600a0*)v1d2fb16bf00)->kind;
-  uint16_t v1d2fb16c360 = (uint16_t)1llu;
-  _Bool v1d2fb16baf0 = (_Bool)(v1d2fb16bc80 == v1d2fb16c360);
-  if (v1d2fb16baf0)
+  Ptr v562a896b8b80 = p_ref;
+  Ptr v562a896b8b30 = ((Struct_562a896b4080*)v562a896b8b80)->prev;
+  uint16_t v562a896b8ae0 = ((Struct_562a896b4080*)v562a896b8b30)->kind;
+  uint16_t v562a896b8bd0 = (uint16_t)1llu;
+  _Bool v562a896b8c20 = (_Bool)(v562a896b8ae0 == v562a896b8bd0);
+  if (v562a896b8c20)
   {
-    Ptr v1d2fb16bb90 = p_ref;
-    Ptr v1d2fb16bd20 = ((Struct_1d2fb1600a0*)v1d2fb16bb90)->next;
-    Ptr v1d2fb16bb40 = (Ptr)v1d2fb16bd20;
-    Ptr l_bookend = v1d2fb16bb40;
-    Ptr v1d2fb16bcd0 = p_new;
-    Ptr v1d2fb16b7d0 = l_bookend;
-    Ptr v1d2fb16be10 = ((Struct_1d2fb1653d0*)v1d2fb16b7d0)->block;
-    Ptr v1d2fb16bbe0 = &((Struct_1d2fb166150*)v1d2fb16be10)->end;
-    *(Ptr*)v1d2fb16bbe0 = v1d2fb16bcd0;
-    v1d2fb16c0e0_break:
+    Ptr v562a896b8fd0 = p_ref;
+    Ptr v562a896b8f80 = ((Struct_562a896b4080*)v562a896b8fd0)->next;
+    Ptr v562a896b8ee0 = (Ptr)v562a896b8f80;
+    Ptr l_bookend = v562a896b8ee0;
+    Ptr v562a896b9160 = p_new;
+    Ptr v562a896b9110 = l_bookend;
+    Ptr v562a896b90c0 = ((Struct_562a896b42c0*)v562a896b9110)->block;
+    Ptr v562a896b9070 = &((Struct_562a896b4330*)v562a896b90c0)->end;
+    *(Ptr*)v562a896b9070 = v562a896b9160;
+    v562a896b8da0_break:
   }
-  v1d2fb16b960_break:
-  Ptr v1d2fb16c1d0 = p_ref;
-  Ptr v1d2fb16ba00 = p_new;
-  Ptr v1d2fb16c5e0 = &((Struct_1d2fb1600a0*)v1d2fb16ba00)->prev;
-  *(Ptr*)v1d2fb16c5e0 = v1d2fb16c1d0;
-  Ptr v1d2fb16b910 = p_ref;
-  Ptr v1d2fb16c540 = ((Struct_1d2fb1600a0*)v1d2fb16b910)->next;
-  Ptr v1d2fb16b820 = p_new;
-  Ptr v1d2fb16bff0 = &((Struct_1d2fb1600a0*)v1d2fb16b820)->next;
-  *(Ptr*)v1d2fb16bff0 = v1d2fb16c540;
-  Ptr v1d2fb16b8c0 = p_new;
-  Ptr v1d2fb16b9b0 = p_ref;
-  Ptr v1d2fb16c2c0 = ((Struct_1d2fb1600a0*)v1d2fb16b9b0)->next;
-  Ptr v1d2fb16c220 = &((Struct_1d2fb1600a0*)v1d2fb16c2c0)->prev;
-  *(Ptr*)v1d2fb16c220 = v1d2fb16b8c0;
-  Ptr v1d2fb16c040 = p_new;
-  Ptr v1d2fb16ba50 = p_ref;
-  Ptr v1d2fb16beb0 = &((Struct_1d2fb1600a0*)v1d2fb16ba50)->next;
-  *(Ptr*)v1d2fb16beb0 = v1d2fb16c040;
-  Ptr v1d2fb16c4a0 = p_new;
-  return v1d2fb16c4a0;
-  v1d2fb1690e0_break:
+  v562a896b8a90_break:
+  Ptr v562a896b92a0 = p_ref;
+  Ptr v562a896b9250 = p_new;
+  Ptr v562a896b9200 = &((Struct_562a896b4080*)v562a896b9250)->prev;
+  *(Ptr*)v562a896b9200 = v562a896b92a0;
+  Ptr v562a896b9430 = p_ref;
+  Ptr v562a896b93e0 = ((Struct_562a896b4080*)v562a896b9430)->next;
+  Ptr v562a896b9390 = p_new;
+  Ptr v562a896b9340 = &((Struct_562a896b4080*)v562a896b9390)->next;
+  *(Ptr*)v562a896b9340 = v562a896b93e0;
+  Ptr v562a896b95c0 = p_new;
+  Ptr v562a896b9570 = p_ref;
+  Ptr v562a896b9520 = ((Struct_562a896b4080*)v562a896b9570)->next;
+  Ptr v562a896b94d0 = &((Struct_562a896b4080*)v562a896b9520)->prev;
+  *(Ptr*)v562a896b94d0 = v562a896b95c0;
+  Ptr v562a896b9700 = p_new;
+  Ptr v562a896b96b0 = p_ref;
+  Ptr v562a896b9660 = &((Struct_562a896b4080*)v562a896b96b0)->next;
+  *(Ptr*)v562a896b9660 = v562a896b9700;
+  Ptr v562a896b97a0 = p_new;
+  return v562a896b97a0;
+  v562a896b89f0_break:
 }
 
 Ptr fe_inst_base(Ptr p_f, uint16_t p_kind, uint16_t p_type) {
-  Ptr v1d2fb16ccc0 = p_f;
-  uint64_t v1d2fb16cc20 = (uint64_t)24llu;
-  Fun_1d2fb165f50 v1d2fb16d6c0 = fe_malloc;
-  Ptr v1d2fb16d530 = v1d2fb16d6c0(v1d2fb16ccc0, v1d2fb16cc20);
-  Ptr l_inst = v1d2fb16d530;
-  uint16_t v1d2fb16ca90 = p_type;
-  Ptr v1d2fb16d440 = l_inst;
-  Ptr v1d2fb16c9a0 = &((Struct_1d2fb1600a0*)v1d2fb16d440)->type;
-  *(uint16_t*)v1d2fb16c9a0 = v1d2fb16ca90;
-  uint16_t v1d2fb16cc70 = p_kind;
-  Ptr v1d2fb16d580 = l_inst;
-  Ptr v1d2fb16d490 = &((Struct_1d2fb1600a0*)v1d2fb16d580)->kind;
-  *(uint16_t*)v1d2fb16d490 = v1d2fb16cc70;
-  Ptr v1d2fb16cea0 = l_inst;
-  return v1d2fb16cea0;
-  v1d2fb16c590_break:
+  Ptr v562a896b9f20 = p_f;
+  uint64_t v562a896b9f70 = (uint64_t)24llu;
+  Fun_562a896b5760 v562a896b9ed0 = fe_malloc;
+  Ptr v562a896b9e60 = v562a896b9ed0(v562a896b9f20, v562a896b9f70);
+  Ptr l_inst = v562a896b9e60;
+  uint16_t v562a896ba150 = p_type;
+  Ptr v562a896ba100 = l_inst;
+  Ptr v562a896ba0b0 = &((Struct_562a896b4080*)v562a896ba100)->type;
+  *(uint16_t*)v562a896ba0b0 = v562a896ba150;
+  uint16_t v562a896ba290 = p_kind;
+  Ptr v562a896ba240 = l_inst;
+  Ptr v562a896ba1f0 = &((Struct_562a896b4080*)v562a896ba240)->kind;
+  *(uint16_t*)v562a896ba1f0 = v562a896ba290;
+  Ptr v562a896ba330 = l_inst;
+  return v562a896ba330;
+  v562a896b9cd0_break:
 }
 
 Ptr fe_from_extra(Ptr p_extra) {
-  Ptr v1d2fb16d170 = p_extra;
-  Ptr v1d2fb16d300 = (Ptr)24llu;
-  Ptr v1d2fb16d710 = (Ptr)(v1d2fb16d170 - v1d2fb16d300);
-  Ptr v1d2fb16d5d0 = (Ptr)v1d2fb16d710;
-  return v1d2fb16d5d0;
-  v1d2fb16d120_break:
+  Ptr v562a896ba780 = p_extra;
+  Ptr v562a896ba7d0 = (Ptr)24llu;
+  Ptr v562a896ba870 = (Ptr)(v562a896ba780 - v562a896ba7d0);
+  Ptr v562a896ba8c0 = (Ptr)v562a896ba870;
+  return v562a896ba8c0;
+  v562a896ba690_break:
 }
 
 Ptr fe_inst_bookend(Ptr p_f, Ptr p_block) {
-  Ptr v1d2fb16c8b0 = p_f;
-  uint64_t v1d2fb16c900 = (uint64_t)32llu;
-  Fun_1d2fb165f50 v1d2fb16d1c0 = fe_malloc;
-  Ptr v1d2fb16d210 = v1d2fb16d1c0(v1d2fb16c8b0, v1d2fb16c900);
-  Ptr l_inst = v1d2fb16d210;
-  uint16_t v1d2fb16cfe0 = (uint16_t)1llu;
-  Ptr v1d2fb16cf90 = l_inst;
-  Ptr v1d2fb16c7c0 = &((Struct_1d2fb1600a0*)v1d2fb16cf90)->kind;
-  *(uint16_t*)v1d2fb16c7c0 = v1d2fb16cfe0;
-  Ptr v1d2fb16e1e0 = l_inst;
-  Fun_1d2fb165a10 v1d2fb16dec0 = fe_to_bookend;
-  Ptr v1d2fb16e050 = v1d2fb16dec0(v1d2fb16e1e0);
-  Ptr l_bookend = v1d2fb16e050;
-  Ptr v1d2fb16e230 = p_block;
-  Ptr v1d2fb16e4b0 = l_bookend;
-  Ptr v1d2fb16da60 = &((Struct_1d2fb1653d0*)v1d2fb16e4b0)->block;
-  *(Ptr*)v1d2fb16da60 = v1d2fb16e230;
-  Ptr v1d2fb16e3c0 = l_inst;
-  return v1d2fb16e3c0;
-  v1d2fb16d620_break:
+  Ptr v562a896baf40 = p_f;
+  uint64_t v562a896bb0d0 = (uint64_t)32llu;
+  Fun_562a896b5760 v562a896baef0 = fe_malloc;
+  Ptr v562a896baea0 = v562a896baef0(v562a896baf40, v562a896bb0d0);
+  Ptr l_inst = v562a896baea0;
+  uint16_t v562a896bb260 = (uint16_t)1llu;
+  Ptr v562a896bb210 = l_inst;
+  Ptr v562a896bb1c0 = &((Struct_562a896b4080*)v562a896bb210)->kind;
+  *(uint16_t*)v562a896bb1c0 = v562a896bb260;
+  Ptr v562a896bba40 = l_inst;
+  Fun_562a896bb6e0 v562a896bb9f0 = fe_to_bookend;
+  Ptr v562a896bb350 = v562a896bb9f0(v562a896bba40);
+  Ptr l_bookend = v562a896bb350;
+  Ptr v562a896bbb80 = p_block;
+  Ptr v562a896bbb30 = l_bookend;
+  Ptr v562a896bbae0 = &((Struct_562a896b42c0*)v562a896bbb30)->block;
+  *(Ptr*)v562a896bbae0 = v562a896bbb80;
+  Ptr v562a896bbc20 = l_inst;
+  return v562a896bbc20;
+  v562a896bad10_break:
 }
 
 Ptr fe_to_bookend(Ptr p_inst) {
-  Ptr v1d2fb16d9c0 = p_inst;
-  Ptr v1d2fb16e410 = (Ptr)v1d2fb16d9c0;
-  int64_t v1d2fb16dd80 = (int64_t)24ll;
-  Ptr v1d2fb16e5f0 = (Ptr)(v1d2fb16e410 + v1d2fb16dd80);
-  return v1d2fb16e5f0;
-  v1d2fb16e5a0_break:
+  Ptr v562a896bb8b0 = p_inst;
+  Ptr v562a896bb810 = (Ptr)v562a896bb8b0;
+  int64_t v562a896bb900 = (int64_t)24ll;
+  Ptr v562a896bb9a0 = (Ptr)(v562a896bb810 + v562a896bb900);
+  return v562a896bb9a0;
+  v562a896bb720_break:
 }
 
 Ptr fe_inst_unop(Ptr p_f, uint16_t p_kind, uint16_t p_type, Ptr p_sub) {
-  Ptr v1d2fb16e460 = p_f;
-  uint64_t v1d2fb16e820 = (uint64_t)32llu;
-  Fun_1d2fb165f50 v1d2fb16dc40 = fe_malloc;
-  Ptr v1d2fb16e320 = v1d2fb16dc40(v1d2fb16e460, v1d2fb16e820);
-  Ptr l_inst = v1d2fb16e320;
-  uint16_t v1d2fb16e000 = p_type;
-  Ptr v1d2fb16dd30 = l_inst;
-  Ptr v1d2fb16dba0 = &((Struct_1d2fb1600a0*)v1d2fb16dd30)->type;
-  *(uint16_t*)v1d2fb16dba0 = v1d2fb16e000;
-  uint16_t v1d2fb16f700 = p_kind;
-  Ptr v1d2fb16ee40 = l_inst;
-  Ptr v1d2fb16ef80 = &((Struct_1d2fb1600a0*)v1d2fb16ee40)->kind;
-  *(uint16_t*)v1d2fb16ef80 = v1d2fb16f700;
-  Ptr v1d2fb16f890 = l_inst;
-  Fun_1d2fb165a90 v1d2fb16f480 = fe_to_unop;
-  Ptr v1d2fb16f390 = v1d2fb16f480(v1d2fb16f890);
-  Ptr l_unop = v1d2fb16f390;
-  Ptr v1d2fb16f930 = p_sub;
-  Ptr v1d2fb16f8e0 = l_unop;
-  Ptr v1d2fb16f2f0 = &((Struct_1d2fb165990*)v1d2fb16f8e0)->sub;
-  *(Ptr*)v1d2fb16f2f0 = v1d2fb16f930;
-  Ptr v1d2fb16f570 = l_inst;
-  return v1d2fb16f570;
-  v1d2fb16e6e0_break:
+  Ptr v562a896bc450 = p_f;
+  uint64_t v562a896bc5e0 = (uint64_t)32llu;
+  Fun_562a896b5760 v562a896bc400 = fe_malloc;
+  Ptr v562a896bc390 = v562a896bc400(v562a896bc450, v562a896bc5e0);
+  Ptr l_inst = v562a896bc390;
+  uint16_t v562a896bc770 = p_type;
+  Ptr v562a896bc720 = l_inst;
+  Ptr v562a896bc6d0 = &((Struct_562a896b4080*)v562a896bc720)->type;
+  *(uint16_t*)v562a896bc6d0 = v562a896bc770;
+  uint16_t v562a896bc8b0 = p_kind;
+  Ptr v562a896bc860 = l_inst;
+  Ptr v562a896bc810 = &((Struct_562a896b4080*)v562a896bc860)->kind;
+  *(uint16_t*)v562a896bc810 = v562a896bc8b0;
+  Ptr v562a896bd0f0 = l_inst;
+  Fun_562a896bcd90 v562a896bd0a0 = fe_to_unop;
+  Ptr v562a896bc9a0 = v562a896bd0a0(v562a896bd0f0);
+  Ptr l_unop = v562a896bc9a0;
+  Ptr v562a896bd230 = p_sub;
+  Ptr v562a896bd1e0 = l_unop;
+  Ptr v562a896bd190 = &((Struct_562a896b4b80*)v562a896bd1e0)->sub;
+  *(Ptr*)v562a896bd190 = v562a896bd230;
+  Ptr v562a896bd2d0 = l_inst;
+  return v562a896bd2d0;
+  v562a896bc200_break:
 }
 
 Ptr fe_to_unop(Ptr p_inst) {
-  Ptr v1d2fb16f840 = p_inst;
-  Ptr v1d2fb16f1b0 = (Ptr)v1d2fb16f840;
-  int64_t v1d2fb16eb70 = (int64_t)24ll;
-  Ptr v1d2fb16f430 = (Ptr)(v1d2fb16f1b0 + v1d2fb16eb70);
-  return v1d2fb16f430;
-  v1d2fb16ee90_break:
+  Ptr v562a896bcf60 = p_inst;
+  Ptr v562a896bcec0 = (Ptr)v562a896bcf60;
+  int64_t v562a896bcfb0 = (int64_t)24ll;
+  Ptr v562a896bd050 = (Ptr)(v562a896bcec0 + v562a896bcfb0);
+  return v562a896bd050;
+  v562a896bcdd0_break:
 }
 
 Ptr fe_inst_binop(Ptr p_f, uint16_t p_kind, uint16_t p_type, Ptr p_lhs, Ptr p_rhs) {
-  Ptr v1d2fb16f340 = p_f;
-  uint64_t v1d2fb1715e0 = (uint64_t)40llu;
-  Fun_1d2fb165f50 v1d2fb16f160 = fe_malloc;
-  Ptr v1d2fb16ed00 = v1d2fb16f160(v1d2fb16f340, v1d2fb1715e0);
-  Ptr l_inst = v1d2fb16ed00;
-  uint16_t v1d2fb1710e0 = p_type;
-  Ptr v1d2fb171540 = l_inst;
-  Ptr v1d2fb171770 = &((Struct_1d2fb1600a0*)v1d2fb171540)->type;
-  *(uint16_t*)v1d2fb171770 = v1d2fb1710e0;
-  uint16_t v1d2fb171130 = p_kind;
-  Ptr v1d2fb171180 = l_inst;
-  Ptr v1d2fb1719f0 = &((Struct_1d2fb1600a0*)v1d2fb171180)->kind;
-  *(uint16_t*)v1d2fb1719f0 = v1d2fb171130;
-  Ptr v1d2fb1712c0 = l_inst;
-  Fun_1d2fb165690 v1d2fb171a40 = fe_to_binop;
-  Ptr v1d2fb171900 = v1d2fb171a40(v1d2fb1712c0);
-  Ptr l_binop = v1d2fb171900;
-  Ptr v1d2fb171b80 = p_lhs;
-  Ptr v1d2fb171bd0 = l_binop;
-  Ptr v1d2fb171310 = &((Struct_1d2fb165c50*)v1d2fb171bd0)->lhs;
-  *(Ptr*)v1d2fb171310 = v1d2fb171b80;
-  Ptr v1d2fb171400 = p_rhs;
-  Ptr v1d2fb1713b0 = l_binop;
-  Ptr v1d2fb171360 = &((Struct_1d2fb165c50*)v1d2fb1713b0)->rhs;
-  *(Ptr*)v1d2fb171360 = v1d2fb171400;
-  Ptr v1d2fb1714a0 = l_inst;
-  return v1d2fb1714a0;
-  v1d2fb16f250_break:
+  Ptr v562a896bdb90 = p_f;
+  uint64_t v562a896bdd20 = (uint64_t)40llu;
+  Fun_562a896b5760 v562a896bdb40 = fe_malloc;
+  Ptr v562a896bdad0 = v562a896bdb40(v562a896bdb90, v562a896bdd20);
+  Ptr l_inst = v562a896bdad0;
+  uint16_t v562a896bdeb0 = p_type;
+  Ptr v562a896bde60 = l_inst;
+  Ptr v562a896bde10 = &((Struct_562a896b4080*)v562a896bde60)->type;
+  *(uint16_t*)v562a896bde10 = v562a896bdeb0;
+  uint16_t v562a896bdff0 = p_kind;
+  Ptr v562a896bdfa0 = l_inst;
+  Ptr v562a896bdf50 = &((Struct_562a896b4080*)v562a896bdfa0)->kind;
+  *(uint16_t*)v562a896bdf50 = v562a896bdff0;
+  Ptr v562a896be830 = l_inst;
+  Fun_562a896be4d0 v562a896be7e0 = fe_to_binop;
+  Ptr v562a896be0e0 = v562a896be7e0(v562a896be830);
+  Ptr l_binop = v562a896be0e0;
+  Ptr v562a896be970 = p_lhs;
+  Ptr v562a896be920 = l_binop;
+  Ptr v562a896be8d0 = &((Struct_562a896b4d20*)v562a896be920)->lhs;
+  *(Ptr*)v562a896be8d0 = v562a896be970;
+  Ptr v562a896beab0 = p_rhs;
+  Ptr v562a896bea60 = l_binop;
+  Ptr v562a896bea10 = &((Struct_562a896b4d20*)v562a896bea60)->rhs;
+  *(Ptr*)v562a896bea10 = v562a896beab0;
+  Ptr v562a896beb90 = l_inst;
+  return v562a896beb90;
+  v562a896bd940_break:
 }
 
 Ptr fe_to_binop(Ptr p_inst) {
-  Ptr v1d2fb171b30 = p_inst;
-  Ptr v1d2fb1716d0 = (Ptr)v1d2fb171b30;
-  int64_t v1d2fb171860 = (int64_t)24ll;
-  Ptr v1d2fb171950 = (Ptr)(v1d2fb1716d0 + v1d2fb171860);
-  return v1d2fb171950;
-  v1d2fb1719a0_break:
+  Ptr v562a896be6a0 = p_inst;
+  Ptr v562a896be600 = (Ptr)v562a896be6a0;
+  int64_t v562a896be6f0 = (int64_t)24ll;
+  Ptr v562a896be790 = (Ptr)(v562a896be600 + v562a896be6f0);
+  return v562a896be790;
+  v562a896be510_break:
 }
 
 Ptr fe_inst_load(Ptr p_f, uint16_t p_kind, uint16_t p_type, Ptr p_ptr) {
-  Ptr v1d2fb170b90 = p_f;
-  uint64_t v1d2fb170be0 = (uint64_t)32llu;
-  Fun_1d2fb165f50 v1d2fb170d20 = fe_malloc;
-  Ptr v1d2fb170b40 = v1d2fb170d20(v1d2fb170b90, v1d2fb170be0);
-  Ptr l_inst = v1d2fb170b40;
-  uint16_t v1d2fb170d70 = p_type;
-  Ptr v1d2fb1709b0 = l_inst;
-  Ptr v1d2fb170cd0 = &((Struct_1d2fb1600a0*)v1d2fb1709b0)->type;
-  *(uint16_t*)v1d2fb170cd0 = v1d2fb170d70;
-  uint16_t v1d2fb170820 = p_kind;
-  Ptr v1d2fb1703c0 = l_inst;
-  Ptr v1d2fb16fe70 = &((Struct_1d2fb1600a0*)v1d2fb1703c0)->kind;
-  *(uint16_t*)v1d2fb16fe70 = v1d2fb170820;
-  Ptr v1d2fb170eb0 = l_inst;
-  Fun_1d2fb165490 v1d2fb1708c0 = fe_to_load;
-  Ptr v1d2fb16fec0 = v1d2fb1708c0(v1d2fb170eb0);
-  Ptr l_load = v1d2fb16fec0;
-  Ptr v1d2fb16fe20 = p_ptr;
-  Ptr v1d2fb170ff0 = l_load;
-  Ptr v1d2fb170f50 = &((Struct_1d2fb165310*)v1d2fb170ff0)->ptr;
-  *(Ptr*)v1d2fb170f50 = v1d2fb16fe20;
-  Ptr v1d2fb170690 = l_inst;
-  return v1d2fb170690;
-  v1d2fb170960_break:
+  Ptr v562a896bf3c0 = p_f;
+  uint64_t v562a896bf550 = (uint64_t)32llu;
+  Fun_562a896b5760 v562a896bf370 = fe_malloc;
+  Ptr v562a896bf300 = v562a896bf370(v562a896bf3c0, v562a896bf550);
+  Ptr l_inst = v562a896bf300;
+  uint16_t v562a896bf6e0 = p_type;
+  Ptr v562a896bf690 = l_inst;
+  Ptr v562a896bf640 = &((Struct_562a896b4080*)v562a896bf690)->type;
+  *(uint16_t*)v562a896bf640 = v562a896bf6e0;
+  uint16_t v562a896bf820 = p_kind;
+  Ptr v562a896bf7d0 = l_inst;
+  Ptr v562a896bf780 = &((Struct_562a896b4080*)v562a896bf7d0)->kind;
+  *(uint16_t*)v562a896bf780 = v562a896bf820;
+  Ptr v562a896c0060 = l_inst;
+  Fun_562a896bfd00 v562a896c0010 = fe_to_load;
+  Ptr v562a896bf910 = v562a896c0010(v562a896c0060);
+  Ptr l_load = v562a896bf910;
+  Ptr v562a896c01a0 = p_ptr;
+  Ptr v562a896c0150 = l_load;
+  Ptr v562a896c0100 = &((Struct_562a896b5030*)v562a896c0150)->ptr;
+  *(Ptr*)v562a896c0100 = v562a896c01a0;
+  Ptr v562a896c0240 = l_inst;
+  return v562a896c0240;
+  v562a896bf170_break:
 }
 
 Ptr fe_to_load(Ptr p_inst) {
-  Ptr v1d2fb170640 = p_inst;
-  Ptr v1d2fb170a50 = (Ptr)v1d2fb170640;
-  int64_t v1d2fb1700a0 = (int64_t)24ll;
-  Ptr v1d2fb170e60 = (Ptr)(v1d2fb170a50 + v1d2fb1700a0);
-  return v1d2fb170e60;
-  v1d2fb171040_break:
+  Ptr v562a896bfed0 = p_inst;
+  Ptr v562a896bfe30 = (Ptr)v562a896bfed0;
+  int64_t v562a896bff20 = (int64_t)24ll;
+  Ptr v562a896bffc0 = (Ptr)(v562a896bfe30 + v562a896bff20);
+  return v562a896bffc0;
+  v562a896bfd40_break:
 }
 
 Ptr fe_inst_store(Ptr p_f, uint16_t p_kind, uint16_t p_type, Ptr p_ptr, Ptr p_val) {
-  Ptr v1d2fb174050 = p_f;
-  uint64_t v1d2fb174190 = (uint64_t)40llu;
-  Fun_1d2fb165f50 v1d2fb174410 = fe_malloc;
-  Ptr v1d2fb1743c0 = v1d2fb174410(v1d2fb174050, v1d2fb174190);
-  Ptr l_inst = v1d2fb1743c0;
-  uint16_t v1d2fb174780 = p_type;
-  Ptr v1d2fb173d80 = l_inst;
-  Ptr v1d2fb174460 = &((Struct_1d2fb1600a0*)v1d2fb173d80)->type;
-  *(uint16_t*)v1d2fb174460 = v1d2fb174780;
-  uint16_t v1d2fb174320 = p_kind;
-  Ptr v1d2fb174690 = l_inst;
-  Ptr v1d2fb174640 = &((Struct_1d2fb1600a0*)v1d2fb174690)->kind;
-  *(uint16_t*)v1d2fb174640 = v1d2fb174320;
-  Ptr v1d2fb172e30 = l_inst;
-  Fun_1d2fb165550 v1d2fb173ec0 = fe_to_store;
-  Ptr v1d2fb173c40 = v1d2fb173ec0(v1d2fb172e30);
-  Ptr l_store = v1d2fb173c40;
-  Ptr v1d2fb172d90 = p_ptr;
-  Ptr v1d2fb172f70 = l_store;
-  Ptr v1d2fb172a20 = &((Struct_1d2fb1660d0*)v1d2fb172f70)->ptr;
-  *(Ptr*)v1d2fb172a20 = v1d2fb172d90;
-  Ptr v1d2fb173880 = p_val;
-  Ptr v1d2fb1730b0 = l_store;
-  Ptr v1d2fb172890 = &((Struct_1d2fb1660d0*)v1d2fb1730b0)->val;
-  *(Ptr*)v1d2fb172890 = v1d2fb173880;
-  Ptr v1d2fb173b50 = l_inst;
-  return v1d2fb173b50;
-  v1d2fb1745a0_break:
+  Ptr v562a896c0b00 = p_f;
+  uint64_t v562a896c0c90 = (uint64_t)40llu;
+  Fun_562a896b5760 v562a896c0ab0 = fe_malloc;
+  Ptr v562a896c0a40 = v562a896c0ab0(v562a896c0b00, v562a896c0c90);
+  Ptr l_inst = v562a896c0a40;
+  uint16_t v562a896c0e20 = p_type;
+  Ptr v562a896c0dd0 = l_inst;
+  Ptr v562a896c0d80 = &((Struct_562a896b4080*)v562a896c0dd0)->type;
+  *(uint16_t*)v562a896c0d80 = v562a896c0e20;
+  uint16_t v562a896c0f60 = p_kind;
+  Ptr v562a896c0f10 = l_inst;
+  Ptr v562a896c0ec0 = &((Struct_562a896b4080*)v562a896c0f10)->kind;
+  *(uint16_t*)v562a896c0ec0 = v562a896c0f60;
+  Ptr v562a896c17a0 = l_inst;
+  Fun_562a896c1440 v562a896c1750 = fe_to_store;
+  Ptr v562a896c1050 = v562a896c1750(v562a896c17a0);
+  Ptr l_store = v562a896c1050;
+  Ptr v562a896c18e0 = p_ptr;
+  Ptr v562a896c1890 = l_store;
+  Ptr v562a896c1840 = &((Struct_562a896b51d0*)v562a896c1890)->ptr;
+  *(Ptr*)v562a896c1840 = v562a896c18e0;
+  Ptr v562a896c1a20 = p_val;
+  Ptr v562a896c19d0 = l_store;
+  Ptr v562a896c1980 = &((Struct_562a896b51d0*)v562a896c19d0)->val;
+  *(Ptr*)v562a896c1980 = v562a896c1a20;
+  Ptr v562a896c1b00 = l_inst;
+  return v562a896c1b00;
+  v562a896c08b0_break:
 }
 
 Ptr fe_to_store(Ptr p_inst) {
-  Ptr v1d2fb1741e0 = p_inst;
-  Ptr v1d2fb1740f0 = (Ptr)v1d2fb1741e0;
-  int64_t v1d2fb174230 = (int64_t)24ll;
-  Ptr v1d2fb173330 = (Ptr)(v1d2fb1740f0 + v1d2fb174230);
-  return v1d2fb173330;
-  v1d2fb173e70_break:
+  Ptr v562a896c1610 = p_inst;
+  Ptr v562a896c1570 = (Ptr)v562a896c1610;
+  int64_t v562a896c1660 = (int64_t)24ll;
+  Ptr v562a896c1700 = (Ptr)(v562a896c1570 + v562a896c1660);
+  return v562a896c1700;
+  v562a896c1480_break:
 }
 
 Ptr fe_new_block(Ptr p_f) {
-  Ptr v1d2fb173830 = p_f;
-  uint64_t v1d2fb173650 = (uint64_t)32llu;
-  Fun_1d2fb165f50 v1d2fb173150 = fe_malloc;
-  Ptr v1d2fb172b60 = v1d2fb173150(v1d2fb173830, v1d2fb173650);
-  Ptr l_block = v1d2fb172b60;
-  Ptr v1d2fb173420 = p_f;
-  Ptr v1d2fb1736a0 = l_block;
-  Fun_1d2fb165cd0 v1d2fb173b00 = fe_inst_bookend;
-  Ptr v1d2fb173470 = v1d2fb173b00(v1d2fb173420, v1d2fb1736a0);
-  Ptr l_bookend = v1d2fb173470;
-  Ptr v1d2fb1732e0 = l_bookend;
-  Ptr v1d2fb173ab0 = l_block;
-  Ptr v1d2fb172bb0 = &((Struct_1d2fb166150*)v1d2fb173ab0)->start;
-  *(Ptr*)v1d2fb172bb0 = v1d2fb1732e0;
-  Ptr v1d2fb173290 = l_bookend;
-  Ptr v1d2fb172fc0 = l_block;
-  Ptr v1d2fb172c00 = &((Struct_1d2fb166150*)v1d2fb172fc0)->end;
-  *(Ptr*)v1d2fb172c00 = v1d2fb173290;
-  Ptr v1d2fb1728e0 = p_f;
-  Ptr v1d2fb172930 = l_block;
-  Ptr v1d2fb173010 = &((Struct_1d2fb166150*)v1d2fb172930)->function;
-  *(Ptr*)v1d2fb173010 = v1d2fb1728e0;
-  Ptr v1d2fb173510 = l_block;
-  return v1d2fb173510;
-  v1d2fb173bf0_break:
+  Ptr v562a896c2150 = p_f;
+  uint64_t v562a896c21a0 = (uint64_t)32llu;
+  Fun_562a896b5760 v562a896c2100 = fe_malloc;
+  Ptr v562a896c2090 = v562a896c2100(v562a896c2150, v562a896c21a0);
+  Ptr l_block = v562a896c2090;
+  Ptr v562a896c23f0 = p_f;
+  Ptr v562a896c2440 = l_block;
+  Fun_562a896bacd0 v562a896c23a0 = fe_inst_bookend;
+  Ptr v562a896c2330 = v562a896c23a0(v562a896c23f0, v562a896c2440);
+  Ptr l_bookend = v562a896c2330;
+  Ptr v562a896c2580 = l_bookend;
+  Ptr v562a896c2530 = l_block;
+  Ptr v562a896c24e0 = &((Struct_562a896b4330*)v562a896c2530)->start;
+  *(Ptr*)v562a896c24e0 = v562a896c2580;
+  Ptr v562a896c26c0 = l_bookend;
+  Ptr v562a896c2670 = l_block;
+  Ptr v562a896c2620 = &((Struct_562a896b4330*)v562a896c2670)->end;
+  *(Ptr*)v562a896c2620 = v562a896c26c0;
+  Ptr v562a896c2800 = p_f;
+  Ptr v562a896c27b0 = l_block;
+  Ptr v562a896c2760 = &((Struct_562a896b4330*)v562a896c27b0)->function;
+  *(Ptr*)v562a896c2760 = v562a896c2800;
+  Ptr v562a896c28a0 = l_block;
+  return v562a896c28a0;
+  v562a896c1f00_break:
 }
 
