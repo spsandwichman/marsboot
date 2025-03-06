@@ -3,13 +3,13 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef int64_t (*Fun_1a691ecb7a0)();
+typedef int64_t (*Fun_55f1314e2a20)(int64_t);
 
-int64_t test_foo();
+int64_t test_identity(int64_t p_i);
 
-int64_t test_foo() {
-  int64_t v1a691ecc030 = (int64_t)1ll;
-  return v1a691ecc030;
-  v1a691ecb860_break:
+int64_t test_identity(int64_t p_i) {
+  int64_t v55f1314e2b50 = p_i;
+  return v55f1314e2b50;
+  v55f1314e2a60_break:
 }
 

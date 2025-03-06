@@ -4,9 +4,8 @@ module test;
 // extern fun free(ptr: ^mut);
 // extern fun realloc(ptr: ^mut, size: uint): ^mut;
 
+def y = 4;
 
 fun identity(i: int): int {
-    return i + y;
+    return i;
 }
-
-def y = 4;

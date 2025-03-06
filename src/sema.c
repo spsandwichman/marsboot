@@ -476,6 +476,9 @@ SemaNode* check_expr_equality(Analyzer* an, u8 kind, EntityTable* scope, PNode* 
         binop->kind = SN_CONSTVAL;
         binop->constval.type == TYPE_BOOL;
         apply_bool_binop(binop->constval, binop->type, lhs->constval, ==, rhs->constval);
+        if (pn->base.kind == PN_EXPR_NEQ) {
+            binop->constval.bool = !binop->constval.bool;
+        }
     }
 
     binop->type = TYPE_BOOL;
@@ -1873,6 +1876,7 @@ bool check_block_inner(Analyzer* an, EntityTable* scope, PNode* pbody, SemaNode*
     bool warned_dead_code = false;
     for_n (i, 0, pbody->list.len) {
         PNode* pstmt = pbody->list.at[i];
+        if (pstmt == NULL) continue;
         if (seen_return && !warned_dead_code) {
             report_pnode(false, pstmt, "dead code");
             warned_dead_code = true;
@@ -1884,6 +1888,8 @@ bool check_block_inner(Analyzer* an, EntityTable* scope, PNode* pbody, SemaNode*
             // if its global, just ignore it. its been resolved before you.
             if (!is_global) {
                 seen_return = check_local_when_stmt(an, scope, pstmt, block);
+            } else {
+                printf("global when \n");
             }
             continue;
         }
@@ -2712,8 +2718,37 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     }
 }
 
+void precollect_entities(Analyzer* an, EntityTable* scope, PNode* block);
+
+PNode* precollect_when(Analyzer* an, EntityTable* scope, PNode* when_stmt) {
+    // evaluate condition
+    SemaNode* cond = check_expr(an, scope, when_stmt->ternary.cond, TYPE_BOOL);
+    if (type_can_implicit_cast(cond->type, TYPE_BOOL)) {
+        cond = insert_implicit_cast(an, cond, TYPE_BOOL);
+    } else {
+        string cond_type_str = type_gen_string(cond->type, true);
+        report_pnode(true, cond->pnode, "condition must be 'bool', not '"str_fmt"'", 
+            str_arg(cond_type_str)
+        );
+    }
+    if (cond->kind != SN_CONSTVAL) {
+        report_pnode(true, cond->pnode, "condition must be compile-time constant");
+    }
+
+    if (cond->constval.bool) {
+        precollect_entities(an, scope, when_stmt->ternary.if_true);
+        return when_stmt->ternary.if_true;
+    } else if (when_stmt->ternary.if_false && when_stmt->ternary.if_false->base.kind == PN_STMT_WHEN) {
+        return precollect_when(an, scope, when_stmt->ternary.if_false);
+    } else if (when_stmt->ternary.if_false) {
+        precollect_entities(an, scope, when_stmt->ternary.if_false);
+        return when_stmt->ternary.if_false;
+    }
+    return NULL;
+}
+
 void precollect_entities(Analyzer* an, EntityTable* scope, PNode* block) {
-    // pre-collect entitites
+    assert(block->base.kind == PN_LIST);
     for_n (i, 0, block->list.len) {
         PNode* tls = block->list.at[i];
         switch (tls->base.kind) {
@@ -2768,25 +2803,25 @@ void precollect_entities(Analyzer* an, EntityTable* scope, PNode* block) {
         case PN_STMT_WHICH: // defer these until later
             break;
         default:
+            report_pnode(true, tls, "invalid global statement");
             UNREACHABLE;
         }
     }
 
     // handle when/which here
     for_n (i, 0, block->list.len) {
-        PNode* tls = block->list.at[i];
-        switch (tls->base.kind) {
+        PNode* stmt = block->list.at[i];
+        switch (stmt->base.kind) {
         case PN_STMT_WHEN:
+            block->list.at[i] = precollect_when(an, scope, stmt);
+            break;
         case PN_STMT_WHICH:
             UNREACHABLE; // TODO! lmao
-            break;
         default:
             break;
         }
     }
-
 }
-
 Module* sema_check(PNode* top) {
     Module* mod = malloc(sizeof(Module));
     *mod = (Module){};
@@ -2804,11 +2839,11 @@ Module* sema_check(PNode* top) {
     an.defer_stack = vecptr_new(SemaNode, 4);
     an.control_flow = vecptr_new(SemaNode, 16);
 
-    precollect_entities(&an, mod->global, top);
-
     // fuck the module decl :(
-    top->list.at = &top->list.at[1];
+    top->list.at++;
     top->list.len--;
+
+    precollect_entities(&an, mod->global, top);
 
     // check stmts
     check_block(&an, mod->global, top, false, NULL_STR);
@@ -2821,7 +2856,7 @@ Module* sema_check(PNode* top) {
     // }
 
     // unfuck the module decl :)
-    top->list.at = &top->list.at[-1];
+    top->list.at--;
     top->list.len++;
 
     return mod;
