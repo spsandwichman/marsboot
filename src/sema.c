@@ -393,6 +393,10 @@ ConstVal constval_cast(ConstVal v, Type to) {
 bool constval_equal(ConstVal a, ConstVal b) {
     if (a.type != b.type) return false;
 
+    if (type(a.type)->kind == TYPE_ENUM) {
+        a.type = type(a.type)->as_enum.underlying;
+    }
+
     switch (a.type) {
     case TYPE_I8: case TYPE_U8: return a.u8 == b.u8;
     case TYPE_I16: case TYPE_U16: case TYPE_F16: return a.u16 == b.u16;
@@ -654,7 +658,7 @@ SemaNode* check_expr_arith_binop(Analyzer* an, u8 kind, EntityTable* scope, PNod
     return binop;
 }
 
-// &, |, ~, ~|
+// &, |, ~
 SemaNode* check_expr_bitwise_binop(Analyzer* an, u8 kind, EntityTable* scope, PNode* pn, Type expected) {
     
     SemaNode* lhs = check_expr(an, scope, pn->binop.lhs, TYPE_UNKNOWN);
@@ -774,7 +778,7 @@ SemaNode* check_expr_arith_neg(Analyzer* an, EntityTable* scope, PNode* pn, Type
 
 SemaNode* check_expr_bitcast(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* cast = new_node(an, pn, SN_BITCAST);
-    Type to = ingest_type(an, scope, pn->binop.lhs, false);
+    Type to = evaluate_type(an, scope, pn->binop.lhs, false);
     cast->type = to;
     SemaNode* value = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
 
@@ -803,7 +807,7 @@ SemaNode* check_expr_bitcast(Analyzer* an, EntityTable* scope, PNode* pn, Type e
 
 SemaNode* check_expr_cast(Analyzer* an, EntityTable* scope, PNode* pn, Type expected) {
     SemaNode* cast = new_node(an, pn, SN_CAST);
-    Type to = ingest_type(an, scope, pn->binop.lhs, false);
+    Type to = evaluate_type(an, scope, pn->binop.lhs, false);
     cast->type = to;
     SemaNode* value = check_expr(an, scope, pn->binop.rhs, TYPE_UNKNOWN);
 
@@ -868,7 +872,7 @@ SemaNode* check_expr_ident(Analyzer* an, EntityTable* scope, PNode* pn, Type exp
                ent->check_status == ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE) {
         if (ent->type == TYPE_TYPEID && ent->decl_pnode->decl.kind == DECLKIND_DEF) {
             SemaNode* cv = new_node(an, pn, SN_CONSTVAL);
-            cv->constval.typeid = ingest_type(an, scope, pn, false);
+            cv->constval.typeid = evaluate_type(an, scope, pn, false);
             cv->type = cv->constval.type = TYPE_TYPEID;
             return cv;
         } else {
@@ -1192,7 +1196,7 @@ SemaNode* check_expr_selector(Analyzer* an, EntityTable* scope, PNode* pn, Type 
 
 SemaNode* check_expr_compound(Analyzer* an, EntityTable* scope, PNode* pn, Type expected, bool ignore_given_type) {
     if (pn->compound.type && !ignore_given_type) {
-        expected = ingest_type(an, scope, pn->compound.type, true);
+        expected = evaluate_type(an, scope, pn->compound.type, true);
     }
     Type undistinct_expected = type_unwrap_distinct(expected);
 
@@ -1335,7 +1339,8 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
     case PN_TYPE_POINTER:
     case PN_TYPE_SLICE:
     case PN_TYPE_BOUNDLESS_SLICE:
-        Type t = ingest_type(an, scope, pn, false);
+    case PN_FNPROTO:
+        Type t = evaluate_type(an, scope, pn, false);
         expr = new_node(an, pn, SN_CONSTVAL);
         expr->constval.type = TYPE_TYPEID;
         expr->type = TYPE_TYPEID;
@@ -1452,7 +1457,7 @@ bool check_record_name_already_exists(Type t, string ident, usize current_len) {
     return false;
 }
 
-Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed) {
+Type evaluate_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed) {
     switch (pn->base.kind) {
     case PN_TYPE_I8:  return TYPE_I8;
     case PN_TYPE_I16: return TYPE_I16;
@@ -1475,12 +1480,70 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
     case PN_TYPE_DYN:    return TYPE_DYN;
     case PN_TYPE_TYPEID: return TYPE_TYPEID;
 
+    case PN_FNPROTO: {
+        if (pn->fnproto.ident != NULL) {
+            report_pnode(true, pn->array_type.len, "function type cannot have identifier");
+        }
+        
+        Vec_typedef(TypeFnParam);
+        Vec(TypeFnParam) params = vec_new(TypeFnParam, 8);
+        PNode* param_list = pn->fnproto.param_list;
+
+        usize num_fields = 0;
+        for_n(i, 0, pn->fnproto.param_list->list.len) {
+            PNode* item = pn->fnproto.param_list->list.at[i];
+            if (item->item.ident->base.kind == PN_LIST) {
+                num_fields += item->item.ident->list.len;
+            } else {
+                num_fields += 1;
+            }
+        }
+        // printf("num fields %d\n", num_fields);
+
+        for_n(i, 0, param_list->list.len) {
+            PNode* item = param_list->list.at[i];
+            if (item->item.ident->base.kind == PN_LIST) {
+                Type field_type = evaluate_type(an, scope, item->item.type, false);
+                for_n(j, 0, item->item.ident->list.len) {
+                    PNode* pnode = item->item.ident->list.at[j];
+                    string ident = pnode_span(pnode);
+                    // if (check_record_name_already_exists(record, ident, field)) {
+                    //     report_pnode(true, pnode, "param name already exists");
+                    // }
+                    TypeFnParam p = {.name = ident, .type = field_type};
+                    vec_append(&params, p);
+                }
+            } else {
+                string ident = pnode_span(item);
+                // if (check_record_name_already_exists(record, ident, field)) {
+                //     report_pnode(true, item, "param name already exists");
+                // }
+                Type field_type = evaluate_type(an, scope, item->item.type, false);
+                // type(record)->as_record.at[field].name = ident;
+                // type(record)->as_record.at[field].type = field_type;
+                
+                TypeFnParam p = {.name = ident, .type = field_type};
+                vec_append(&params, p);
+            }
+        }
+
+        
+        Type t = type_new(an->m, TYPE_FUNCTION);
+        type(t)->as_function.params.at = params.at;
+        type(t)->as_function.params.len = params.len;
+        type(t)->as_function.ret_type = TYPE_VOID;
+        if (pn->fnproto.ret_type) {
+            type(t)->as_function.ret_type = evaluate_type(an, scope, pn->fnproto.ret_type, false);
+        }
+
+        return t;
+    }
     case PN_TYPE_ARRAY:
         if (pn->array_type.len->base.kind == PN_DISCARD) {
             if (!array_len_unknown_allowed) {
                 report_pnode(true, pn->array_type.len, "cannot assume array length here");
             }
-            Type sub = ingest_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
+            Type sub = evaluate_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
             Type arr = type_new_array_len_unknown(an->m, sub);
             return arr;
         } 
@@ -1488,12 +1551,12 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
         if (length->kind != SN_CONSTVAL || !type_is_integer(length->type)) {
             report_pnode(true, pn->array_type.len, "array length must be a constant integer");
         }
-        Type sub = ingest_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
+        Type sub = evaluate_type(an, scope, pn->array_type.sub, array_len_unknown_allowed);
         Type arr = type_new_array(an->m, sub, length->constval.i64);
         return arr;
 
     case PN_TYPE_DISTINCT:
-        sub = ingest_type(an, scope, pn->unop.sub, array_len_unknown_allowed);
+        sub = evaluate_type(an, scope, pn->unop.sub, array_len_unknown_allowed);
         Type distinct = type_new(an->m, TYPE_DISTINCT);
         type(distinct)->as_distinct = sub;
         return distinct;
@@ -1501,18 +1564,18 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
     case PN_TYPE_POINTER:
         Type pointee = TYPE_VOID;
         if (pn->ref_type.sub) {
-            pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
+            pointee = evaluate_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         }
         Type ptr = type_new_ref(an->m, TYPE_POINTER, pointee, pn->ref_type.mutable);
         return ptr;
 
     case PN_TYPE_BOUNDLESS_SLICE:
-        pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
+        pointee = evaluate_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         ptr = type_new_ref(an->m, TYPE_BOUNDLESS_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
 
     case PN_TYPE_SLICE:
-        pointee = ingest_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
+        pointee = evaluate_type(an, scope, pn->ref_type.sub, array_len_unknown_allowed);
         ptr = type_new_ref(an->m, TYPE_SLICE, pointee, pn->ref_type.mutable);
         return ptr;
 
@@ -1549,7 +1612,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
         Type backing_type = TYPE_I64;
 
         if (pn->enum_type.type != NULL) {
-            backing_type = ingest_type(an, scope, pn->enum_type.type, false);
+            backing_type = evaluate_type(an, scope, pn->enum_type.type, false);
             if (!type_is_integer(backing_type)) {
                 report_pnode(true, pn->enum_type.type, "enum backing type must be an integer");
             }
@@ -1614,7 +1677,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
         for_n(i, 0, pn->record_type.fields->list.len) {
             PNode* item = pn->record_type.fields->list.at[i];
             if (item->item.ident->base.kind == PN_LIST) {
-                Type field_type = ingest_type(an, scope, item->item.type, false);
+                Type field_type = evaluate_type(an, scope, item->item.type, false);
                 for_n(j, 0, item->item.ident->list.len) {
                     PNode* pnode = item->item.ident->list.at[j];
                     string ident = pnode_span(pnode);
@@ -1630,7 +1693,7 @@ Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unk
                 if (check_record_name_already_exists(record, ident, field)) {
                     report_pnode(true, item, "field name already exists");
                 }
-                Type field_type = ingest_type(an, scope, item->item.type, false);
+                Type field_type = evaluate_type(an, scope, item->item.type, false);
                 type(record)->as_record.at[field].name = ident;
                 type(record)->as_record.at[field].type = field_type;
                 field++;
@@ -1696,7 +1759,7 @@ SemaNode* check_def_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     ent->storage = STORAGE_COMPTIME;
 
     if (pstmt->decl.type) {
-        ent->type = ingest_type(an, scope, pstmt->decl.type, false);
+        ent->type = evaluate_type(an, scope, pstmt->decl.type, false);
         ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
     }
 
@@ -1790,7 +1853,7 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     }
 
     if (pstmt->decl.type) {
-        ent->type = ingest_type(an, scope, pstmt->decl.type, false);
+        ent->type = evaluate_type(an, scope, pstmt->decl.type, false);
         ent->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
     }
 
@@ -1942,7 +2005,7 @@ Type check_fn_prototype(Analyzer* an, EntityTable* fn_scope, PNode* proto) {
     for_n (i, 0, param_list->list.len) {
         PNode* items = param_list->list.at[i];
         
-        Type t = ingest_type(an, fn_scope, items->item.type, false);
+        Type t = evaluate_type(an, fn_scope, items->item.type, false);
 
         if (items->item.ident->base.kind == PN_IDENT) {
             string name = pnode_span(items->item.ident);
@@ -1983,7 +2046,7 @@ Type check_fn_prototype(Analyzer* an, EntityTable* fn_scope, PNode* proto) {
 
     Type ret_type;
     if (proto->fnproto.ret_type) {
-        ret_type = ingest_type(an, fn_scope, proto->fnproto.ret_type, false);
+        ret_type = evaluate_type(an, fn_scope, proto->fnproto.ret_type, false);
     } else {
         ret_type = TYPE_VOID;
     }
@@ -2108,7 +2171,7 @@ SemaNode* check_extern_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
         if (decl->decl.type == NULL) {
             report_pnode(true, decl, "extern declaration requires type");
         }
-        ent->type = ingest_type(an, scope, decl->decl.type, false);
+        ent->type = evaluate_type(an, scope, decl->decl.type, false);
 
         if (decl->decl.value != NULL) {
             report_pnode(true, decl, "extern declaration cannot have value");
@@ -2292,7 +2355,7 @@ SemaNode* check_stmt_for_in(Analyzer* an, EntityTable* scope, PNode* pstmt, stri
     u8 iter_kind = pstmt->for_in.range->base.kind;
     if (iter_kind == PN_EXPR_RANGE_EQ || iter_kind == PN_EXPR_RANGE_LESS) {
         if (pstmt->for_in.type) {
-            iter_var->type = ingest_type(an, scope, pstmt->for_in.type, false);
+            iter_var->type = evaluate_type(an, scope, pstmt->for_in.type, false);
             iter_var->check_status = ENT_CHECK_IN_PROGRESS_TYPE_AVAILABLE;
         }
     
@@ -2365,8 +2428,8 @@ SemaNode* check_stmt_switch(Analyzer* an, EntityTable* scope, PNode* pstmt, stri
     if (expected_match_type == TYPE_DYN) {
         expected_match_type = TYPE_TYPEID;
     }
-    if (!type_is_integer(expected_match_type) && expected_match_type != TYPE_TYPEID) {
-        report_pnode(true, cond->pnode, "cannot switch on non-integer");
+    if (!type_is_integer(expected_match_type) && type(expected_match_type)->kind != TYPE_ENUM && expected_match_type != TYPE_TYPEID) {
+        report_pnode(true, cond->pnode, "can only switch on integer, enum, or dyn");
     }
     switch_stmt->switch_stmt.cond = cond;
 

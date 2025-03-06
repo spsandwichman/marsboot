@@ -2,25 +2,20 @@ module fe;
 
 // import mem "../common/mem/mem.mars";
 
-def Type = u16;
-def TypeKind = enum Type {
-    VOID = 0,
+def Type = enum u8 {
+    VOID = 0b0000,
 
-    BOOL,
-    I8,
-    I16,
-    I32,
-    I64,
+    BOOL = 0b0001,
+    I8   = 0b0010,
+    I16  = 0b0011,
+    I32  = 0b0100,
+    I64  = 0b0101,
 
-    F16,
-    F32,
-    F64,
+    F16  = 0b0110,
+    F32  = 0b0111,
+    F64  = 0b1000,
 
-    PTR,
-
-    // _SIMPLE_END,
-    // RECORD,
-    // ARRAY,
+    PTR  = 0b1001,
 };
 
 def InstKind = enum u16 {

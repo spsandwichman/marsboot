@@ -4,8 +4,21 @@ module test;
 // extern fun free(ptr: ^mut);
 // extern fun realloc(ptr: ^mut, size: uint): ^mut;
 
-def y = 4;
+def Foo = enum int {
+    A, B, C, D, E, F
+};
 
-fun identity(i: int): int {
-    return i;
+fun x(i: Foo): int {
+    switch i
+    case .A {
+        return 10;
+    }
+    case .B, .C {
+        return 11;
+    }
+    case .D {
+        return 12;
+    }
+
+    return -1;
 }

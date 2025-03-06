@@ -19,7 +19,7 @@ when builtin::arch == .C {
             return realloc(mem, size);
         }
         case .Free {
-            free(mem)
+            free(mem);
         }
 
         return null;

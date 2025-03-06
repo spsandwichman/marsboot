@@ -494,6 +494,6 @@ SemaNode* check_expr(Analyzer* an, EntityTable* scope, PNode* pn, Type expected)
 SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt);
 SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt);
 SemaNode* check_fn_decl(Analyzer* an, EntityTable* scope, PNode* pstmt);
-Type ingest_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed);
+Type evaluate_type(Analyzer* an, EntityTable* scope, PNode* pn, bool array_len_unknown_allowed);
 
 #endif // SEMA_H
