@@ -473,6 +473,8 @@ SemaNode* check_expr_equality(Analyzer* an, u8 kind, EntityTable* scope, PNode* 
     }
 
     if (lhs->kind == SN_CONSTVAL && rhs->kind == SN_CONSTVAL) {
+        binop->kind = SN_CONSTVAL;
+        binop->constval.type == TYPE_BOOL;
         apply_bool_binop(binop->constval, binop->type, lhs->constval, ==, rhs->constval);
     }
 
@@ -1836,13 +1838,36 @@ SemaNode* check_var_decl(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     return decl;
 }
 
-SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return, string label) {
-    // VecPtr(SemaNode) stmts = vecptr_new(SemaNode, 8);
-    SemaNode* list = new_node(an, pbody, SN_STMT_BLOCK);
-    vec_append(&an->control_flow, list);
+bool check_block_inner(Analyzer* an, EntityTable* scope, PNode* pbody, SemaNode* block);
 
-    vec_init(&list->block, 8); // spooky shit...
-    list->block.label = label;
+bool check_local_when_stmt(Analyzer* an, EntityTable* scope, PNode* when_stmt, SemaNode* block) {
+    // evaluate condition
+    SemaNode* cond = check_expr(an, scope, when_stmt->ternary.cond, TYPE_BOOL);
+    if (type_can_implicit_cast(cond->type, TYPE_BOOL)) {
+        cond = insert_implicit_cast(an, cond, TYPE_BOOL);
+    } else {
+        string cond_type_str = type_gen_string(cond->type, true);
+        report_pnode(true, cond->pnode, "condition must be 'bool', not '"str_fmt"'", 
+            str_arg(cond_type_str)
+        );
+    }
+    if (cond->kind != SN_CONSTVAL) {
+        report_pnode(true, cond->pnode, "condition must be compile-time constant");
+    }
+
+    if (cond->constval.bool) {
+        return check_block_inner(an, scope, when_stmt->ternary.if_true, block);
+    } else if (when_stmt->ternary.if_false && when_stmt->ternary.if_false->base.kind == PN_STMT_WHEN) {
+        return check_local_when_stmt(an, scope, when_stmt->ternary.if_false, block);
+    } else if (when_stmt->ternary.if_false) {
+        return check_block_inner(an, scope, when_stmt->ternary.if_false, block);
+    }
+    return false;
+}
+
+// returns 'seen_return'
+bool check_block_inner(Analyzer* an, EntityTable* scope, PNode* pbody, SemaNode* block) {
+    bool is_global = scope == an->m->global;
 
     bool seen_return = false;
     bool warned_dead_code = false;
@@ -1852,18 +1877,44 @@ SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_
             report_pnode(false, pstmt, "dead code");
             warned_dead_code = true;
         }
+
+        // when statements have to be handled specially, because
+        // they append whatever they have to their parent block.
+        if (pstmt->base.kind == PN_STMT_WHEN) {
+            // if its global, just ignore it. its been resolved before you.
+            if (!is_global) {
+                seen_return = check_local_when_stmt(an, scope, pstmt, block);
+            }
+            continue;
+        }
+        
         SemaNode* stmt = check_stmt(an, scope, pstmt);
         if (pstmt->base.kind == PN_STMT_RETURN) {
             seen_return = true;
         }
-        vec_append(&list->block, stmt);
+        if (stmt != NULL) {
+            vec_append(&block->block, stmt);
+        }
     }
+
+    return seen_return;
+}
+
+SemaNode* check_block(Analyzer* an, EntityTable* scope, PNode* pbody, bool must_return, string label) {
+    SemaNode* list = new_node(an, pbody, SN_STMT_BLOCK);
+    vec_append(&an->control_flow, list);
+
+    vec_init(&list->block, 8); // spooky shit...
+    list->block.label = label;
+
+    bool seen_return = check_block_inner(an, scope, pbody, list);
+   
     if (!seen_return && must_return) {
         PNode* pstmt = pbody;
         if (pbody->list.len != 0) {
             pstmt = pbody->list.at[pbody->list.len - 1];
         }
-        report_pnode(true, pstmt, "function with value must return explicitly");
+        report_pnode(true, pstmt, "function with value must return at the end");
     }
     vec_pop(&an->control_flow);
 
@@ -2661,6 +2712,81 @@ SemaNode* check_stmt(Analyzer* an, EntityTable* scope, PNode* pstmt) {
     }
 }
 
+void precollect_entities(Analyzer* an, EntityTable* scope, PNode* block) {
+    // pre-collect entitites
+    for_n (i, 0, block->list.len) {
+        PNode* tls = block->list.at[i];
+        switch (tls->base.kind) {
+        case PN_STMT_DECL: {
+            PNode* ident = tls->decl.ident;
+            string ident_name = pnode_span(ident);
+            Entity* ent = etbl_put(an->m->global, ident_name);
+            ent->check_status = ENT_CHECK_NONE;
+            ent->storage = tls->decl.kind == DECLKIND_DEF ? STORAGE_COMPTIME : STORAGE_GLOBAL;
+            ent->decl_pnode = tls;
+            ent->tbl = an->m->global;
+            } break;
+        case PN_STMT_FN_DECL: {
+            PNode* prototype = tls->fn_decl.proto;
+            PNode* ident = prototype->fnproto.ident;
+            string ident_name = pnode_span(ident);
+            Entity* ent = etbl_put(an->m->global, ident_name);
+            ent->check_status = ENT_CHECK_NONE;
+            ent->storage = STORAGE_FUNCTION;
+            ent->decl_pnode = tls;
+            ent->tbl = an->m->global;
+            } break;
+        case PN_STMT_EXTERN_DECL: {
+            PNode* decl = tls->unop.sub;
+            switch (decl->base.kind) {
+            case PN_FNPROTO: {
+                PNode* ident = decl->fnproto.ident;
+                string ident_name = pnode_span(ident);
+                Entity* ent = etbl_put(an->m->global, ident_name);
+                ent->decl_pnode = tls;
+                ent->check_status = ENT_CHECK_NONE;
+                ent->storage = STORAGE_EXTERN_FUNCTION;
+                ent->tbl = an->m->global;
+                } break;
+            case PN_STMT_DECL: {
+                PNode* ident = decl->decl.ident;
+                if (decl->decl.kind == DECLKIND_DEF) {
+                    report_pnode(true, decl, "extern decl must have runtime storage");
+                }
+                string ident_name = pnode_span(ident);
+                Entity* ent = etbl_put(an->m->global, ident_name);
+                ent->decl_pnode = tls;
+                ent->check_status = ENT_CHECK_NONE;
+                ent->storage = STORAGE_EXTERN;
+                ent->tbl = an->m->global;
+                } break;
+            default:
+                UNREACHABLE;
+            }
+            } break;
+        case PN_STMT_WHEN:
+        case PN_STMT_WHICH: // defer these until later
+            break;
+        default:
+            UNREACHABLE;
+        }
+    }
+
+    // handle when/which here
+    for_n (i, 0, block->list.len) {
+        PNode* tls = block->list.at[i];
+        switch (tls->base.kind) {
+        case PN_STMT_WHEN:
+        case PN_STMT_WHICH:
+            UNREACHABLE; // TODO! lmao
+            break;
+        default:
+            break;
+        }
+    }
+
+}
+
 Module* sema_check(PNode* top) {
     Module* mod = malloc(sizeof(Module));
     *mod = (Module){};
@@ -2678,75 +2804,25 @@ Module* sema_check(PNode* top) {
     an.defer_stack = vecptr_new(SemaNode, 4);
     an.control_flow = vecptr_new(SemaNode, 16);
 
-    // pre-collect entitites
-    for_n (i, 1, top->list.len) {
-        PNode* tls = top->list.at[i];
-        switch (tls->base.kind) {
-        case PN_STMT_DECL: {
-            PNode* ident = tls->decl.ident;
-            string ident_name = pnode_span(ident);
-            Entity* ent = etbl_put(mod->global, ident_name);
-            ent->check_status = ENT_CHECK_NONE;
-            ent->storage = tls->decl.kind == DECLKIND_DEF ? STORAGE_COMPTIME : STORAGE_GLOBAL;
-            ent->decl_pnode = tls;
-            ent->tbl = mod->global;
-            } break;
-        case PN_STMT_FN_DECL: {
-            PNode* prototype = tls->fn_decl.proto;
-            PNode* ident = prototype->fnproto.ident;
-            string ident_name = pnode_span(ident);
-            Entity* ent = etbl_put(mod->global, ident_name);
-            ent->check_status = ENT_CHECK_NONE;
-            ent->storage = STORAGE_FUNCTION;
-            ent->decl_pnode = tls;
-            ent->tbl = mod->global;
-            } break;
-        case PN_STMT_EXTERN_DECL: {
-            PNode* decl = tls->unop.sub;
-            switch (decl->base.kind) {
-            case PN_FNPROTO: {
-                PNode* ident = decl->fnproto.ident;
-                string ident_name = pnode_span(ident);
-                Entity* ent = etbl_put(mod->global, ident_name);
-                ent->decl_pnode = tls;
-                ent->check_status = ENT_CHECK_NONE;
-                ent->storage = STORAGE_EXTERN_FUNCTION;
-                ent->tbl = mod->global;
-                } break;
-            case PN_STMT_DECL: {
-                PNode* ident = decl->decl.ident;
-                if (decl->decl.kind == DECLKIND_DEF) {
-                    report_pnode(true, decl, "extern decl must have runtime storage");
-                }
-                string ident_name = pnode_span(ident);
-                Entity* ent = etbl_put(mod->global, ident_name);
-                ent->decl_pnode = tls;
-                ent->check_status = ENT_CHECK_NONE;
-                ent->storage = STORAGE_EXTERN;
-                ent->tbl = mod->global;
-                } break;
-            default:
-                UNREACHABLE;
-            }
-            } break;
-        case PN_STMT_WHEN:
-        case PN_STMT_WHICH: // defer these until later
-            break;
-        default:
-            UNREACHABLE;
-        }
-    }
+    precollect_entities(&an, mod->global, top);
 
-    // check when/which somewhere in here.........
+    // fuck the module decl :(
+    top->list.at = &top->list.at[1];
+    top->list.len--;
 
     // check stmts
-    for_n (i, 1, top->list.len) {
-        PNode* stmt = top->list.at[i];
-        SemaNode* decl = check_stmt(&an, mod->global, stmt);
-        if (decl != NULL) {
-            da_append(&mod->decls, decl);
-        }
-    }
+    check_block(&an, mod->global, top, false, NULL_STR);
+    // for_n (i, 1, top->list.len) {
+    //     PNode* stmt = top->list.at[i];
+    //     SemaNode* decl = check_stmt(&an, mod->global, stmt);
+    //     if (decl != NULL) {
+    //         da_append(&mod->decls, decl);
+    //     }
+    // }
+
+    // unfuck the module decl :)
+    top->list.at = &top->list.at[-1];
+    top->list.len++;
 
     return mod;
 }

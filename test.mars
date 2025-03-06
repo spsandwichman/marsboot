@@ -1,5 +1,12 @@
 module test;
 
-extern fun malloc(size: uint): ^mut;
-extern fun free(ptr: ^mut);
-extern fun realloc(ptr: ^mut, size: uint): ^mut;
+// extern fun malloc(size: uint): ^mut;
+// extern fun free(ptr: ^mut);
+// extern fun realloc(ptr: ^mut, size: uint): ^mut;
+
+
+fun identity(i: int): int {
+    return i + y;
+}
+
+def y = 4;

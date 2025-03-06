@@ -107,7 +107,7 @@ def InstStore = struct {
     val: ^mut Inst,
 };
 
-
+extern fun malloc(f: ^mut Function, size: uint): ^mut;
 
 fun append(b: ^mut Block, inst: ^mut Inst): ^mut Inst {
     if b.start.kind == .BOOKEND {
@@ -253,12 +253,6 @@ fun new_block(f: ^mut Function): ^mut Block {
 def Function = struct {
     symbol: ^mut Symbol,
     first_block: ^mut Block,
-};
-
-fun new_function()
-
-def Module = struct {
-    functions: VecFunctionPtr;
 };
 
 def Symbol = struct {

@@ -3,11 +3,13 @@
 typedef void* Ptr;
 typedef struct Slice { Ptr raw; uint64_t len; } Slice;
 typedef struct Dyn { Ptr raw; uint64_t id; } Dyn;
-typedef Ptr (*Fun_558d84d33290)(uint64_t);
-typedef void (*Fun_558d84d33520)(Ptr);
-typedef Ptr (*Fun_558d84d33800)(Ptr, uint64_t);
+typedef int64_t (*Fun_1a691ecb7a0)();
 
-Ptr malloc(uint64_t p_size);
-void free(Ptr p_ptr);
-Ptr realloc(Ptr p_ptr, uint64_t p_size);
+int64_t test_foo();
+
+int64_t test_foo() {
+  int64_t v1a691ecc030 = (int64_t)1ll;
+  return v1a691ecc030;
+  v1a691ecb860_break:
+}
 
