@@ -2907,6 +2907,8 @@ Module* sema_check(PNode* top) {
     PNode* mod_decl = top->list.at[0];
     mod->name = pnode_span(mod_decl->module_decl.ident);
 
+    vec_append(&ctx.active_modules, mod);
+
     Analyzer an;
     an.m = mod;
     an.current_fn = NULL;
